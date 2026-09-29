@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>LED-Wand Konfigurator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  :root{
+    --black:#0a0a0b;
+    --panel-bg:#141416;
+    --panel-bg-2:#1b1b1e;
+    --line:#2a2a2e;
+    --white:#f5f5f7;
+    --muted:#8d8d94;
+    --accent:#e7007f;
+    --accent-dim:rgba(231,0,127,.35);
+    --radius:14px;
+    font-family:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--black);color:var(--white);height:100%;height:100dvh;overflow:hidden;overscroll-behavior:none;}
+  .app{display:flex;flex-direction:column;height:100vh;height:100dvh;width:100vw;}
+
+  /* Header */
+  header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:16px 24px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg, #101011, #0a0a0b);
+    flex-shrink:0;
+  }
+  .brand{display:flex;align-items:center;gap:12px;}
+  .brand-mark{
+    width:30px;height:30px;border-radius:8px;
+    background:linear-gradient(135deg, var(--accent), #7a0048);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;color:#fff;
+    box-shadow:0 0 18px var(--accent-dim);
+  }
+  .brand-text h1{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:600;margin:0;letter-spacing:.2px;}
+  .brand-text p{margin:0;font-size:11.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;letter-spacing:.3px;}
+  .mode-switch{display:flex;background:var(--panel-bg);border:1px solid var(--line);border-radius:999px;padding:3px;}
+  .mode-switch button{
+    border:none;background:transparent;color:var(--muted);font-family:'Space Grotesk',sans-serif;
+    font-size:13px;font-weight:600;padding:9px 20px;border-radius:999px;cursor:pointer;transition:.25s;
+  }
+  .mode-switch button.active{background:var(--accent);color:#fff;box-shadow:0 0 14px var(--accent-dim);}
+
+  /* Main layout */
+  .main{flex:1;display:grid;grid-template-columns:1fr 340px;min-height:0;}
+  .viewer{position:relative;background:radial-gradient(ellipse at 50% 30%, #17171a 0%, #0a0a0b 70%);overflow:hidden;touch-action:none;}
+  .viewer canvas{display:block;width:100%;height:100%;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+  .hint{
+    position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+    font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);
+    background:rgba(20,20,22,.6);backdrop-filter:blur(6px);padding:6px 14px;border-radius:999px;
+    border:1px solid var(--line);pointer-events:none;
+  }
+
+  /* HUD */
+  .hud{
+    position:absolute;top:20px;left:20px;
+    background:rgba(20,20,22,.55);backdrop-filter:blur(10px);
+    border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px 18px;min-width:210px;
+    box-shadow:0 0 0 1px rgba(231,0,127,.08), 0 12px 30px rgba(0,0,0,.4);
+  }
+  .hud .eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.5px;color:var(--accent);text-transform:uppercase;margin-bottom:10px;}
+  .hud-row{display:flex;justify-content:space-between;gap:18px;font-family:'JetBrains Mono',monospace;font-size:12.5px;padding:3px 0;}
+  .hud-row span:first-child{color:var(--muted);}
+  .hud-row span:last-child{color:var(--white);font-weight:500;}
+
+  /* Sidebar */
+  .panel{
+    background:var(--panel-bg);border-left:1px solid var(--line);
+    overflow-y:auto;-webkit-overflow-scrolling:touch;padding:22px 20px 24px;position:relative;
+  }
+  .panel::-webkit-scrollbar{width:6px;}
+  .panel::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
+  .field{margin-bottom:24px;}
+  .title-row{display:flex;align-items:center;gap:6px;margin-bottom:10px;}
+  .title-row .title-text{font-family:'Space Grotesk',sans-serif;font-size:12.5px;font-weight:600;color:var(--white);letter-spacing:.2px;}
+
+  .info-wrap{position:relative;display:inline-flex;vertical-align:middle;}
+  .info-btn{
+    width:15px;height:15px;border-radius:50%;background:rgba(255,255,255,.92);border:1px solid rgba(255,255,255,.92);
+    color:#0a0a0b;font-size:10px;line-height:13px;text-align:center;cursor:pointer;
+    font-family:'JetBrains Mono',monospace;padding:0;flex-shrink:0;font-weight:600;
+  }
+  .info-btn:hover{border-color:var(--accent);background:var(--accent);color:#fff;}
+  .tooltip-pop{
+    display:none;position:absolute;top:22px;left:0;z-index:30;width:230px;
+    background:#0d0d0e;border:1px solid var(--line);border-radius:9px;padding:10px 12px;
+    font-family:'Inter',sans-serif;font-size:11.5px;line-height:1.5;color:#c9c9cd;font-weight:400;
+    box-shadow:0 10px 24px rgba(0,0,0,.5);
+  }
+  .info-wrap:hover .tooltip-pop, .info-wrap.open .tooltip-pop{display:block;}
+  .switch-row .txt .info-wrap{margin-left:6px;}
+  .switch-row .txt .tooltip-pop{top:20px;}
+
+  .ico-box{display:flex;align-items:center;justify-content:center;height:26px;margin-bottom:6px;color:inherit;}
+  .ico-box svg{display:block;stroke:currentColor;}
+
+  .segmented{display:flex;gap:6px;flex-wrap:wrap;}
+  .seg-btn{
+    flex:1;min-width:80px;background:var(--panel-bg-2);border:1px solid var(--line);color:var(--muted);
+    border-radius:10px;padding:10px 8px;font-size:12px;font-family:'Inter',sans-serif;font-weight:500;
+    cursor:pointer;text-align:center;transition:.2s;line-height:1.35;
+  }
+  .seg-btn .ico{display:block;font-size:16px;margin-bottom:4px;}
+  .seg-btn:hover{border-color:#3a3a40;color:var(--white);}
+  .seg-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 0 14px var(--accent-dim);}
+
+  .stepper-row{display:flex;align-items:center;gap:14px;}
+  .stepper{display:flex;align-items:center;background:var(--panel-bg-2);border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  .stepper button{background:none;border:none;color:var(--white);width:32px;height:36px;font-size:16px;cursor:pointer;}
+  .stepper button:hover{background:var(--line);}
+  .stepper .val{width:62px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:13px;}
+  .stepper-label{font-size:11.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+
+  select{
+    width:100%;background:var(--panel-bg-2);border:1px solid var(--line);color:var(--white);
+    padding:10px 12px;border-radius:10px;font-family:'JetBrains Mono',monospace;font-size:12.5px;
+    appearance:none;
+  }
+
+  .switch-row{display:flex;align-items:center;justify-content:space-between;background:var(--panel-bg-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;}
+  .switch-row .txt{font-size:12.5px;}
+  .switch-row .txt small{display:block;color:var(--muted);font-size:11px;margin-top:2px;font-family:'Inter',sans-serif;}
+  .switch{position:relative;width:40px;height:22px;flex-shrink:0;}
+  .switch input{opacity:0;width:0;height:0;}
+  .slider-toggle{position:absolute;cursor:pointer;inset:0;background:#3a3a40;border-radius:999px;transition:.2s;}
+  .slider-toggle::before{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;}
+  input:checked + .slider-toggle{background:var(--accent);}
+  input:checked + .slider-toggle::before{transform:translateX(18px);}
+
+  input[type=range]{width:100%;accent-color:var(--accent);}
+  .range-labels{display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--muted);margin-top:4px;}
+
+  .cta-wrap{position:sticky;bottom:0;padding-top:20px;padding-bottom:max(4px, env(safe-area-inset-bottom));margin-top:6px;border-top:1px solid var(--line);background:var(--panel-bg);}
+  .cta{
+    width:100%;background:linear-gradient(135deg, var(--accent), #b8005f);color:#fff;border:none;
+    padding:16px;border-radius:12px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14px;
+    cursor:pointer;box-shadow:0 8px 24px var(--accent-dim);letter-spacing:.2px;text-align:center;
+  }
+  .cta:hover{filter:brightness(1.08);}
+
+  /* Modal */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(6,6,7,.7);backdrop-filter:blur(6px);
+    display:none;align-items:center;justify-content:center;z-index:50;padding:20px;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal{
+    background:var(--panel-bg);border:1px solid var(--line);border-radius:16px;max-width:480px;width:100%;
+    padding:28px;max-height:90vh;overflow-y:auto;
+  }
+  .modal h2{font-family:'Space Grotesk',sans-serif;font-size:19px;margin:0 0 4px;}
+  .modal p.sub{color:var(--muted);font-size:12.5px;margin:0 0 20px;}
+  .modal label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:6px;font-family:'JetBrains Mono',monospace;}
+  .modal input[type=text], .modal input[type=email], .modal input[type=tel], .modal textarea{
+    width:100%;background:var(--panel-bg-2);border:1px solid var(--line);color:var(--white);
+    padding:11px 12px;border-radius:9px;font-family:'Inter',sans-serif;font-size:13px;margin-bottom:14px;
+  }
+  .modal textarea{resize:vertical;min-height:70px;}
+  .config-preview{
+    background:#0d0d0e;border:1px solid var(--line);border-radius:9px;padding:12px 14px;
+    font-family:'JetBrains Mono',monospace;font-size:11px;color:#c9c9cd;white-space:pre-wrap;
+    max-height:140px;overflow-y:auto;margin-bottom:16px;line-height:1.6;
+  }
+  .modal-actions{display:flex;gap:10px;}
+  .btn-secondary{
+    flex:1;background:var(--panel-bg-2);border:1px solid var(--line);color:var(--white);
+    padding:13px;border-radius:10px;font-family:'Inter',sans-serif;font-weight:500;font-size:13px;cursor:pointer;
+  }
+  .btn-primary{
+    flex:2;background:var(--accent);border:none;color:#fff;padding:13px;border-radius:10px;
+    font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13px;cursor:pointer;
+  }
+  .success-box{display:none;text-align:center;padding:10px 0;}
+  .success-box.show{display:block;}
+  .success-box .check{
+    width:52px;height:52px;border-radius:50%;background:var(--accent);margin:0 auto 16px;
+    display:flex;align-items:center;justify-content:center;font-size:24px;
+  }
+
+  @media (max-width: 860px){
+    .main{grid-template-columns:1fr;grid-template-rows:48vh 1fr;grid-template-rows:48dvh 1fr;}
+    .panel{border-left:none;border-top:1px solid var(--line);padding:18px 16px 16px;}
+    .hud{top:10px;left:10px;min-width:150px;padding:10px 12px;}
+    .hud .eyebrow{font-size:9px;margin-bottom:8px;}
+    .hud-row{font-size:11.5px;padding:2px 0;}
+    header{padding:10px 14px;}
+    .brand-mark{width:26px;height:26px;font-size:12px;}
+    .brand-text h1{font-size:14px;}
+    .brand-text p{font-size:10px;}
+    .mode-switch button{padding:8px 14px;font-size:12px;}
+    .hint{display:none;}
+
+    /* Größere Touch-Ziele */
+    .seg-btn{padding:12px 8px;font-size:12.5px;min-height:44px;}
+    .stepper button{width:40px;height:42px;font-size:18px;}
+    .stepper .val{font-size:13.5px;}
+    .switch{width:44px;height:26px;}
+    .slider-toggle::before{width:20px;height:20px;}
+    input:checked + .slider-toggle::before{transform:translateX(18px);}
+    .info-btn{width:19px;height:19px;font-size:12px;line-height:17px;}
+    .cta{padding:15px;font-size:14.5px;}
+
+    .modal{padding:20px;border-radius:14px;max-height:85dvh;}
+    .modal h2{font-size:17px;}
+  }
+
+  @media (max-width: 480px){
+    .brand-text p{display:none;}
+    header{gap:8px;}
+    .mode-switch button{padding:8px 11px;font-size:11.5px;}
+    .main{grid-template-rows:42vh 1fr;grid-template-rows:42dvh 1fr;}
+    .field{margin-bottom:18px;}
+    .seg-btn{min-width:70px;}
+  }
+
+  @media (hover:none){
+    .seg-btn:hover{border-color:var(--line);color:var(--muted);}
+    .seg-btn.active:hover{color:#fff;}
+    .info-wrap:hover .tooltip-pop{display:none;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="brand">
+      <div class="brand-mark">LW</div>
+      <div class="brand-text">
+        <h1>LED-Wand Konfigurator</h1>
+        <p id="modeSubtitle">STARRE PANELS</p>
+      </div>
+    </div>
+    <div class="mode-switch">
+      <button id="btnRigid" class="active">Starre Panels</button>
+      <button id="btnFlex">Flex Panels</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="viewer">
+      <canvas id="c"></canvas>
+      <div class="hud">
+        <div class="eyebrow">Konfiguration</div>
+        <div class="hud-row"><span>Größe</span><span id="hudSize">–</span></div>
+        <div class="hud-row"><span>Panels</span><span id="hudPanels">–</span></div>
+        <div class="hud-row"><span>Pixel Pitch</span><span id="hudPitch">–</span></div>
+        <div class="hud-row"><span>Auflösung ca.</span><span id="hudRes">–</span></div>
+        <div class="hud-row"><span>Gewicht ca.</span><span id="hudWeight">–</span></div>
+        <div class="hud-row"><span>Betrachtungsabstand</span><span id="hudDistance">–</span></div>
+      </div>
+      <div class="hint">Ziehen zum Drehen · Scrollen zum Zoomen</div>
+    </div>
+
+    <aside class="panel">
+
+      <div class="field">
+        <div class="title-row">
+          <span class="title-text">Einsatzort</span>
+          <span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Indoor- und Outdoor-Panels unterscheiden sich in Schutzklasse und Aufbau.</span></span>
+        </div>
+        <div class="segmented" id="segLocation">
+          <div class="seg-btn active" data-val="indoor"><span class="ico">🏠</span>Indoor</div>
+          <div class="seg-btn" data-val="outdoor"><span class="ico">🌦</span>Outdoor</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="title-row">
+          <span class="title-text">Panel-Typ</span>
+          <span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Modulgröße pro Einzelpanel. Das 1 × 0,5 m Panel ist ausschließlich hochkant montierbar.</span></span>
+        </div>
+        <div class="segmented" id="segPanelType">
+          <div class="seg-btn active" data-val="0.5x0.5">
+            <span class="ico-box"><svg viewBox="0 0 32 32" width="24" height="24"><rect x="6" y="6" width="20" height="20" rx="2" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span>
+            0,5 × 0,5 m
+          </div>
+          <div class="seg-btn" data-val="1x0.5">
+            <span class="ico-box"><svg viewBox="0 0 32 32" width="16" height="30"><rect x="9" y="2" width="14" height="28" rx="2" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span>
+            0,5 × 1 m
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="title-row">
+          <span class="title-text">Aufbauart</span>
+          <span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Bestimmt Traverse, Wandhalterung oder Standfuß in der Vorschau.</span></span>
+        </div>
+        <div class="segmented" id="segMount">
+          <div class="seg-btn active" data-val="truss"><span class="ico">⛓</span>Hängend<br>Traverse</div>
+          <div class="seg-btn" data-val="wall"><span class="ico">▤</span>Wand<br>schwebend</div>
+          <div class="seg-btn" data-val="floor"><span class="ico">▮</span>Boden<br>Standfuß</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="title-row"><span class="title-text">Größe der Wand</span></div>
+        <div class="stepper-row" style="margin-bottom:10px;">
+          <div class="stepper-label" style="width:60px;">Breite</div>
+          <div class="stepper">
+            <button id="colsMinus">–</button>
+            <div class="val" id="colsVal">4,0 m</div>
+            <button id="colsPlus">+</button>
+          </div>
+          <div class="stepper-label" id="colsPanelsLabel">(8 Panels)</div>
+        </div>
+        <div class="stepper-row">
+          <div class="stepper-label" style="width:60px;">Höhe</div>
+          <div class="stepper">
+            <button id="rowsMinus">–</button>
+            <div class="val" id="rowsVal">2,5 m</div>
+            <button id="rowsPlus">+</button>
+          </div>
+          <div class="stepper-label" id="rowsPanelsLabel">(5 Panels)</div>
+        </div>
+      </div>
+
+      <div class="field" id="bendField" style="display:none;">
+        <div class="title-row">
+          <span class="title-text">Biegung</span>
+          <span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Nur bei Flex Panels möglich – konkav oder konvex.</span></span>
+        </div>
+        <input type="range" id="bendRange" min="-40" max="40" value="0" step="1">
+        <div class="range-labels"><span>konkav</span><span>gerade</span><span>konvex</span></div>
+      </div>
+
+      <div class="field">
+        <div class="title-row">
+          <span class="title-text">Pixel Pitch</span>
+          <span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Abstand zwischen zwei LED-Pixeln in mm. Kleinerer Wert = mehr Pixel pro m² und höhere Auflösung, geeignet für kurze Betrachtungsabstände. Größerer Wert = weniger Pixel, für größere Abstände ausreichend.</span></span>
+        </div>
+        <select id="pitchSelect">
+          <option value="2.6">P2.6</option>
+          <option value="2.9" selected>P2.9</option>
+          <option value="3.6">P3.6</option>
+          <option value="4.8">P4.8</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <div class="switch-row">
+          <div class="txt">Panel-Kanten anzeigen<span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Blendet die Fugenlinien zwischen den Panels ein/aus.</span></span></div>
+          <label class="switch">
+            <input type="checkbox" id="edgesToggle" checked>
+            <span class="slider-toggle"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="switch-row">
+          <div class="txt">Figur anzeigen<span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Blendet die Dummy-Figur am empfohlenen Betrachtungsabstand ein/aus.</span></span></div>
+          <label class="switch">
+            <input type="checkbox" id="dummyToggle" checked>
+            <span class="slider-toggle"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="field" id="gobField">
+        <div class="switch-row">
+          <div class="txt">GOB-Beschichtung<span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Glue-on-Board Schutzschicht für die LEDs. Nur bei Indoor-Panels verfügbar.</span></span></div>
+          <label class="switch">
+            <input type="checkbox" id="gobToggle">
+            <span class="slider-toggle"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="cta-wrap">
+        <button class="cta" id="openModalBtn">Preis freischalten</button>
+      </div>
+
+    </aside>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div id="formView">
+      <h2>Anfrage senden</h2>
+      <p class="sub">Ihre Konfiguration wird automatisch mitgeschickt.</p>
+      <label>Name</label>
+      <input type="text" id="fName">
+      <label>Firma</label>
+      <input type="text" id="fCompany">
+      <label>E-Mail</label>
+      <input type="email" id="fEmail">
+      <label>Telefon</label>
+      <input type="tel" id="fPhone">
+      <label>Nachricht</label>
+      <textarea id="fMessage" placeholder="Optional: Projektzeitraum, Veranstaltungsort, weitere Hinweise..."></textarea>
+      <label>Konfiguration (wird automatisch übernommen)</label>
+      <div class="config-preview" id="configPreview"></div>
+      <div class="modal-actions">
+        <button class="btn-secondary" id="closeModalBtn">Abbrechen</button>
+        <button class="btn-primary" id="submitBtn">Anfrage absenden</button>
+      </div>
+    </div>
+    <div class="success-box" id="successBox">
+      <div class="check">✓</div>
+      <h2 style="text-align:center;">Anfrage übermittelt</h2>
+      <p class="sub" style="text-align:center;">Vielen Dank – wir melden uns zeitnah bei Ihnen.</p>
+      <button class="btn-secondary" style="width:100%;margin-top:10px;" id="closeSuccessBtn">Schließen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   LED-WAND KONFIGURATOR
+   Anpassbare Eckdaten (Gewichte, Feld-Name fürs CRM etc.) unten in CONFIG.
+   ========================================================================= */
+
+const CONFIG = {
+  // Name des versteckten Feldes im echten Kontaktformular der Website.
+  // Bitte an den tatsächlichen Feldnamen anpassen, falls abweichend.
+  hiddenFieldName: 'ledwall_konfigurator',
+  // Gewichte pro Panel in kg (vom Kunden angegeben)
+  weightPerPanel: {
+    '0.5x0.5': { indoor: 6, outdoor: 6 },
+    '1x0.5':   { indoor: 11, outdoor: 11 }
+  }
+};
+
+const state = {
+  mode: 'rigid',        // 'rigid' | 'flex'
+  location: 'indoor',   // 'indoor' | 'outdoor'
+  panelType: '0.5x0.5', // '0.5x0.5' | '1x0.5'
+  mount: 'truss',       // 'truss' | 'wall' | 'floor'
+  cols: 8,
+  rows: 5,
+  bend: 0,
+  pitch: 2.9,
+  gob: false,
+  showEdges: true,
+  showDummy: true
+};
+
+function getPanelDims() {
+  // Das 1 × 0,5 m Panel ist ausschließlich hochkant montierbar.
+  if (state.panelType === '1x0.5') return { panelW: 0.5, panelH: 1 };
+  return { panelW: 0.5, panelH: 0.5 };
+}
+
+/* ---------------------------- THREE.JS SETUP ---------------------------- */
+
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.outputEncoding = THREE.sRGBEncoding;
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x0a0a0b, 14, 34);
+
+const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
+camera.position.set(6.5, 4, 9);
+
+// Lighting
+scene.add(new THREE.AmbientLight(0x8a8a95, 0.55));
+const keyLight = new THREE.DirectionalLight(0xffffff, 0.9);
+keyLight.position.set(6, 10, 6);
+scene.add(keyLight);
+const rimLight = new THREE.PointLight(0xe7007f, 6, 30);
+rimLight.position.set(-6, 3, -4);
+scene.add(rimLight);
+const fillLight = new THREE.PointLight(0xffffff, 1.2, 30);
+fillLight.position.set(0, 2, 8);
+scene.add(fillLight);
+
+// Floor
+const floorGeo = new THREE.PlaneGeometry(60, 60);
+const floorMat = new THREE.MeshStandardMaterial({ color: 0x111113, roughness: 0.85, metalness: 0.1 });
+const floor = new THREE.Mesh(floorGeo, floorMat);
+floor.rotation.x = -Math.PI / 2;
+floor.position.y = 0;
+scene.add(floor);
+
+// Faint grid on floor
+const grid = new THREE.GridHelper(60, 60, 0x2a2a2e, 0x1c1c1f);
+grid.position.y = 0.01;
+scene.add(grid);
+
+/* -------------------------- CUSTOM ORBIT CONTROLS ------------------------ */
+/* Ein Finger / Maus = Rotieren, zwei Finger = Pinch-Zoom, Mausrad = Zoom (Desktop) */
+
+const orbit = { theta: 0.5, phi: 1.15, radius: 11, target: new THREE.Vector3(0, 1.6, 0) };
+let isDragging = false, lastX = 0, lastY = 0;
+const activePointers = new Map();
+let pinchStartDist = null, pinchStartRadius = null;
+
+function pinchDistance() {
+  const pts = [...activePointers.values()];
+  return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+}
+
+canvas.addEventListener('pointerdown', (e) => {
+  canvas.setPointerCapture(e.pointerId);
+  activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (activePointers.size === 1) {
+    isDragging = true; lastX = e.clientX; lastY = e.clientY;
+  } else if (activePointers.size === 2) {
+    isDragging = false;
+    pinchStartDist = pinchDistance();
+    pinchStartRadius = orbit.radius;
+  }
+});
+function releasePointer(e) {
+  activePointers.delete(e.pointerId);
+  if (activePointers.size < 2) pinchStartDist = null;
+  if (activePointers.size === 0) isDragging = false;
+}
+window.addEventListener('pointerup', releasePointer);
+window.addEventListener('pointercancel', releasePointer);
+window.addEventListener('pointermove', (e) => {
+  if (!activePointers.has(e.pointerId)) return;
+  activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+  if (activePointers.size === 2 && pinchStartDist) {
+    const dist = pinchDistance();
+    const scale = pinchStartDist / dist;
+    orbit.radius = Math.min(Math.max(pinchStartRadius * scale, 4), 22);
+    return;
+  }
+  if (!isDragging) return;
+  const dx = e.clientX - lastX, dy = e.clientY - lastY;
+  lastX = e.clientX; lastY = e.clientY;
+  orbit.theta -= dx * 0.006;
+  orbit.phi = Math.min(Math.max(orbit.phi - dy * 0.006, 0.4), 1.5);
+});
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  orbit.radius = Math.min(Math.max(orbit.radius + e.deltaY * 0.01, 4), 22);
+}, { passive: false });
+
+function updateCamera() {
+  const { theta, phi, radius, target } = orbit;
+  camera.position.x = target.x + radius * Math.sin(phi) * Math.sin(theta);
+  camera.position.y = target.y + radius * Math.cos(phi);
+  camera.position.z = target.z + radius * Math.sin(phi) * Math.cos(theta);
+  camera.lookAt(target);
+}
+
+/* ------------------------------ LED TEXTURE ------------------------------ */
+
+function makeLedTexture() {
+  const size = 128;
+  const cnv = document.createElement('canvas');
+  cnv.width = cnv.height = size;
+  const ctx = cnv.getContext('2d');
+  ctx.fillStyle = '#08080a';
+  ctx.fillRect(0, 0, size, size);
+  const dotsPerSide = 16;
+  const step = size / dotsPerSide;
+  for (let y = 0; y < dotsPerSide; y++) {
+    for (let x = 0; x < dotsPerSide; x++) {
+      const cx = x * step + step / 2;
+      const cy = y * step + step / 2;
+      const b = 60 + Math.random() * 40;
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, step * 0.42);
+      grad.addColorStop(0, `rgba(${b + 140},${b + 140},${b + 150},0.9)`);
+      grad.addColorStop(1, 'rgba(10,10,12,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, step * 0.42, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  const tex = new THREE.CanvasTexture(cnv);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+const ledTexture = makeLedTexture();
+
+function makeSweepTexture() {
+  const w = 256, h = 32;
+  const cnv = document.createElement('canvas');
+  cnv.width = w; cnv.height = h;
+  const ctx = cnv.getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, w, 0);
+  grad.addColorStop(0.0, 'rgba(231,0,127,0)');
+  grad.addColorStop(0.45, 'rgba(231,0,127,0.55)');
+  grad.addColorStop(0.5, 'rgba(255,255,255,0.75)');
+  grad.addColorStop(0.55, 'rgba(231,0,127,0.55)');
+  grad.addColorStop(1.0, 'rgba(231,0,127,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+  const tex = new THREE.CanvasTexture(cnv);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  return tex;
+}
+const sweepTexture = makeSweepTexture();
+
+/* ------------------------------ WALL BUILDING ----------------------------- */
+
+const wallGroup = new THREE.Group();
+scene.add(wallGroup);
+const supportGroup = new THREE.Group();
+scene.add(supportGroup);
+
+let ledMaterial, sweepMaterial, seamMaterial;
+
+function curvedPoint(u, v, totalWidth, totalHeight, bendDeg) {
+  // u,v in [0,1]. Bend only along horizontal axis (x/z), like real flex/curtain panels.
+  const y = (v - 0.5) * totalHeight;
+  if (Math.abs(bendDeg) < 0.5) {
+    return { x: (u - 0.5) * totalWidth, y, z: 0, nx: 0, ny: 0, nz: 1 };
+  }
+  const angleTotal = (bendDeg * Math.PI) / 180;
+  const sign = angleTotal > 0 ? 1 : -1;
+  const absAngle = Math.abs(angleTotal);
+  const radius = totalWidth / absAngle;
+  const theta = (u - 0.5) * absAngle;
+  const x = radius * Math.sin(theta);
+  const z = -sign * radius * (1 - Math.cos(theta));
+  // outward normal points from curvature center (0,0,-sign*radius) toward (x,z)
+  const cz = -sign * radius;
+  let nX = x - 0, nZ = z - cz;
+  const len = Math.hypot(nX, nZ) || 1;
+  nX /= len; nZ /= len;
+  return { x, y, z, nx: nX, ny: 0, nz: nZ };
+}
+
+function buildWallMeshes() {
+  wallGroup.clear();
+
+  const { panelW, panelH } = getPanelDims();
+  const cols = state.cols, rows = state.rows;
+  const totalWidth = cols * panelW;
+  const totalHeight = rows * panelH;
+  const bend = state.mode === 'flex' ? state.bend : 0;
+  const thickness = 0.09;
+
+  const segX = cols, segY = rows;
+  const frontPos = [], backPos = [], uvs = [];
+  const gridPoints = [];
+
+  for (let j = 0; j <= segY; j++) {
+    const row = [];
+    for (let i = 0; i <= segX; i++) {
+      const u = i / segX, v = j / segY;
+      const p = curvedPoint(u, v, totalWidth, totalHeight, bend);
+      row.push(p);
+    }
+    gridPoints.push(row);
+  }
+
+  const idx = (i, j) => j * (segX + 1) + i;
+  const frontIndices = [], backIndices = [];
+
+  for (let j = 0; j <= segY; j++) {
+    for (let i = 0; i <= segX; i++) {
+      const p = gridPoints[j][i];
+      frontPos.push(p.x, p.y, p.z);
+      backPos.push(p.x - p.nx * thickness, p.y - p.ny * thickness, p.z - p.nz * thickness);
+      uvs.push(i / segX, j / segY);
+    }
+  }
+  for (let j = 0; j < segY; j++) {
+    for (let i = 0; i < segX; i++) {
+      const a = idx(i, j), b = idx(i + 1, j), c = idx(i + 1, j + 1), d = idx(i, j + 1);
+      frontIndices.push(a, b, c, a, c, d);
+      backIndices.push(a, c, b, a, d, c);
+    }
+  }
+
+  const frontGeo = new THREE.BufferGeometry();
+  frontGeo.setAttribute('position', new THREE.Float32BufferAttribute(frontPos, 3));
+  frontGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  frontGeo.setIndex(frontIndices);
+  frontGeo.computeVertexNormals();
+
+  const backGeo = new THREE.BufferGeometry();
+  backGeo.setAttribute('position', new THREE.Float32BufferAttribute(backPos, 3));
+  backGeo.setIndex(backIndices);
+  backGeo.computeVertexNormals();
+
+  ledTexture.repeat.set(cols, rows);
+  ledTexture.needsUpdate = true;
+
+  ledMaterial = new THREE.MeshStandardMaterial({
+    map: ledTexture,
+    emissive: new THREE.Color(0xffffff),
+    emissiveMap: ledTexture,
+    emissiveIntensity: 0.85,
+    roughness: 0.5,
+    metalness: 0.05
+  });
+  const frontMesh = new THREE.Mesh(frontGeo, ledMaterial);
+  wallGroup.add(frontMesh);
+
+  const backMat = new THREE.MeshStandardMaterial({
+    color: state.gob ? 0x1c1c1f : 0x161618,
+    roughness: 0.6,
+    metalness: 0.3
+  });
+  const backMesh = new THREE.Mesh(backGeo, backMat);
+  wallGroup.add(backMesh);
+
+  // Perimeter side ribbon for a sense of physical depth
+  const sidePos = [];
+  function pushQuad(pA, pB, pA2, pB2) {
+    sidePos.push(pA.x, pA.y, pA.z, pB.x, pB.y, pB.z, pB2.x, pB2.y, pB2.z);
+    sidePos.push(pA.x, pA.y, pA.z, pB2.x, pB2.y, pB2.z, pA2.x, pA2.y, pA2.z);
+  }
+  function backOf(p) { return { x: p.x - p.nx * thickness, y: p.y - p.ny * thickness, z: p.z - p.nz * thickness }; }
+  for (let i = 0; i < segX; i++) { // bottom & top edges
+    const b1 = gridPoints[0][i], b2 = gridPoints[0][i + 1];
+    pushQuad(b1, b2, backOf(b1), backOf(b2));
+    const t1 = gridPoints[segY][i], t2 = gridPoints[segY][i + 1];
+    pushQuad(t2, t1, backOf(t2), backOf(t1));
+  }
+  for (let j = 0; j < segY; j++) { // left & right edges
+    const l1 = gridPoints[j][0], l2 = gridPoints[j + 1][0];
+    pushQuad(l2, l1, backOf(l2), backOf(l1));
+    const r1 = gridPoints[j][segX], r2 = gridPoints[j + 1][segX];
+    pushQuad(r1, r2, backOf(r1), backOf(r2));
+  }
+  const sideGeo = new THREE.BufferGeometry();
+  sideGeo.setAttribute('position', new THREE.Float32BufferAttribute(sidePos, 3));
+  sideGeo.computeVertexNormals();
+  const sideMesh = new THREE.Mesh(sideGeo, backMat);
+  wallGroup.add(sideMesh);
+
+  // Panel-Fugen als echte 3D-Geometrie (statt dünner GL-Linien), damit sie auch
+  // aus der Nähe klar erkennbar bleiben und nicht auf 1px zusammenschrumpfen.
+  function buildSeamGeometry(points2D, hw) {
+    const pos = [];
+    function tangentAt(i, j) {
+      let a, b;
+      if (i === 0) { a = points2D[j][0]; b = points2D[j][1]; }
+      else if (i === segX) { a = points2D[j][segX - 1]; b = points2D[j][segX]; }
+      else { a = points2D[j][i - 1]; b = points2D[j][i + 1]; }
+      const dx = b.x - a.x, dz = b.z - a.z;
+      const len = Math.hypot(dx, dz) || 1;
+      return { x: dx / len, z: dz / len };
+    }
+    // Vertikale Fugen (zwischen Spalten), Breite entlang der Wandkrümmung
+    for (let i = 0; i <= segX; i++) {
+      for (let j = 0; j < segY; j++) {
+        const p1 = points2D[j][i], p2 = points2D[j + 1][i];
+        const t1 = tangentAt(i, j), t2 = tangentAt(i, j + 1);
+        const a1 = { x: p1.x + t1.x * hw, y: p1.y, z: p1.z + t1.z * hw };
+        const a2 = { x: p1.x - t1.x * hw, y: p1.y, z: p1.z - t1.z * hw };
+        const b1 = { x: p2.x + t2.x * hw, y: p2.y, z: p2.z + t2.z * hw };
+        const b2 = { x: p2.x - t2.x * hw, y: p2.y, z: p2.z - t2.z * hw };
+        pos.push(a1.x, a1.y, a1.z, b1.x, b1.y, b1.z, b2.x, b2.y, b2.z);
+        pos.push(a1.x, a1.y, a1.z, b2.x, b2.y, b2.z, a2.x, a2.y, a2.z);
+      }
+    }
+    // Horizontale Fugen (zwischen Reihen), Breite in Y (Krümmung ist Y-invariant)
+    for (let j = 0; j <= segY; j++) {
+      for (let i = 0; i < segX; i++) {
+        const p1 = points2D[j][i], p2 = points2D[j][i + 1];
+        const a1 = { x: p1.x, y: p1.y + hw, z: p1.z };
+        const a2 = { x: p1.x, y: p1.y - hw, z: p1.z };
+        const b1 = { x: p2.x, y: p2.y + hw, z: p2.z };
+        const b2 = { x: p2.x, y: p2.y - hw, z: p2.z };
+        pos.push(a1.x, a1.y, a1.z, b1.x, b1.y, b1.z, b2.x, b2.y, b2.z);
+        pos.push(a1.x, a1.y, a1.z, b2.x, b2.y, b2.z, a2.x, a2.y, a2.z);
+      }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    return geo;
+  }
+
+  const seamBias = 0.0035;
+  const frontBiasedGrid = gridPoints.map(row => row.map(p => ({
+    x: p.x + p.nx * seamBias, y: p.y + p.ny * seamBias, z: p.z + p.nz * seamBias
+  })));
+  const backBiasedGrid = gridPoints.map(row => row.map(p => ({
+    x: p.x - p.nx * (thickness + seamBias), y: p.y - p.ny * (thickness + seamBias), z: p.z - p.nz * (thickness + seamBias)
+  })));
+
+  const seamGroup = new THREE.Group();
+  const seamGeoFront = buildSeamGeometry(frontBiasedGrid, 0.011);
+  seamMaterial = new THREE.MeshBasicMaterial({ color: 0x0a0a0c, side: THREE.DoubleSide });
+  const seamMeshFront = new THREE.Mesh(seamGeoFront, seamMaterial);
+  seamGroup.add(seamMeshFront);
+
+  const seamGeoBack = buildSeamGeometry(backBiasedGrid, 0.009);
+  const seamMaterialBack = new THREE.MeshBasicMaterial({ color: 0x3a3a3f, transparent: true, opacity: 0.65, side: THREE.DoubleSide });
+  const seamMeshBack = new THREE.Mesh(seamGeoBack, seamMaterialBack);
+  seamGroup.add(seamMeshBack);
+
+  seamGroup.visible = state.showEdges;
+  wallGroup.add(seamGroup);
+
+  // Animated content sweep overlay
+  const sweepGeo = frontGeo.clone();
+  sweepMaterial = new THREE.MeshBasicMaterial({
+    map: sweepTexture, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false
+  });
+  sweepTexture.repeat.set(3, 1);
+  const sweepMesh = new THREE.Mesh(sweepGeo, sweepMaterial);
+  sweepMesh.position.z += 0.003 * (bend === 0 ? 1 : 1);
+  wallGroup.add(sweepMesh);
+
+  return { totalWidth, totalHeight, gridPoints, thickness };
+}
+
+/* ------------------------------ SUPPORT RIGS ------------------------------ */
+
+function buildSupport(dims) {
+  supportGroup.clear();
+  const { totalWidth, totalHeight } = dims;
+  const metalMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3f, roughness: 0.4, metalness: 0.8 });
+  const darkMat = new THREE.MeshStandardMaterial({ color: 0x222226, roughness: 0.5, metalness: 0.6 });
+
+  if (state.mount === 'truss') {
+    const wallBottomY = 1.6; // lifted off the ground
+    wallGroup.position.y = wallBottomY + totalHeight / 2;
+    const trussY = wallBottomY + totalHeight + 0.35;
+    const trussLen = totalWidth + 0.8;
+
+    // Truss box (simple triangular truss look via 3 tubes + cross bars)
+    const trussGroup = new THREE.Group();
+    const tubeR = 0.035;
+    [-0.28, 0.28].forEach((dz) => {
+      [0.28, -0.05].forEach((dy) => {
+        const tube = new THREE.Mesh(new THREE.CylinderGeometry(tubeR, tubeR, trussLen, 8), metalMat);
+        tube.rotation.z = Math.PI / 2;
+        tube.position.set(0, dy, dz);
+        trussGroup.add(tube);
+      });
+    });
+    const braceCount = Math.max(4, Math.round(trussLen * 1.5));
+    for (let i = 0; i <= braceCount; i++) {
+      const x = -trussLen / 2 + (i / braceCount) * trussLen;
+      const brace = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.42, 6), metalMat);
+      brace.rotation.x = Math.PI / 2.6 * (i % 2 === 0 ? 1 : -1);
+      brace.position.set(x, 0.13, 0);
+      trussGroup.add(brace);
+    }
+    trussGroup.position.y = trussY;
+    supportGroup.add(trussGroup);
+
+    // Hanging bars + cables down to wall
+    const barCount = Math.min(Math.max(Math.round(totalWidth / 1.2), 2), 10);
+    for (let i = 0; i < barCount; i++) {
+      const x = -totalWidth / 2 + (i + 0.5) * (totalWidth / barCount);
+      const cableGeo = new THREE.CylinderGeometry(0.008, 0.008, trussY - (wallBottomY + totalHeight) + 0.05, 6);
+      const cable = new THREE.Mesh(cableGeo, darkMat);
+      cable.position.set(x, (trussY + (wallBottomY + totalHeight)) / 2, totalWidth > 0 ? 0 : 0);
+      supportGroup.add(cable);
+
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.2), metalMat);
+      bar.position.set(x, wallBottomY + totalHeight + 0.03, 0);
+      supportGroup.add(bar);
+    }
+  }
+
+  if (state.mount === 'wall') {
+    const wallBottomY = 1.2;
+    wallGroup.position.y = wallBottomY + totalHeight / 2;
+
+    // Backdrop wall
+    const backWall = new THREE.Mesh(
+      new THREE.PlaneGeometry(totalWidth + 2, totalHeight + 2.5),
+      new THREE.MeshStandardMaterial({ color: 0x151517, roughness: 0.95 })
+    );
+    backWall.position.set(0, wallBottomY + totalHeight / 2, -0.5);
+    supportGroup.add(backWall);
+
+    // Mounting brackets
+    const bracketCols = Math.min(Math.max(Math.round(totalWidth / 1.5), 2), 8);
+    const bracketRows = Math.min(Math.max(Math.round(totalHeight / 1), 2), 4);
+    for (let i = 0; i < bracketCols; i++) {
+      for (let j = 0; j < bracketRows; j++) {
+        const x = -totalWidth / 2 + (i + 0.5) * (totalWidth / bracketCols);
+        const y = wallBottomY + (j + 0.5) * (totalHeight / bracketRows);
+        const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.35), darkMat);
+        bracket.position.set(x, y, -0.28);
+        supportGroup.add(bracket);
+      }
+    }
+  }
+
+  if (state.mount === 'floor') {
+    wallGroup.position.y = totalHeight / 2 + 0.12;
+
+    // Feet - support structure sits at the BACK of the wall (away from the audience)
+    const feet = Math.min(Math.max(Math.round(totalWidth / 1.2), 2), 8);
+    for (let i = 0; i < feet; i++) {
+      const x = -totalWidth / 2 + (i + 0.5) * (totalWidth / feet);
+      const foot = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.06, 0.5), metalMat);
+      foot.position.set(x, 0.03, -0.15);
+      supportGroup.add(foot);
+
+      const strutGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.55, 6);
+      const strut = new THREE.Mesh(strutGeo, darkMat);
+      strut.position.set(x, 0.3, -0.32);
+      strut.rotation.x = 0.55;
+      supportGroup.add(strut);
+    }
+  }
+}
+
+/* --------------------------- VIEWING DISTANCE / PERSON --------------------- */
+
+const distanceGroup = new THREE.Group();
+scene.add(distanceGroup);
+
+function makeLabelSprite(text) {
+  const cnv = document.createElement('canvas');
+  cnv.width = 256; cnv.height = 96;
+  const ctx = cnv.getContext('2d');
+  ctx.fillStyle = 'rgba(10,10,11,0.75)';
+  roundRect(ctx, 4, 20, 248, 56, 14);
+  ctx.fill();
+  ctx.strokeStyle = '#e7007f';
+  ctx.lineWidth = 2;
+  roundRect(ctx, 4, 20, 248, 56, 14);
+  ctx.stroke();
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '600 30px "JetBrains Mono", monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 128, 50);
+  const tex = new THREE.CanvasTexture(cnv);
+  const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true });
+  const sprite = new THREE.Sprite(mat);
+  sprite.scale.set(1.4, 0.52, 1);
+  return sprite;
+}
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function buildDummyFigure() {
+  const g = new THREE.Group();
+  const yellow = new THREE.MeshStandardMaterial({ color: 0xffb400, roughness: 0.35, metalness: 0.08 });
+  const black = new THREE.MeshStandardMaterial({ color: 0x121214, roughness: 0.4, metalness: 0.15 });
+
+  const mesh = (geo, mat) => new THREE.Mesh(geo, mat);
+
+  // --- Rumpf (bottom-up) ---
+  const hipY = 0.90;
+  const hipBlockH = 0.18;
+  const waistJointH = 0.05;
+  const chestH = 0.35;
+  const neckJointH = 0.05;
+  const headR = 0.11;
+
+  // Hüfte / Slip
+  const hip = mesh(new THREE.BoxGeometry(0.30, hipBlockH, 0.20), yellow);
+  hip.position.set(0, hipY + hipBlockH / 2, 0);
+  g.add(hip);
+  const brief = mesh(new THREE.BoxGeometry(0.31, hipBlockH * 0.55, 0.10), black);
+  brief.position.set(0, hipY + hipBlockH * 0.3, -0.06);
+  g.add(brief);
+
+  // Taillengelenk
+  const waistTop = hipY + hipBlockH;
+  const waist = mesh(new THREE.CylinderGeometry(0.10, 0.11, waistJointH, 16), black);
+  waist.position.set(0, waistTop + waistJointH / 2, 0);
+  g.add(waist);
+
+  // Brust
+  const chestBottom = waistTop + waistJointH;
+  const chest = mesh(new THREE.CylinderGeometry(0.165, 0.135, chestH, 16), yellow);
+  chest.position.set(0, chestBottom + chestH / 2, 0);
+  g.add(chest);
+  // Bauch-Kontrast (Sixpack-Andeutung wie beim Vorbild)
+  const abPanel = mesh(new THREE.BoxGeometry(0.14, chestH * 0.55, 0.03), black);
+  abPanel.position.set(0, chestBottom + chestH * 0.28, 0.145);
+  g.add(abPanel);
+
+  // Halsgelenk + Kopf
+  const chestTop = chestBottom + chestH;
+  const neck = mesh(new THREE.CylinderGeometry(0.045, 0.05, neckJointH, 12), black);
+  neck.position.set(0, chestTop + neckJointH / 2, 0);
+  g.add(neck);
+  const head = mesh(new THREE.SphereGeometry(headR, 20, 20), yellow);
+  head.position.set(0, chestTop + neckJointH + headR, 0);
+  g.add(head);
+
+  // --- Arme ---
+  function buildArm(side) {
+    const ag = new THREE.Group();
+    const upperLen = 0.28, foreLen = 0.24;
+    const shoulder = mesh(new THREE.SphereGeometry(0.07, 12, 12), black);
+    ag.add(shoulder);
+    const upper = mesh(new THREE.CylinderGeometry(0.045, 0.05, upperLen, 12), yellow);
+    upper.position.y = -upperLen / 2 - 0.04;
+    ag.add(upper);
+    const elbow = mesh(new THREE.SphereGeometry(0.05, 12, 12), black);
+    elbow.position.y = -upperLen - 0.04;
+    ag.add(elbow);
+    const fore = mesh(new THREE.CylinderGeometry(0.038, 0.045, foreLen, 12), yellow);
+    fore.position.y = -upperLen - foreLen / 2 - 0.04;
+    ag.add(fore);
+    const wrist = mesh(new THREE.SphereGeometry(0.038, 10, 10), black);
+    wrist.position.y = -upperLen - foreLen - 0.04;
+    ag.add(wrist);
+    const hand = mesh(new THREE.BoxGeometry(0.07, 0.09, 0.05), yellow);
+    hand.position.y = -upperLen - foreLen - 0.09;
+    ag.add(hand);
+    ag.rotation.z = side * -0.16;
+    return ag;
+  }
+  const shoulderY = chestTop - 0.05;
+  const shoulderX = 0.225;
+  const rightArm = buildArm(1); rightArm.position.set(shoulderX, shoulderY, 0); g.add(rightArm);
+  const leftArm = buildArm(-1); leftArm.position.set(-shoulderX, shoulderY, 0); g.add(leftArm);
+
+  // --- Beine ---
+  function buildLeg() {
+    const lg = new THREE.Group();
+    const upperLen = 0.42, lowerLen = 0.42;
+    const upper = mesh(new THREE.CylinderGeometry(0.075, 0.08, upperLen, 12), yellow);
+    upper.position.y = -upperLen / 2;
+    lg.add(upper);
+    const knee = mesh(new THREE.SphereGeometry(0.075, 12, 12), black);
+    knee.position.y = -upperLen;
+    lg.add(knee);
+    const lower = mesh(new THREE.CylinderGeometry(0.06, 0.07, lowerLen, 12), yellow);
+    lower.position.y = -upperLen - lowerLen / 2;
+    lg.add(lower);
+    const ankle = mesh(new THREE.SphereGeometry(0.055, 10, 10), black);
+    ankle.position.y = -upperLen - lowerLen;
+    lg.add(ankle);
+    const foot = mesh(new THREE.BoxGeometry(0.10, 0.06, 0.24), yellow);
+    foot.position.set(0, -upperLen - lowerLen - 0.03, 0.07);
+    lg.add(foot);
+    return lg;
+  }
+  const rightLeg = buildLeg(); rightLeg.position.set(0.11, hipY, 0); g.add(rightLeg);
+  const leftLeg = buildLeg(); leftLeg.position.set(-0.11, hipY, 0); g.add(leftLeg);
+
+  return g;
+}
+
+function viewingDistanceForPitch(pitchMm) {
+  // Vom Kunden vorgegebene Richtwerte für den empfohlenen Mindestabstand.
+  const table = { 2.6: 3, 2.9: 3.5, 3.6: 4.5, 4.8: 6 };
+  return table[pitchMm] ?? pitchMm;
+}
+
+function buildDistanceIndicator(dims) {
+  distanceGroup.clear();
+  const wallFrontZ = 0; // Vorderseite der Wand liegt näherungsweise bei z=0 (siehe curvedPoint)
+  const dist = viewingDistanceForPitch(state.pitch);
+
+  // Boden-Linie mit Endmarkierungen (seitlich versetzt, damit sie den Dummy nicht verdeckt)
+  const lineX = -1.1;
+  const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
+  const lineGeo = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(lineX, 0.015, wallFrontZ),
+    new THREE.Vector3(lineX, 0.015, wallFrontZ + dist)
+  ]);
+  distanceGroup.add(new THREE.Line(lineGeo, lineMat));
+
+  [wallFrontZ, wallFrontZ + dist].forEach((z) => {
+    const tickGeo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(lineX - 0.12, 0.015, z), new THREE.Vector3(lineX + 0.12, 0.015, z)
+    ]);
+    distanceGroup.add(new THREE.Line(tickGeo, lineMat));
+  });
+
+  // Distanz-Label über der Linienmitte
+  const label = makeLabelSprite(`${dist.toFixed(1)} m`);
+  label.position.set(lineX, 0.55, wallFrontZ + dist / 2);
+  distanceGroup.add(label);
+
+  // Dummy-Figur mittig vor der Wand, am empfohlenen Betrachtungsabstand, mit Blick zur Wand
+  const person = buildDummyFigure();
+  person.position.set(0, 0, wallFrontZ + dist);
+  person.rotation.y = Math.PI;
+  person.visible = state.showDummy;
+  distanceGroup.add(person);
+
+  return dist;
+}
+
+
+
+function updateHUD(dims) {
+  const panelCount = state.cols * state.rows;
+  const pitchMm = state.pitch;
+  const resX = Math.round((dims.totalWidth * 1000) / pitchMm);
+  const resY = Math.round((dims.totalHeight * 1000) / pitchMm);
+  const w = CONFIG.weightPerPanel[state.panelType][state.location];
+  const totalWeight = Math.round(panelCount * w);
+
+  document.getElementById('hudSize').textContent = `${dims.totalWidth.toFixed(1)} × ${dims.totalHeight.toFixed(1)} m`;
+  document.getElementById('hudPanels').textContent = `${panelCount} (${state.cols}×${state.rows})`;
+  document.getElementById('hudPitch').textContent = `P${pitchMm}`;
+  document.getElementById('hudRes').textContent = `${resX} × ${resY} px`;
+  document.getElementById('hudWeight').textContent = `${totalWeight} kg`;
+  document.getElementById('hudDistance').textContent = `${viewingDistanceForPitch(pitchMm).toFixed(1)} m (Richtwert)`;
+}
+
+/* ------------------------------ MAIN REBUILD ------------------------------- */
+
+function rebuild() {
+  const dims = buildWallMeshes();
+  buildSupport(dims);
+  buildDistanceIndicator(dims);
+  orbit.target.set(0, dims.totalHeight / 2 + (state.mount === 'floor' ? 0.3 : 1.2), 0);
+  updateHUD(dims);
+  updateConfigPreview();
+  updateSizeDisplay();
+}
+
+/* -------------------------------- RESIZE ----------------------------------- */
+
+function resize() {
+  const el = document.querySelector('.viewer');
+  const w = el.clientWidth, h = el.clientHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 300));
+
+/* --------------------------------- LOOP ------------------------------------ */
+
+let clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+  updateCamera();
+  if (ledMaterial) ledMaterial.emissiveIntensity = 0.85 + Math.sin(t * 1.4) * 0.12;
+  if (sweepTexture) sweepTexture.offset.x = (t * 0.08) % 1;
+  renderer.render(scene, camera);
+}
+
+/* ============================== UI WIRING ================================= */
+
+function setActive(container, value, attr = 'data-val') {
+  container.querySelectorAll('.seg-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute(attr) === value);
+  });
+}
+
+document.getElementById('btnRigid').addEventListener('click', () => {
+  state.mode = 'rigid'; state.bend = 0;
+  document.getElementById('btnRigid').classList.add('active');
+  document.getElementById('btnFlex').classList.remove('active');
+  document.getElementById('modeSubtitle').textContent = 'STARRE PANELS';
+  document.getElementById('bendField').style.display = 'none';
+  document.getElementById('bendRange').value = 0;
+  rebuild();
+});
+document.getElementById('btnFlex').addEventListener('click', () => {
+  state.mode = 'flex';
+  document.getElementById('btnFlex').classList.add('active');
+  document.getElementById('btnRigid').classList.remove('active');
+  document.getElementById('modeSubtitle').textContent = 'FLEX PANELS';
+  document.getElementById('bendField').style.display = 'block';
+  rebuild();
+});
+
+function updateGobVisibility() {
+  const gobField = document.getElementById('gobField');
+  const isIndoor = state.location === 'indoor';
+  gobField.style.display = isIndoor ? 'block' : 'none';
+  if (!isIndoor && state.gob) {
+    state.gob = false;
+    document.getElementById('gobToggle').checked = false;
+  }
+}
+
+document.getElementById('segLocation').addEventListener('click', (e) => {
+  const btn = e.target.closest('.seg-btn'); if (!btn) return;
+  state.location = btn.getAttribute('data-val');
+  setActive(document.getElementById('segLocation'), state.location);
+  updateGobVisibility();
+  rebuild();
+});
+document.getElementById('segPanelType').addEventListener('click', (e) => {
+  const btn = e.target.closest('.seg-btn'); if (!btn) return;
+  const oldDims = getPanelDims();
+  const widthM = state.cols * oldDims.panelW;
+  const heightM = state.rows * oldDims.panelH;
+
+  state.panelType = btn.getAttribute('data-val');
+  setActive(document.getElementById('segPanelType'), state.panelType);
+
+  const newDims = getPanelDims();
+  state.cols = clamp(Math.round(widthM / newDims.panelW), 2, 40);
+  state.rows = clamp(Math.round(heightM / newDims.panelH), 2, 20);
+  updateSizeDisplay();
+  rebuild();
+});
+document.getElementById('edgesToggle').addEventListener('change', (e) => {
+  state.showEdges = e.target.checked;
+  rebuild();
+});
+document.getElementById('dummyToggle').addEventListener('change', (e) => {
+  state.showDummy = e.target.checked;
+  rebuild();
+});
+document.getElementById('segMount').addEventListener('click', (e) => {
+  const btn = e.target.closest('.seg-btn'); if (!btn) return;
+  state.mount = btn.getAttribute('data-val');
+  setActive(document.getElementById('segMount'), state.mount);
+  rebuild();
+});
+
+function clamp(v, min, max) { return Math.min(Math.max(v, min), max); }
+function fmtM(v) { return v.toFixed(1).replace('.', ','); }
+
+function updateSizeDisplay() {
+  const { panelW, panelH } = getPanelDims();
+  document.getElementById('colsVal').textContent = `${fmtM(state.cols * panelW)} m`;
+  document.getElementById('colsPanelsLabel').textContent = `(${state.cols} Panels)`;
+  document.getElementById('rowsVal').textContent = `${fmtM(state.rows * panelH)} m`;
+  document.getElementById('rowsPanelsLabel').textContent = `(${state.rows} Panels)`;
+}
+
+document.getElementById('colsMinus').addEventListener('click', () => {
+  state.cols = clamp(state.cols - 1, 2, 40);
+  updateSizeDisplay();
+  rebuild();
+});
+document.getElementById('colsPlus').addEventListener('click', () => {
+  state.cols = clamp(state.cols + 1, 2, 40);
+  updateSizeDisplay();
+  rebuild();
+});
+document.getElementById('rowsMinus').addEventListener('click', () => {
+  state.rows = clamp(state.rows - 1, 2, 20);
+  updateSizeDisplay();
+  rebuild();
+});
+document.getElementById('rowsPlus').addEventListener('click', () => {
+  state.rows = clamp(state.rows + 1, 2, 20);
+  updateSizeDisplay();
+  rebuild();
+});
+
+document.getElementById('bendRange').addEventListener('input', (e) => {
+  state.bend = parseFloat(e.target.value);
+  rebuild();
+});
+document.getElementById('pitchSelect').addEventListener('change', (e) => {
+  state.pitch = parseFloat(e.target.value);
+  rebuild();
+});
+document.getElementById('gobToggle').addEventListener('change', (e) => {
+  state.gob = e.target.checked;
+  rebuild();
+});
+
+/* ------------------------------ CONFIG TEXT -------------------------------- */
+
+function buildConfigText() {
+  const { panelW, panelH } = getPanelDims();
+  const totalWidth = (state.cols * panelW).toFixed(1);
+  const totalHeight = (state.rows * panelH).toFixed(1);
+  const panelCount = state.cols * state.rows;
+  const w = CONFIG.weightPerPanel[state.panelType][state.location];
+  const totalWeight = Math.round(panelCount * w);
+  const mountLabel = { truss: 'Hängend an Traverse (Hanging Bars)', wall: 'Feststehend / schwebend an der Wand', floor: 'Auf dem Boden (Standfuß)' }[state.mount];
+  const modeLabel = state.mode === 'rigid' ? 'Starre Panels' : 'Flex Panels';
+
+  const lines = [
+    `Konfigurator-Typ: ${modeLabel}`,
+    `Einsatzort: ${state.location === 'indoor' ? 'Indoor' : 'Outdoor'}`,
+    `Panel-Typ: ${state.panelType === '1x0.5' ? '0,5 × 1 m (hochkant)' : '0,5 × 0,5 m'}`,
+    `Wandgröße: ${state.cols} × ${state.rows} Panels (${totalWidth} × ${totalHeight} m)`,
+    `Panelanzahl gesamt: ${panelCount}`,
+    `Pixel Pitch: P${state.pitch}`,
+    `Auflösung ca.: ${Math.round((totalWidth * 1000) / state.pitch)} × ${Math.round((totalHeight * 1000) / state.pitch)} px`,
+    `Empf. Betrachtungsabstand ca.: ${viewingDistanceForPitch(state.pitch).toFixed(1)} m`,
+    `Aufbauart: ${mountLabel}`,
+    `GOB-Beschichtung: ${state.gob ? 'Ja' : 'Nein'}`,
+    `Panel-Kanten sichtbar: ${state.showEdges ? 'Ja' : 'Nein'}`,
+    `Gewicht ca.: ${totalWeight} kg`
+  ];
+  if (state.mode === 'flex') lines.push(`Biegung: ${state.bend}° (${state.bend === 0 ? 'gerade' : state.bend > 0 ? 'konvex' : 'konkav'})`);
+  return lines.join('\n');
+}
+
+function updateConfigPreview() {
+  const el = document.getElementById('configPreview');
+  if (el) el.textContent = buildConfigText();
+}
+
+/* ------------------------------- MODAL / SEND ------------------------------ */
+
+const modalOverlay = document.getElementById('modalOverlay');
+document.getElementById('openModalBtn').addEventListener('click', () => {
+  updateConfigPreview();
+  document.getElementById('formView').style.display = 'block';
+  document.getElementById('successBox').classList.remove('show');
+  modalOverlay.classList.add('open');
+});
+document.getElementById('closeModalBtn').addEventListener('click', () => modalOverlay.classList.remove('open'));
+document.getElementById('closeSuccessBtn').addEventListener('click', () => modalOverlay.classList.remove('open'));
+
+document.getElementById('submitBtn').addEventListener('click', () => {
+  const payload = {
+    type: 'ledwall-konfigurator-anfrage',
+    fields: {
+      name: document.getElementById('fName').value,
+      company: document.getElementById('fCompany').value,
+      email: document.getElementById('fEmail').value,
+      phone: document.getElementById('fPhone').value,
+      message: document.getElementById('fMessage').value
+    },
+    hiddenFieldName: CONFIG.hiddenFieldName,
+    konfiguration: buildConfigText()
+  };
+
+  // 1) Wenn eingebettet: Nachricht an die übergeordnete Website-Seite senden.
+  //    Dort per window.addEventListener('message', ...) abfangen und den Wert
+  //    in das versteckte Feld (Name siehe CONFIG.hiddenFieldName) des echten
+  //    Kontaktformulars schreiben, danach normal absenden.
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage(payload, '*');
+  } else {
+    // 2) Fallback für Standalone-Aufruf (z.B. beim Testen): E-Mail-Entwurf öffnen.
+    const body = encodeURIComponent(
+      `Name: ${payload.fields.name}\nFirma: ${payload.fields.company}\nE-Mail: ${payload.fields.email}\nTelefon: ${payload.fields.phone}\n\nNachricht:\n${payload.fields.message}\n\n--- Konfiguration ---\n${payload.konfiguration}`
+    );
+    window.location.href = `mailto:?subject=${encodeURIComponent('LEDWALL Konfigurator Anfrage')}&body=${body}`;
+  }
+
+  document.getElementById('formView').style.display = 'none';
+  document.getElementById('successBox').classList.add('show');
+});
+
+/* --------------------------- INFO TOOLTIPS (i) ------------------------------ */
+
+document.querySelectorAll('.info-btn').forEach((btn) => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const wrap = btn.closest('.info-wrap');
+    const wasOpen = wrap.classList.contains('open');
+    document.querySelectorAll('.info-wrap.open').forEach((w) => w.classList.remove('open'));
+    if (!wasOpen) wrap.classList.add('open');
+  });
+});
+document.addEventListener('click', () => {
+  document.querySelectorAll('.info-wrap.open').forEach((w) => w.classList.remove('open'));
+});
+
+/* --------------------------------- INIT ------------------------------------ */
+
+resize();
+updateGobVisibility();
+rebuild();
+animate();
+</script>
+</body>
+</html>
