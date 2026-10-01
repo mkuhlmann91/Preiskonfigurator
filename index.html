@@ -270,6 +270,10 @@
       </div>
       <div class="hint">Ziehen zum Drehen · Scrollen zum Zoomen</div>
       <div class="view-actions">
+        <button type="button" class="view-btn" id="flipViewBtn" title="Wand von hinten ansehen">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/></svg>
+          <span id="flipViewText">Rückseite</span>
+        </button>
         <button type="button" class="view-btn" id="shareLinkBtn" title="Link zu dieser Konfiguration teilen">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
           Link teilen
@@ -511,7 +515,7 @@ renderer.outputEncoding = THREE.sRGBEncoding;
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0x0a0a0b, 14, 34);
 
-const camera = new THREE.PerspectiveCamera(42, 1, 0.25, 200);
+const camera = new THREE.PerspectiveCamera(42, 1, 0.25, 400);
 camera.position.set(6.5, 4, 9);
 
 // Lighting
@@ -525,12 +529,16 @@ scene.add(keyLight);
 const rimLight = new THREE.PointLight(0xe7007f, 3, 30);
 rimLight.position.set(-6, 3, -4);
 scene.add(rimLight);
+const backLight = new THREE.PointLight(0xffffff, 0, 40);
+backLight.position.set(2, 4, -7);
+scene.add(backLight);
+let rimBase = 1.8;
 const fillLight = new THREE.PointLight(0xffffff, 1.2, 30);
 fillLight.position.set(0, 2, 8);
 scene.add(fillLight);
 
 // Floor
-const floorGeo = new THREE.PlaneGeometry(60, 60);
+const floorGeo = new THREE.PlaneGeometry(400, 400);
 const floorMat = new THREE.MeshStandardMaterial({ color: 0x111113, roughness: 0.85, metalness: 0.1 });
 const floor = new THREE.Mesh(floorGeo, floorMat);
 floor.rotation.x = -Math.PI / 2;
@@ -577,33 +585,39 @@ function buildTree(x, z, h) {
   return t;
 }
 
+const fogBase = { near: 16, far: 36 };
 function applyEnvironment() {
   envGroup.clear();
+  const { panelW, panelH } = getPanelDims();
+  const wallW = state.cols * panelW, wallH = state.rows * panelH;
   if (state.location === 'outdoor') {
     scene.background = skyTexture;
     scene.fog = new THREE.Fog(0xdbe8f2, 30, 75);
+    Object.assign(fogBase, { near: 30, far: 75 });
+    const k = Math.max(1, (wallW / 2 + 5) / 11);
     floorMat.color.set(0x2f5a26);   // Rasen
     floorMat.roughness = 1;
-    rimLight.intensity = 0;
+    rimBase = 0;
     ambientLight.intensity = 0.1;
     hemiLight.intensity = 0.45;
     keyLight.intensity = 0.8;
     fillLight.intensity = 0.3;
     keyLight.position.set(8, 14, 10);
     // gepflasterter Platz vor der Wand
-    const plaza = new THREE.Mesh(new THREE.CircleGeometry(10, 48),
+    const plaza = new THREE.Mesh(new THREE.CircleGeometry(10 * k, 48),
       new THREE.MeshStandardMaterial({ color: 0x4a4c50, roughness: 0.95 }));
     plaza.rotation.x = -Math.PI / 2;
     plaza.position.set(0, 0.004, 3);
     envGroup.add(plaza);
     [[-11, -6, 5], [-7, -10, 6], [-2, -13, 5.5], [4, -12, 6.5], [9, -9, 5], [12, -4, 6], [-13, 2, 5.5], [14, 4, 5]]
-      .forEach(([x, z, h]) => envGroup.add(buildTree(x, z, h)));
+      .forEach(([x, z, h]) => envGroup.add(buildTree(x * k, z * k, h)));
   } else {
     scene.background = new THREE.Color(0x0a0a0b);
     scene.fog = new THREE.Fog(0x0a0a0b, 16, 36);
+    Object.assign(fogBase, { near: 16, far: 36 });
     floorMat.color.set(0x1b1b1e);   // glatter Hallenboden
     floorMat.roughness = 0.92;
-    rimLight.intensity = 1.8;
+    rimBase = 1.8;
     ambientLight.intensity = 0.55;
     hemiLight.intensity = 0;
     keyLight.intensity = 0.9;
@@ -611,9 +625,10 @@ function applyEnvironment() {
     keyLight.position.set(6, 10, 6);
     // Hallenwände ohne Decke (eigene Flächen, damit nichts mit dem Boden flimmert)
     const hallMat = new THREE.MeshStandardMaterial({ color: 0x16161a, roughness: 0.95 });
-    [[0, -14, 0, 36], [-18, 3, Math.PI / 2, 34], [18, 3, -Math.PI / 2, 34]].forEach(([x, z, ry, w]) => {
-      const wall = new THREE.Mesh(new THREE.PlaneGeometry(w, 9), hallMat);
-      wall.position.set(x, 4.5, z);
+    const hallW = Math.max(36, wallW + 16), hallH = Math.max(9, wallH + 6);
+    [[0, -14, 0, hallW], [-hallW / 2, 3, Math.PI / 2, 34], [hallW / 2, 3, -Math.PI / 2, 34]].forEach(([x, z, ry, w]) => {
+      const wall = new THREE.Mesh(new THREE.PlaneGeometry(w, hallH), hallMat);
+      wall.position.set(x, hallH / 2, z);
       wall.rotation.y = ry;
       envGroup.add(wall);
     });
@@ -625,6 +640,11 @@ function applyEnvironment() {
 /* Ein Finger / Maus = Rotieren, zwei Finger = Pinch-Zoom, Mausrad = Zoom (Desktop) */
 
 const orbit = { theta: 0.5, phi: 1.15, radius: 13, target: new THREE.Vector3(0, 1.6, 0) };
+// Je größer die Wand, desto weiter darf man zurückgehen
+function maxOrbitRadius() {
+  const { panelW, panelH } = getPanelDims();
+  return Math.max(24, Math.max(state.cols * panelW, state.rows * panelH) * 2.2);
+}
 let isDragging = false, lastX = 0, lastY = 0;
 const activePointers = new Map();
 let pinchStartDist = null, pinchStartRadius = null;
@@ -636,6 +656,7 @@ function pinchDistance() {
 
 canvas.addEventListener('pointerdown', (e) => {
   canvas.setPointerCapture(e.pointerId);
+  flipAnim = null;
   activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (activePointers.size === 1) {
     isDragging = true; lastX = e.clientX; lastY = e.clientY;
@@ -659,7 +680,7 @@ window.addEventListener('pointermove', (e) => {
   if (activePointers.size === 2 && pinchStartDist) {
     const dist = pinchDistance();
     const scale = pinchStartDist / dist;
-    orbit.radius = Math.min(Math.max(pinchStartRadius * scale, 1.2), 22);
+    orbit.radius = Math.min(Math.max(pinchStartRadius * scale, 1.2), maxOrbitRadius());
     return;
   }
   if (!isDragging) return;
@@ -670,7 +691,7 @@ window.addEventListener('pointermove', (e) => {
 });
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
-  orbit.radius = Math.min(Math.max(orbit.radius + e.deltaY * 0.01 * Math.max(orbit.radius / 8, 0.25), 1.2), 22);
+  orbit.radius = Math.min(Math.max(orbit.radius + e.deltaY * 0.01 * Math.max(orbit.radius / 8, 0.25), 1.2), maxOrbitRadius());
 }, { passive: false });
 
 function updateCamera() {
@@ -723,7 +744,34 @@ function makeLedTexture(pitchMm) {
     }
   }
   ctx.globalAlpha = 1;
+  // Eigene Mipmaps: Sobald die LED-Punkte aus der Entfernung nicht mehr einzeln
+  // erkennbar sind, blendet die Maske in Weiß über. So bleibt die Wand beim
+  // Rauszoomen genauso hell wie aus der Nähe (wie beim echten Hinsehen).
+  const mipmaps = [cnv];
+  let prev = cnv, level = 0;
+  while (prev.width > 1) {
+    level++;
+    const w = Math.max(1, prev.width >> 1);
+    const c = document.createElement('canvas');
+    c.width = c.height = w;
+    const x = c.getContext('2d');
+    x.imageSmoothingEnabled = true;
+    x.drawImage(prev, 0, 0, w, w);
+    const dotTexels = step / Math.pow(2, level);
+    const fade = clamp((7 - dotTexels) / 6, 0, 1);
+    if (fade > 0) {
+      x.globalAlpha = fade;
+      x.fillStyle = '#ffffff';
+      x.fillRect(0, 0, w, w);
+      x.globalAlpha = 1;
+    }
+    mipmaps.push(c);
+    prev = c;
+  }
   const tex = new THREE.CanvasTexture(cnv);
+  tex.mipmaps = mipmaps;
+  tex.generateMipmaps = false;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.anisotropy = maxAnisotropy;
   ledTextureCache[pitchMm] = tex;
@@ -970,6 +1018,12 @@ function buildWallMeshes() {
   sizeContentCanvas(totalWidth, totalHeight);
 
   const contentMat = new THREE.MeshBasicMaterial({ map: content.texture, toneMapped: false });
+  // Etwas mehr Sättigung und Helligkeit, damit die Wand wie ein echtes LED-Bild leuchtet
+  contentMat.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+      float ledLuma = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+      diffuseColor.rgb = clamp(mix(vec3(ledLuma), diffuseColor.rgb, 1.3) * 1.15, 0.0, 1.0);`);
+  };
   const frontMesh = new THREE.Mesh(frontGeo, contentMat);
   wallGroup.add(frontMesh);
 
@@ -1101,7 +1155,141 @@ function buildWallMeshes() {
     wallGroup.add(coat);
   }
 
+  buildBackside(totalWidth, totalHeight, panelW, panelH, thickness);
+
   return { totalWidth, totalHeight, gridPoints, thickness };
+}
+
+/* ------------------------------ RÜCKSEITE --------------------------------- */
+// Alles als InstancedMesh, damit auch 30 × 30 m flüssig bleiben.
+const backLeds = { group: null, mesh: null, phases: [], kinds: [] };
+const _m4 = new THREE.Matrix4();
+const _ledColor = new THREE.Color();
+
+function makeCableGeometry(len, sag) {
+  // durchhängendes Kabel von (0,0,0) bis (len,0,0)
+  const pts = [];
+  for (let i = 0; i <= 12; i++) {
+    const u = i / 12;
+    pts.push(new THREE.Vector3(u * len, -sag * 4 * u * (1 - u), -0.012 * Math.sin(Math.PI * u)));
+  }
+  return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 10, 0.007, 5, false);
+}
+
+function buildBackside(totalWidth, totalHeight, panelW, panelH, thickness) {
+  // Nachgebaut nach der Panel-Rückseite: schwarzes Gehäuse mit Querstreben,
+  // senkrechter Mittelsteg (Netzteil + Empfangskarte) mit Status-LEDs,
+  // Strom (rote Stecker) oben, Daten (orange Stecker) unten, Griffe an den Seiten.
+  const cols = state.cols, rows = state.rows, n = cols * rows;
+  const backZ = -thickness;
+  const group = new THREE.Group();
+  const centers = [];
+  for (let j = 0; j < rows; j++) {
+    for (let i = 0; i < cols; i++) {
+      centers.push([-totalWidth / 2 + (i + 0.5) * panelW, -totalHeight / 2 + (j + 0.5) * panelH]);
+    }
+  }
+  function instanced(geo, mat, count, place) {
+    const mesh = new THREE.InstancedMesh(geo, mat, Math.max(count, 1));
+    let k = 0;
+    place((x, y, z, rz = 0) => {
+      _m4.makeRotationZ(rz);
+      _m4.setPosition(x, y, z);
+      mesh.setMatrixAt(k++, _m4);
+    });
+    mesh.count = k;
+    group.add(mesh);
+    return mesh;
+  }
+  const mat = (color, rough = 0.6, metal = 0.3) => new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal });
+  const each = (fn) => (put) => centers.forEach(([x, y]) => fn(put, x, y));
+
+  const sw = Math.min(0.11, panelW * 0.22);   // Breite Mittelsteg
+  const yP = panelH * 0.14, yD = -panelH * 0.14; // Höhe Strom- / Datenanschluss
+  const plugX = sw / 2 + 0.022;
+
+  // Gehäuse und Querstreben
+  instanced(new THREE.BoxGeometry(panelW * 0.95, panelH * 0.95, 0.012), mat(0x17181b, 0.8), n,
+    each((put, x, y) => put(x, y, backZ - 0.006)));
+  const bars = panelH >= 1 ? [-0.36, -0.12, 0.12, 0.36] : [-0.28, 0.28];
+  instanced(new THREE.BoxGeometry(panelW * 0.9, 0.028, 0.016), mat(0x232428, 0.55, 0.4), n * bars.length,
+    each((put, x, y) => bars.forEach((f) => put(x, y + f * panelH, backZ - 0.018))));
+  // Mittelsteg mit Rillen
+  instanced(new THREE.BoxGeometry(sw, panelH * 0.86, 0.04), mat(0x111214, 0.6), n,
+    each((put, x, y) => put(x, y, backZ - 0.03)));
+  const grooves = [-0.018, -0.006, 0.006, 0.018];
+  instanced(new THREE.BoxGeometry(0.005, panelH * 0.22, 0.004), mat(0x0b0b0d, 0.8, 0.1), n * grooves.length * 2,
+    each((put, x, y) => grooves.forEach((g) => { put(x + g, y + panelH * 0.27, backZ - 0.051); put(x + g, y - panelH * 0.27, backZ - 0.051); })));
+  // Griffe links und rechts
+  instanced(new THREE.BoxGeometry(0.022, panelH * 0.24, 0.035), mat(0x141518, 0.5, 0.3), n * 2,
+    each((put, x, y) => { put(x - panelW * 0.4, y, backZ - 0.03); put(x + panelW * 0.4, y, backZ - 0.03); }));
+  // Buchsen (blau = Strom, silber = Daten) und Stecker (rot / orange)
+  const sockets = (yy) => each((put, x, y) => { put(x - sw / 2 - 0.006, y + yy, backZ - 0.03); put(x + sw / 2 + 0.006, y + yy, backZ - 0.03); });
+  instanced(new THREE.BoxGeometry(0.014, 0.034, 0.03), mat(0x1e5fd9, 0.5), n * 2, sockets(yP));
+  instanced(new THREE.BoxGeometry(0.014, 0.028, 0.026), mat(0xb8bcc4, 0.35, 0.8), n * 2, sockets(yD));
+  const plugs = (yy) => each((put, x, y) => { put(x - plugX + 0.006, y + yy, backZ - 0.03); put(x + plugX - 0.006, y + yy, backZ - 0.03); });
+  instanced(new THREE.BoxGeometry(0.03, 0.026, 0.026), mat(0xe0321e, 0.45), n * 2, plugs(yP));
+  instanced(new THREE.BoxGeometry(0.028, 0.02, 0.022), mat(0xf08a1e, 0.45), n * 2, plugs(yD));
+
+  // Kabel (schwarz) zum Nachbarpanel: Strom in jeder Reihe, Daten als Schlange
+  const cableMat = mat(0x0e0e10, 0.55, 0.1);
+  const span = panelW - 2 * plugX;
+  const hP = makeCableGeometry(span, Math.min(0.14, panelH * 0.14)), hD = makeCableGeometry(span, Math.min(0.11, panelH * 0.11));
+  const horiz = (yy) => (put) => {
+    for (let j = 0; j < rows; j++) for (let i = 0; i < cols - 1; i++) {
+      const [x, y] = centers[j * cols + i];
+      put(x + plugX, y + yy, backZ - 0.032);
+    }
+  };
+  instanced(hP, cableMat, rows * (cols - 1), horiz(yP));
+  instanced(hD, cableMat, rows * (cols - 1), horiz(yD));
+  // senkrecht zwischen den Reihen: Daten abwechselnd am rechten/linken Rand, Strom links
+  const vGeo = makeCableGeometry(panelH, 0.06);
+  instanced(vGeo, cableMat, rows, (put) => {
+    for (let j = 0; j < rows - 1; j++) {
+      const right = j % 2 === 0;
+      const [x, y] = centers[j * cols + (right ? cols - 1 : 0)];
+      put(x + (right ? plugX : -plugX), y + yD, backZ - 0.032, Math.PI / 2);
+    }
+  });
+  instanced(vGeo, cableMat, rows, (put) => {
+    for (let j = 0; j < rows - 1; j++) {
+      const [x, y] = centers[j * cols];
+      put(x - plugX, y + yP, backZ - 0.032, Math.PI / 2);
+    }
+  });
+
+  // Status-LEDs mittig auf dem Steg: grün = Betrieb, orange = Datensignal
+  const ledMat = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false });
+  backLeds.mesh = instanced(new THREE.SphereGeometry(0.0065, 8, 6), ledMat, n * 2,
+    each((put, x, y) => { put(x + 0.009, y - panelH * 0.02, backZ - 0.051); put(x - 0.009, y - panelH * 0.02, backZ - 0.051); }));
+  backLeds.phases = Array.from({ length: n * 2 }, () => Math.random() * 10);
+  backLeds.kinds = Array.from({ length: n * 2 }, (_, k) => k % 2);
+  for (let k = 0; k < n * 2; k++) backLeds.mesh.setColorAt(k, _ledColor.set(0x00ff66));
+
+  backLeds.group = group;
+  wallGroup.add(group);
+}
+
+function updateBackLeds(t) {
+  // Rückseite nur zeichnen, wenn man sie auch sieht
+  if (backLeds.group) backLeds.group.visible = camera.position.z < 0.3;
+  const m = backLeds.mesh;
+  if (!m || !m.instanceColor) return;
+  // nur aktualisieren, wenn man auf die Rückseite schaut
+  if (camera.position.z > wallGroup.position.z) return;
+  for (let k = 0; k < m.count; k++) {
+    const ph = backLeds.phases[k];
+    if (backLeds.kinds[k] === 0) {
+      const on = Math.sin(t * 2.2 + ph) > -0.3;
+      _ledColor.setRGB(0, on ? 1 : 0.08, on ? 0.4 : 0.03);
+    } else {
+      const on = Math.sin(t * 17 + ph * 3) * Math.sin(t * 5.3 + ph) > 0.1;
+      _ledColor.setRGB(on ? 1 : 0.1, on ? 0.55 : 0.05, 0);
+    }
+    m.setColorAt(k, _ledColor);
+  }
+  m.instanceColor.needsUpdate = true;
 }
 
 /* ------------------------------ SUPPORT RIGS ------------------------------ */
@@ -1168,6 +1356,7 @@ function buildSupport(dims) {
       new THREE.MeshStandardMaterial({ color: ENVIRONMENTS[state.location].wallColor, roughness: 0.95 })
     );
     building.position.set(0, buildingH / 2, wallZ - 0.15);
+    building.name = 'building';
     supportGroup.add(building);
 
     // Zwei waagerechte Montageschienen über die ganze Breite, mit Wandhaltern
@@ -1342,6 +1531,7 @@ function updateHUD(dims) {
 /* ------------------------------ MAIN REBUILD ------------------------------- */
 
 function rebuild() {
+  applyEnvironment();
   const dims = buildWallMeshes();
   buildSupport(dims);
   buildDistanceIndicator(dims);
@@ -1369,8 +1559,21 @@ let clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
   const t = clock.getElapsedTime();
+  stepFlip();
   updateCamera();
+  updateFlipLabel();
   drawContent(t);
+  updateBackLeds(t);
+  if (scene.fog) {
+    scene.fog.near = Math.max(fogBase.near, orbit.radius * 0.8);
+    scene.fog.far = Math.max(fogBase.far, orbit.radius * 2 + 10);
+  }
+  // Von hinten: pinkes Streiflicht aus, neutrales Licht an, damit die Rückseite schwarz wirkt
+  const front = clamp(camera.position.z / 3 + 0.5, 0, 1);
+  rimLight.intensity = rimBase * front;
+  backLight.intensity = 0.6 * (1 - front);
+  const building = supportGroup.getObjectByName('building');
+  if (building) building.visible = camera.position.z > -0.2;
   if (pixli) {
     pixli.getWorldPosition(_pixliPos);
     pixli.rotation.y = Math.atan2(camera.position.x - _pixliPos.x, camera.position.z - _pixliPos.z);
@@ -1379,6 +1582,30 @@ function animate() {
 }
 
 /* ============================== UI WIRING ================================= */
+
+// Kamera sanft auf die andere Seite der Wand drehen
+let flipAnim = null;
+function isBackView() { return Math.cos(orbit.theta) < 0; }
+let flipLabelBack = null;
+function updateFlipLabel() {
+  const back = isBackView();
+  if (back === flipLabelBack) return;
+  flipLabelBack = back;
+  document.getElementById('flipViewText').textContent = back ? 'Vorderseite' : 'Rückseite';
+}
+document.getElementById('flipViewBtn').addEventListener('click', () => {
+  const from = orbit.theta;
+  const to = isBackView() ? Math.round((from - Math.PI) / (2 * Math.PI)) * 2 * Math.PI + 0.5
+                          : Math.round(from / (2 * Math.PI)) * 2 * Math.PI + Math.PI - 0.5;
+  flipAnim = { from, to, start: performance.now() };
+});
+function stepFlip() {
+  if (!flipAnim) return;
+  const u = Math.min((performance.now() - flipAnim.start) / 900, 1);
+  const e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+  orbit.theta = flipAnim.from + (flipAnim.to - flipAnim.from) * e;
+  if (u >= 1) flipAnim = null;
+}
 
 document.getElementById('hudToggle').addEventListener('click', () => {
   if (!window.matchMedia('(max-width: 860px)').matches) return;
@@ -1498,7 +1725,12 @@ document.getElementById('segMount').addEventListener('click', (e) => {
 function clamp(v, min, max) { return Math.min(Math.max(v, min), max); }
 function fmtM(v) { return v.toFixed(1).replace('.', ','); }
 
-const LIMITS = { cols: [2, 40], rows: [2, 20] };
+// Maximal 30 × 30 m Wandfläche
+const MAX_WALL_M = 30;
+const LIMITS = {
+  get cols() { return [2, Math.round(MAX_WALL_M / getPanelDims().panelW)]; },
+  get rows() { return [2, Math.round(MAX_WALL_M / getPanelDims().panelH)]; }
+};
 
 function updateSizeDisplay() {
   const { panelW, panelH } = getPanelDims();
@@ -1531,22 +1763,22 @@ function applySizeInput(input, key) {
 });
 
 document.getElementById('colsMinus').addEventListener('click', () => {
-  state.cols = clamp(state.cols - 1, 2, 40);
+  state.cols = clamp(state.cols - 1, ...LIMITS.cols);
   updateSizeDisplay();
   rebuild();
 });
 document.getElementById('colsPlus').addEventListener('click', () => {
-  state.cols = clamp(state.cols + 1, 2, 40);
+  state.cols = clamp(state.cols + 1, ...LIMITS.cols);
   updateSizeDisplay();
   rebuild();
 });
 document.getElementById('rowsMinus').addEventListener('click', () => {
-  state.rows = clamp(state.rows - 1, 2, 20);
+  state.rows = clamp(state.rows - 1, ...LIMITS.rows);
   updateSizeDisplay();
   rebuild();
 });
 document.getElementById('rowsPlus').addEventListener('click', () => {
-  state.rows = clamp(state.rows + 1, 2, 20);
+  state.rows = clamp(state.rows + 1, ...LIMITS.rows);
   updateSizeDisplay();
   rebuild();
 });
