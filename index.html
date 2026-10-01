@@ -24,15 +24,16 @@
   html,body{margin:0;padding:0;background:var(--black);color:var(--white);height:100%;height:100dvh;overflow:hidden;overscroll-behavior:none;}
   .app{display:flex;flex-direction:column;height:100vh;height:100dvh;width:100vw;}
 
-  /* Header */
-  header{
-    display:flex;align-items:center;justify-content:space-between;
-    padding:16px 24px;border-bottom:1px solid var(--line);
-    background:linear-gradient(180deg, #101011, #0a0a0b);
-    flex-shrink:0;
+  /* Titel oben links im 3D-Bereich */
+  .viewer::before{
+    content:"";position:absolute;left:0;right:0;top:0;height:110px;z-index:1;pointer-events:none;
+    background:linear-gradient(180deg, rgba(10,10,11,.85), rgba(10,10,11,0));
   }
-  .brand{display:flex;align-items:center;gap:12px;}
-  .brand-text h1{font-family:'Inter',sans-serif;font-size:18px;font-weight:600;margin:0;letter-spacing:-.2px;}
+  .view-title{
+    position:absolute;top:18px;left:20px;margin:0;z-index:2;pointer-events:none;
+    font-family:'Inter',sans-serif;font-size:21px;font-weight:700;letter-spacing:-.3px;
+    color:var(--accent);text-shadow:0 2px 14px rgba(0,0,0,.6);
+  }
   /* Main layout */
   .main{flex:1;display:grid;grid-template-columns:1fr 340px;min-height:0;}
   .left{display:flex;flex-direction:column;min-height:0;min-width:0;}
@@ -48,7 +49,7 @@
 
   /* HUD */
   .hud{
-    position:absolute;top:20px;left:20px;
+    position:absolute;top:58px;left:20px;z-index:2;
     background:rgba(20,20,22,.55);backdrop-filter:blur(10px);
     border:1px solid var(--line);border-radius:var(--radius);
     padding:16px 18px;min-width:210px;
@@ -114,9 +115,12 @@
 
   select{
     width:100%;background:var(--panel-bg-2);border:1px solid var(--line);color:var(--white);
-    padding:10px 12px;border-radius:10px;font-family:'JetBrains Mono',monospace;font-size:12.5px;
-    appearance:none;
+    padding:10px 38px 10px 12px;border-radius:10px;font-family:'JetBrains Mono',monospace;font-size:12.5px;
+    appearance:none;-webkit-appearance:none;cursor:pointer;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23e7007f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 14px center;
   }
+  select:hover,select:focus{border-color:var(--accent);outline:none;}
 
   .switch-row{display:flex;align-items:center;justify-content:space-between;background:var(--panel-bg-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;}
   .switch-row .txt{font-size:12.5px;}
@@ -204,7 +208,8 @@
   @media (max-width: 860px){
     .main{grid-template-columns:1fr;grid-template-rows:48vh 1fr;grid-template-rows:48dvh 1fr;}
     .panel{border-left:none;border-top:1px solid var(--line);padding:18px 16px 16px;}
-    .hud{top:10px;left:10px;min-width:150px;padding:10px 12px;}
+    .view-title{top:10px;left:12px;font-size:16px;}
+    .hud{top:38px;left:10px;min-width:150px;padding:10px 12px;}
     .hud .eyebrow{font-size:9px;margin-bottom:8px;}
     .hud-row{font-size:11.5px;padding:2px 0;}
     .hud .eyebrow{cursor:pointer;}
@@ -215,8 +220,6 @@
     .hud.collapsed .hud-summary{display:inline;color:var(--white);letter-spacing:.3px;text-transform:none;font-size:11.5px;}
     .hud.collapsed .hud-row{display:none;}
     .hud:not(.collapsed) .hud-chevron{transform:rotate(180deg);}
-    header{padding:10px 14px;}
-      .brand-text h1{font-size:14px;}
     .hint{display:none;}
 
     /* Größere Touch-Ziele */
@@ -234,7 +237,6 @@
   }
 
   @media (max-width: 480px){
-    header{gap:8px;}
     .main{grid-template-rows:42vh 1fr;grid-template-rows:42dvh 1fr;}
     .field{margin-bottom:18px;}
     .seg-btn{min-width:70px;}
@@ -251,16 +253,10 @@
 <div class="app">
  <div class="main">
   <div class="left">
-  <header>
-    <div class="brand">
-      <div class="brand-text">
-        <h1>LED-Wand Konfigurator</h1>
-      </div>
-    </div>
-  </header>
 
     <div class="viewer">
       <canvas id="c"></canvas>
+      <h1 class="view-title">LEDWALL Konfigurator</h1>
       <div class="hud collapsed" id="hud">
         <button type="button" class="eyebrow" id="hudToggle" aria-expanded="false">
           <span>Konfiguration</span><span class="hud-summary" id="hudSummary"></span><span class="hud-chevron">▾</span>
@@ -373,8 +369,8 @@
           <span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Wählen Sie ein Beispielmotiv oder laden Sie ein eigenes Bild, Logo oder Video. Ihre Datei bleibt auf Ihrem Gerät und wird nicht hochgeladen.</span></span>
         </div>
         <div class="segmented" id="segContent">
-          <div class="seg-btn active" data-val="wave">Wellen</div>
-          <div class="seg-btn" data-val="flow">Farbfluss</div>
+          <div class="seg-btn active" data-val="logo">Logo</div>
+          <div class="seg-btn" data-val="pink">Pink</div>
           <div class="seg-btn" data-val="promo">Werbung</div>
         </div>
         <label class="upload-btn" id="uploadLabel">
@@ -385,7 +381,7 @@
 
       <div class="field">
         <div class="switch-row">
-          <div class="txt">Figur anzeigen<span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Zeigt eine Person zum Größenvergleich. Stellen Sie ein, wie weit Ihre Zuschauer von der Wand entfernt stehen – wir empfehlen dazu den passenden Pixel Pitch.</span></span></div>
+          <div class="txt">Pixli anzeigen<span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Zeigt Pixli (ca. 1,75 m) zum Größenvergleich. Stellen Sie ein, wie weit Ihre Zuschauer von der Wand entfernt stehen – wir empfehlen dazu den passenden Pixel Pitch.</span></span></div>
           <label class="switch">
             <input type="checkbox" id="dummyToggle" checked>
             <span class="slider-toggle"></span>
@@ -396,7 +392,7 @@
             <div class="stepper-label">Abstand zur Wand</div>
             <div class="stepper-label" style="color:var(--white);" id="distVal">3,5 m</div>
           </div>
-          <input type="range" id="distRange" min="1" max="15" step="0.5" value="3.5" aria-label="Abstand der Figur zur Wand">
+          <input type="range" id="distRange" min="1" max="15" step="0.5" value="3.5" aria-label="Abstand von Pixli zur Wand">
           <div class="range-labels"><span>1 m</span><span>15 m</span></div>
           <div class="pitch-reco" id="pitchReco">
             <span id="pitchRecoText">Für 3,5 m empfehlen wir P2.9</span>
@@ -495,7 +491,7 @@ const state = {
   gob: false,
   showEdges: true,
   showDummy: true,
-  content: 'wave',      // 'wave' | 'flow' | 'promo' | 'custom'
+  content: 'logo',      // 'logo' | 'pink' | 'promo' | 'custom'
   personDist: 3.5       // Abstand Figur ↔ Wand in m (folgt dem Pitch-Richtwert, bis man ihn verstellt)
 };
 
@@ -515,7 +511,7 @@ renderer.outputEncoding = THREE.sRGBEncoding;
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0x0a0a0b, 14, 34);
 
-const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
+const camera = new THREE.PerspectiveCamera(42, 1, 0.25, 200);
 camera.position.set(6.5, 4, 9);
 
 // Lighting
@@ -541,10 +537,6 @@ floor.rotation.x = -Math.PI / 2;
 floor.position.y = 0;
 scene.add(floor);
 
-// Faint grid on floor
-const grid = new THREE.GridHelper(60, 60, 0x2a2a2e, 0x1c1c1f);
-grid.position.y = 0.01;
-scene.add(grid);
 
 /* ------------------------- UMGEBUNG: INDOOR / OUTDOOR ---------------------- */
 // Indoor = dunkle Halle / Showroom, Outdoor = Tageslicht mit Himmel, Platz und Bäumen.
@@ -592,7 +584,6 @@ function applyEnvironment() {
     scene.fog = new THREE.Fog(0xdbe8f2, 30, 75);
     floorMat.color.set(0x2f5a26);   // Rasen
     floorMat.roughness = 1;
-    grid.visible = false;
     rimLight.intensity = 0;
     ambientLight.intensity = 0.1;
     hemiLight.intensity = 0.45;
@@ -611,25 +602,21 @@ function applyEnvironment() {
     scene.background = new THREE.Color(0x0a0a0b);
     scene.fog = new THREE.Fog(0x0a0a0b, 16, 36);
     floorMat.color.set(0x1b1b1e);   // glatter Hallenboden
-    floorMat.roughness = 0.6;
-    grid.visible = true;
-    rimLight.intensity = 3;
+    floorMat.roughness = 0.92;
+    rimLight.intensity = 1.8;
     ambientLight.intensity = 0.55;
     hemiLight.intensity = 0;
     keyLight.intensity = 0.9;
     fillLight.intensity = 1.2;
     keyLight.position.set(6, 10, 6);
-    // Hallenwände und Decke mit Lichtbändern
-    const room = new THREE.Mesh(new THREE.BoxGeometry(36, 9, 34),
-      new THREE.MeshStandardMaterial({ color: 0x16161a, roughness: 0.95, side: THREE.BackSide }));
-    room.position.set(0, 4.5, 3);
-    envGroup.add(room);
-    const stripMat = new THREE.MeshBasicMaterial({ color: 0xdedee6 });
-    for (let i = -2; i <= 2; i++) {
-      const strip = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.04, 22), stripMat);
-      strip.position.set(i * 5, 8.95, 3);
-      envGroup.add(strip);
-    }
+    // Hallenwände ohne Decke (eigene Flächen, damit nichts mit dem Boden flimmert)
+    const hallMat = new THREE.MeshStandardMaterial({ color: 0x16161a, roughness: 0.95 });
+    [[0, -14, 0, 36], [-18, 3, Math.PI / 2, 34], [18, 3, -Math.PI / 2, 34]].forEach(([x, z, ry, w]) => {
+      const wall = new THREE.Mesh(new THREE.PlaneGeometry(w, 9), hallMat);
+      wall.position.set(x, 4.5, z);
+      wall.rotation.y = ry;
+      envGroup.add(wall);
+    });
   }
 }
 
@@ -637,7 +624,7 @@ function applyEnvironment() {
 /* -------------------------- CUSTOM ORBIT CONTROLS ------------------------ */
 /* Ein Finger / Maus = Rotieren, zwei Finger = Pinch-Zoom, Mausrad = Zoom (Desktop) */
 
-const orbit = { theta: 0.5, phi: 1.15, radius: 11, target: new THREE.Vector3(0, 1.6, 0) };
+const orbit = { theta: 0.5, phi: 1.15, radius: 13, target: new THREE.Vector3(0, 1.6, 0) };
 let isDragging = false, lastX = 0, lastY = 0;
 const activePointers = new Map();
 let pinchStartDist = null, pinchStartRadius = null;
@@ -743,25 +730,6 @@ function makeLedTexture(pitchMm) {
   return tex;
 }
 
-// Diagonaler Lichtreflex für die GOB-Schicht (wandert langsam über die Wand)
-const gobShineTexture = (() => {
-  const c = document.createElement('canvas');
-  c.width = 512; c.height = 64;
-  const x = c.getContext('2d');
-  const g = x.createLinearGradient(0, 0, 512, 0);
-  g.addColorStop(0, 'rgba(255,255,255,0)');
-  g.addColorStop(0.42, 'rgba(200,235,255,0)');
-  g.addColorStop(0.5, 'rgba(220,240,255,0.35)');
-  g.addColorStop(0.58, 'rgba(200,235,255,0)');
-  g.addColorStop(1, 'rgba(255,255,255,0)');
-  x.fillStyle = g; x.fillRect(0, 0, 512, 64);
-  const t = new THREE.CanvasTexture(c);
-  t.wrapS = THREE.RepeatWrapping;
-  t.center.set(0.5, 0.5);
-  t.rotation = -0.5;
-  return t;
-})();
-
 /* ----------------------------- WANDINHALT ------------------------------- */
 // Der Inhalt wird jedes Frame in ein Canvas gezeichnet, das genau das
 // Seitenverhältnis der Wand hat, und als Textur auf die Wand gelegt.
@@ -795,88 +763,87 @@ function drawCover(ctx, el, W, H) {
   ctx.drawImage(el, (W - dw) / 2, (H - dh) / 2, dw, dh);
 }
 
-const motifs = {
-  // Ruhige, geschichtete Wellen in kräftigem Blau, Grün und Orange
-  wave(ctx, W, H, t) {
-    const bg = ctx.createLinearGradient(0, 0, 0, H);
-    bg.addColorStop(0, '#020a2e');
-    bg.addColorStop(1, '#03163f');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, W, H);
-    const layers = [
-      { top: '#0050ff', bottom: '#001a66', base: 0.38, amp: 0.10, len: 1.3, speed: 0.10, ph: 0.0 },
-      { top: '#00b3ff', bottom: '#004a8f', base: 0.50, amp: 0.08, len: 1.8, speed: -0.07, ph: 1.3 },
-      { top: '#00d26a', bottom: '#005c2e', base: 0.62, amp: 0.07, len: 1.1, speed: 0.08, ph: 2.6 },
-      { top: '#ff8a00', bottom: '#a33a00', base: 0.74, amp: 0.06, len: 2.2, speed: -0.06, ph: 3.9 },
-      { top: '#ffd000', bottom: '#cc5a00', base: 0.86, amp: 0.05, len: 1.6, speed: 0.05, ph: 5.1 }
-    ];
-    layers.forEach((L) => {
-      const yAt = (x) => {
-        const u = x / W;
-        return H * (L.base + L.amp * Math.sin(u * Math.PI * 2 * L.len + t * L.speed * 6 + L.ph)
-                           + L.amp * 0.4 * Math.sin(u * Math.PI * 5.3 - t * L.speed * 4 + L.ph * 2));
-      };
-      ctx.beginPath();
-      ctx.moveTo(0, H);
-      for (let x = 0; x <= W; x += 12) ctx.lineTo(x, yAt(x));
-      ctx.lineTo(W, H);
-      ctx.closePath();
-      const g = ctx.createLinearGradient(0, H * (L.base - L.amp), 0, H);
-      g.addColorStop(0, L.top);
-      g.addColorStop(1, L.bottom);
-      ctx.globalAlpha = 0.92;
-      ctx.fillStyle = g;
-      ctx.fill();
-      // heller Saum oben an der Welle
-      ctx.globalAlpha = 0.5;
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      for (let x = 0; x <= W; x += 12) x === 0 ? ctx.moveTo(x, yAt(x)) : ctx.lineTo(x, yAt(x));
-      ctx.stroke();
-    });
-    ctx.globalAlpha = 1;
-  },
+// Logo-Video von LEDWALL 360 (stumm, Endlosschleife) für den Standardinhalt
+const logoVideo = document.createElement('video');
+logoVideo.src = 'assets/ledwall360-logo.mp4';
+logoVideo.muted = true; logoVideo.loop = true; logoVideo.playsInline = true; logoVideo.preload = 'auto';
+logoVideo.setAttribute('muted', ''); logoVideo.setAttribute('playsinline', '');
+function syncLogoVideo() {
+  if (state.content === 'logo') logoVideo.play().catch(() => {});
+  else logoVideo.pause();
+}
+// Manche Mobilbrowser starten Videos erst nach der ersten Berührung
+document.addEventListener('pointerdown', syncLogoVideo, { once: true });
 
-  // Weiche Farbflächen, die langsam ineinanderfließen
-  flow(ctx, W, H, t) {
-    ctx.fillStyle = '#020824';
+const motifs = {
+  // Kräftiges Pink (LEDWALL 360) mit weichen, langsam wandernden Lichtflächen
+  pink(ctx, W, H, t) {
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, '#2b0019');
+    bg.addColorStop(0.5, '#6e003c');
+    bg.addColorStop(1, '#22001a');
+    ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
     ctx.globalCompositeOperation = 'lighter';
     const blobs = [
-      { c: '0,80,255', fx: 0.11, fy: 0.07, px: 0.0, py: 1.0, r: 0.75 },
-      { c: '255,120,0', fx: 0.08, fy: 0.10, px: 2.1, py: 0.3, r: 0.6 },
-      { c: '0,200,90', fx: 0.06, fy: 0.09, px: 4.0, py: 2.2, r: 0.65 },
-      { c: '0,170,255', fx: 0.09, fy: 0.05, px: 5.2, py: 3.7, r: 0.5 },
-      { c: '255,200,0', fx: 0.05, fy: 0.08, px: 1.4, py: 4.9, r: 0.4 }
+      { c: '231,0,127', fx: 0.07, fy: 0.05, px: 0.0, py: 1.0, r: 0.8, a: 0.55 },
+      { c: '255,70,170', fx: 0.05, fy: 0.08, px: 2.1, py: 0.3, r: 0.55, a: 0.4 },
+      { c: '150,0,255', fx: 0.04, fy: 0.06, px: 4.0, py: 2.2, r: 0.6, a: 0.3 },
+      { c: '255,0,90', fx: 0.06, fy: 0.04, px: 5.2, py: 3.7, r: 0.5, a: 0.35 }
     ];
     const R = Math.max(W, H);
     blobs.forEach((b) => {
-      const x = W * (0.5 + 0.4 * Math.sin(t * b.fx * 2 + b.px));
-      const y = H * (0.5 + 0.4 * Math.cos(t * b.fy * 2 + b.py));
-      const r = R * b.r * (0.9 + 0.1 * Math.sin(t * 0.3 + b.px));
+      const x = W * (0.5 + 0.45 * Math.sin(t * b.fx * 2 + b.px));
+      const y = H * (0.5 + 0.45 * Math.cos(t * b.fy * 2 + b.py));
+      const r = R * b.r * (0.9 + 0.1 * Math.sin(t * 0.25 + b.px));
       const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-      g.addColorStop(0, `rgba(${b.c},0.85)`);
-      g.addColorStop(0.5, `rgba(${b.c},0.35)`);
+      g.addColorStop(0, `rgba(${b.c},${b.a})`);
       g.addColorStop(1, `rgba(${b.c},0)`);
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
     });
+    // feiner Lichtstreifen, der langsam diagonal durchläuft
+    const sx = ((t * 0.06) % 1.6 - 0.3) * W;
+    const sg = ctx.createLinearGradient(sx - W * 0.15, 0, sx + W * 0.15, H);
+    sg.addColorStop(0, 'rgba(255,255,255,0)');
+    sg.addColorStop(0.5, 'rgba(255,180,220,0.10)');
+    sg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = sg;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'source-over';
+  },
+
+  // Pinker Hintergrund mit dem LEDWALL-360-Logo (Video) darüber
+  logo(ctx, W, H, t) {
+    motifs.pink(ctx, W, H, t);
+    const v = logoVideo;
+    if (v.readyState < 2 || !v.videoWidth) return;
+    const scale = Math.min((W * 0.8) / v.videoWidth, (H * 0.8) / v.videoHeight);
+    const dw = v.videoWidth * scale, dh = v.videoHeight * scale;
+    // dunklere Zone hinter dem Logo, damit die pinke "360" nicht im Hintergrund verschwindet
+    const shade = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(dw, dh) * 0.62);
+    shade.addColorStop(0, 'rgba(14,0,8,0.78)');
+    shade.addColorStop(0.65, 'rgba(14,0,8,0.45)');
+    shade.addColorStop(1, 'rgba(14,0,8,0)');
+    ctx.fillStyle = shade;
+    ctx.fillRect(0, 0, W, H);
+    // "screen" blendet den schwarzen Videohintergrund aus, das Logo bleibt stehen
+    ctx.globalCompositeOperation = 'screen';
+    ctx.drawImage(v, (W - dw) / 2, (H - dh) / 2, dw, dh);
     ctx.globalCompositeOperation = 'source-over';
   },
 
   promo(ctx, W, H, t) {
-    const hue = 200 + 30 * Math.sin(t * 0.15); // ruhig zwischen Blau und Türkis
     const bg = ctx.createLinearGradient(0, 0, W, H);
-    bg.addColorStop(0, `hsl(${hue},85%,45%)`);
-    bg.addColorStop(1, `hsl(${(hue + 60) % 360},85%,30%)`);
+    bg.addColorStop(0, '#e7007f');
+    bg.addColorStop(1, '#5a0032');
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
-    // rotierende Lichtstrahlen
+    // langsam rotierende Lichtstrahlen
     ctx.save();
     ctx.translate(W / 2, H * 0.45);
     ctx.rotate(t * 0.05);
-    ctx.fillStyle = 'rgba(255,255,255,0.07)';
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
     for (let i = 0; i < 12; i++) {
       ctx.rotate(Math.PI / 6);
       ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(W, -W * 0.12); ctx.lineTo(W, W * 0.12); ctx.closePath(); ctx.fill();
@@ -891,10 +858,10 @@ const motifs = {
     ctx.fillText('SALE −30 %', W / 2, H * 0.42);
     // Laufschrift
     const bandH = Math.max(H * 0.16, 28);
-    ctx.fillStyle = '#ff8a00';
+    ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, H - bandH, W, bandH);
-    ctx.fillStyle = '#fff';
-    ctx.font = `600 ${bandH * 0.5}px Inter, Arial, sans-serif`;
+    ctx.fillStyle = '#e7007f';
+    ctx.font = `700 ${bandH * 0.5}px Inter, Arial, sans-serif`;
     ctx.textAlign = 'left';
     const msg = 'Neue Kollektion  ·  Jetzt im Store  ·  Nur diese Woche  ·  ';
     const mw = ctx.measureText(msg).width;
@@ -912,7 +879,7 @@ const motifs = {
 function drawContent(t) {
   const ctx = content.canvas.getContext('2d');
   const W = content.canvas.width, H = content.canvas.height;
-  (motifs[state.content] || motifs.wave)(ctx, W, H, t);
+  (motifs[state.content] || motifs.logo)(ctx, W, H, t);
   content.texture.needsUpdate = true;
 }
 
@@ -1114,21 +1081,16 @@ function buildWallMeshes() {
   seamGroup.visible = state.showEdges;
   wallGroup.add(seamGroup);
 
-  // GOB: glänzende, transparente Schutzschicht vor den LEDs mit wanderndem Lichtreflex
+  // GOB: transparente Schutzschicht vor den LEDs, nur als leichter Glanz sichtbar
   if (state.gob) {
     const coat = new THREE.Group();
     const gloss = new THREE.Mesh(frontGeo.clone(), new THREE.MeshPhongMaterial({
-      color: 0xbfe6ff, transparent: true, opacity: 0.10, shininess: 140, specular: 0xffffff, depthWrite: false
+      color: 0xffffff, transparent: true, opacity: 0.05, shininess: 90, specular: 0x666666, depthWrite: false
     }));
     gloss.position.z += 0.006;
     coat.add(gloss);
-    const shine = new THREE.Mesh(frontGeo.clone(), new THREE.MeshBasicMaterial({
-      map: gobShineTexture, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false
-    }));
-    shine.position.z += 0.007;
-    coat.add(shine);
     // sichtbare Kante der Harzschicht
-    const edgeMat = new THREE.MeshBasicMaterial({ color: 0x9fdcff, transparent: true, opacity: 0.55 });
+    const edgeMat = new THREE.MeshBasicMaterial({ color: 0xdfe8ee, transparent: true, opacity: 0.25 });
     const ew = 0.012;
     [[totalWidth + ew * 2, ew, 0, totalHeight / 2 + ew / 2], [totalWidth + ew * 2, ew, 0, -totalHeight / 2 - ew / 2],
      [ew, totalHeight, totalWidth / 2 + ew / 2, 0], [ew, totalHeight, -totalWidth / 2 - ew / 2, 0]].forEach(([w, h, x, y]) => {
@@ -1287,133 +1249,30 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-function buildDummyFigure() {
-  // Stilisierte Person, ca. 1,78 m groß: blaues Shirt, schwarze Hose,
-  // weiße Sneaker, blaue Cap, blonde Haare.
+// Pixli, das Maskottchen von LEDWALL 360, als Größenvergleich (ca. 1,75 m).
+// Das Bild dreht sich immer zur Kamera.
+const pixliTexture = new THREE.TextureLoader().load('assets/pixli.png');
+pixliTexture.encoding = THREE.sRGBEncoding;
+pixliTexture.anisotropy = maxAnisotropy;
+let pixli = null;
+const _pixliPos = new THREE.Vector3();
+
+function buildPixli() {
   const g = new THREE.Group();
-  const mat = (color, rough = 0.8) => new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: 0 });
-  const shirt = mat(0x1f5fbf);
-  const pants = mat(0x141416);
-  const skin = mat(0xc99a7c, 0.7);
-  const hair = mat(0xd9b45a, 0.85); // blond
-  const shoe = mat(0xf2f2f2, 0.5);
-  const sole = mat(0xbdbdbd, 0.6);
-  const cap = mat(0x1546a0, 0.6);   // blaue Cap
-  const mesh = (geo, m) => new THREE.Mesh(geo, m);
-
-  // Gegliedertes Körperteil: Zylinder von a nach b mit abgerundeten Enden
-  function limb(len, rTop, rBottom, m) {
-    const lg = new THREE.Group();
-    const c = mesh(new THREE.CylinderGeometry(rTop, rBottom, len, 16), m);
-    c.position.y = -len / 2;
-    lg.add(c);
-    const top = mesh(new THREE.SphereGeometry(rTop, 16, 12), m);
-    lg.add(top);
-    const bottom = mesh(new THREE.SphereGeometry(rBottom, 16, 12), m);
-    bottom.position.y = -len;
-    lg.add(bottom);
-    return lg;
-  }
-
-  // --- Beine & Schuhe ---
-  const hipY = 0.93;
-  [-1, 1].forEach((side) => {
-    const thigh = limb(0.43, 0.085, 0.062, pants);
-    thigh.position.set(side * 0.095, hipY, 0);
-    g.add(thigh);
-    const shin = limb(0.40, 0.06, 0.048, pants);
-    shin.position.set(side * 0.095, hipY - 0.43, 0);
-    g.add(shin);
-    // Sneaker: weißes Obermaterial auf grauer Sohle
-    const foot = mesh(new THREE.BoxGeometry(0.10, 0.06, 0.25), shoe);
-    foot.position.set(side * 0.095, 0.05, 0.05);
-    g.add(foot);
-    const toe = mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.06, 16), shoe);
-    toe.position.set(side * 0.095, 0.05, 0.175);
-    g.add(toe);
-    const soleMesh = mesh(new THREE.BoxGeometry(0.11, 0.025, 0.32), sole);
-    soleMesh.position.set(side * 0.095, 0.0125, 0.07);
-    g.add(soleMesh);
-  });
-
-  // Becken
-  const pelvis = mesh(new THREE.CylinderGeometry(0.165, 0.15, 0.16, 20), pants);
-  pelvis.scale.z = 0.65;
-  pelvis.position.y = hipY + 0.03;
-  g.add(pelvis);
-
-  // --- Oberkörper als gedrehtes Profil (Taille → Brust → Schultern → Hals) ---
-  const profile = [
-    [0.150, 0.00], [0.148, 0.08], [0.160, 0.22], [0.182, 0.36],
-    [0.190, 0.44], [0.170, 0.50], [0.110, 0.54], [0.055, 0.56], [0.0, 0.56]
-  ].map(([r, y]) => new THREE.Vector2(r, y));
-  const torso = mesh(new THREE.LatheGeometry(profile, 28), shirt);
-  torso.scale.z = 0.6;
-  torso.position.y = hipY + 0.06;
-  g.add(torso);
-  const shoulderY = hipY + 0.06 + 0.46;
-
-  // Hals & Kopf
-  const neck = mesh(new THREE.CylinderGeometry(0.048, 0.052, 0.10, 14), skin);
-  neck.position.y = shoulderY + 0.10;
-  g.add(neck);
-  const headY = shoulderY + 0.24;
-  const head = mesh(new THREE.SphereGeometry(0.1, 24, 20), skin);
-  head.scale.set(0.9, 1.15, 1.0);
-  head.position.y = headY;
-  g.add(head);
-  // Blaue Cap: Kuppel plus Schirm nach vorne, darunter blondes Haar an Nacken und Seiten
-  const nape = mesh(new THREE.SphereGeometry(0.1, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.6), hair);
-  nape.scale.set(0.93, 1.1, 1.03);
-  nape.position.set(0, headY - 0.005, -0.01);
-  nape.rotation.x = -0.9;
-  g.add(nape);
-  [-1, 1].forEach((side) => {
-    const sideHair = mesh(new THREE.SphereGeometry(0.05, 12, 10), hair);
-    sideHair.scale.set(0.45, 1.0, 1.1);
-    sideHair.position.set(side * 0.082, headY + 0.03, -0.015);
-    g.add(sideHair);
-  });
-  const capDome = mesh(new THREE.SphereGeometry(0.108, 24, 14, 0, Math.PI * 2, 0, Math.PI * 0.5), cap);
-  capDome.scale.set(0.95, 0.9, 1.03);
-  capDome.position.set(0, headY + 0.035, 0);
-  g.add(capDome);
-  const brim = mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.012, 24, 1, false, -Math.PI / 2, Math.PI), cap);
-  brim.scale.set(0.95, 1, 0.9);
-  brim.position.set(0, headY + 0.035, 0.05);
-  brim.rotation.x = 0.12;
-  g.add(brim);
-  [-1, 1].forEach((side) => {
-    const ear = mesh(new THREE.SphereGeometry(0.022, 10, 8), skin);
-    ear.scale.set(0.5, 1, 0.8);
-    ear.position.set(side * 0.09, headY, 0);
-    g.add(ear);
-  });
-  const nose = mesh(new THREE.SphereGeometry(0.018, 10, 8), skin);
-  nose.scale.set(0.8, 1, 1.2);
-  nose.position.set(0, headY - 0.01, 0.1);
-  g.add(nose);
-
-  // --- Arme (leicht angewinkelt, Ärmel lang, Hände hautfarben) ---
-  [-1, 1].forEach((side) => {
-    const arm = new THREE.Group();
-    const upper = limb(0.29, 0.058, 0.046, shirt);
-    arm.add(upper);
-    const foreGroup = new THREE.Group();
-    foreGroup.position.y = -0.29;
-    foreGroup.rotation.x = -0.18; // Ellbogen leicht gebeugt
-    const fore = limb(0.26, 0.045, 0.036, shirt);
-    foreGroup.add(fore);
-    const hand = mesh(new THREE.SphereGeometry(0.045, 14, 12), skin);
-    hand.scale.set(0.6, 1.5, 0.95);
-    hand.position.y = -0.33;
-    foreGroup.add(hand);
-    arm.add(foreGroup);
-    arm.position.set(side * 0.205, shoulderY - 0.02, 0);
-    arm.rotation.z = side * 0.09;
-    g.add(arm);
-  });
-
+  const h = 1.75, w = h * (512 / 458);
+  const sprite = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({
+    map: pixliTexture, transparent: true, alphaTest: 0.04, side: THREE.DoubleSide, depthWrite: false
+  }));
+  sprite.position.y = h / 2;
+  g.add(sprite);
+  const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.42, 32), new THREE.MeshBasicMaterial({
+    color: 0x000000, transparent: true, opacity: 0.35, depthWrite: false
+  }));
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.scale.x = 1.4;
+  shadow.position.y = 0.012;
+  g.add(shadow);
+  g.userData.sprite = sprite;
   return g;
 }
 
@@ -1450,10 +1309,10 @@ function buildDistanceIndicator(dims) {
   label.position.set(lineX, 0.55, wallFrontZ + dist / 2);
   distanceGroup.add(label);
 
-  // Figur mittig vor der Wand im eingestellten Abstand, mit Blick zur Wand
-  const person = buildDummyFigure();
-  person.position.set(0, 0, wallFrontZ + dist);
-  person.rotation.y = Math.PI;
+  // Pixli mittig vor der Wand im eingestellten Abstand
+  const person = buildPixli();
+  person.position.set(0.9, 0, wallFrontZ + dist);
+  pixli = person.userData.sprite;
   person.visible = state.showDummy;
   distanceGroup.add(person);
   [...distanceGroup.children].forEach((c) => { if (c !== person) c.visible = state.showDummy; });
@@ -1512,7 +1371,10 @@ function animate() {
   const t = clock.getElapsedTime();
   updateCamera();
   drawContent(t);
-  gobShineTexture.offset.x = (t * 0.05) % 1;
+  if (pixli) {
+    pixli.getWorldPosition(_pixliPos);
+    pixli.rotation.y = Math.atan2(camera.position.x - _pixliPos.x, camera.position.z - _pixliPos.z);
+  }
   renderer.render(scene, camera);
 }
 
@@ -1596,6 +1458,7 @@ document.getElementById('segContent').addEventListener('click', (e) => {
   state.content = btn.getAttribute('data-val');
   setActive(document.getElementById('segContent'), state.content);
   document.getElementById('uploadLabel').classList.remove('active');
+  syncLogoVideo();
 });
 document.getElementById('contentFile').addEventListener('change', (e) => {
   const file = e.target.files && e.target.files[0];
@@ -1614,6 +1477,7 @@ document.getElementById('contentFile').addEventListener('change', (e) => {
     content.media = img;
   }
   state.content = 'custom';
+  syncLogoVideo();
   setActive(document.getElementById('segContent'), '');
   document.getElementById('uploadLabel').classList.add('active');
   document.getElementById('uploadText').textContent = `✓ ${file.name}`;
@@ -1813,9 +1677,13 @@ submitBtn.addEventListener('click', async () => {
 
   submitBtn.disabled = true;
   submitBtn.textContent = 'Wird gesendet …';
+  // Antwortet der Versanddienst nicht, nach 15 s abbrechen und die E-Mail-Alternative zeigen
+  const abort = new AbortController();
+  const abortTimer = setTimeout(() => abort.abort(), 15000);
   try {
     const res = await fetch(`https://formsubmit.co/ajax/${CONFIG.recipientEmail}`, {
       method: 'POST',
+      signal: abort.signal,
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({
         _subject: `LEDWALL Konfigurator Anfrage – ${payload.fields.name}${payload.fields.company ? ' (' + payload.fields.company + ')' : ''}`,
@@ -1839,6 +1707,7 @@ submitBtn.addEventListener('click', async () => {
     console.error('Anfrage konnte nicht gesendet werden:', err);
     showFormError(`Die Anfrage konnte leider nicht gesendet werden. Bitte versuchen Sie es erneut oder schreiben Sie uns direkt per <a href="${mailtoFallbackLink(payload)}">E-Mail an ${CONFIG.recipientEmail}</a>.`);
   } finally {
+    clearTimeout(abortTimer);
     submitBtn.disabled = false;
     submitBtn.textContent = 'Anfrage absenden';
   }
@@ -1861,7 +1730,7 @@ function configToHash() {
     ort: state.location, panel: state.panelType, aufbau: state.mount,
     b: state.cols, h: state.rows, pitch: state.pitch,
     gob: state.gob ? 1 : 0, abstand: state.personDist,
-    inhalt: state.content === 'custom' ? 'wave' : state.content
+    inhalt: state.content === 'custom' ? 'logo' : state.content
   });
   return '#' + q.toString();
 }
@@ -1879,7 +1748,7 @@ function applyHash() {
   state.pitch = PITCHES.includes(pitch) ? pitch : state.pitch;
   state.gob = q.get('gob') === '1' && state.location === 'indoor';
   state.personDist = clamp(num('abstand', viewingDistanceForPitch(state.pitch)), 1, 15);
-  state.content = pick(q.get('inhalt'), ['wave', 'flow', 'promo'], state.content);
+  state.content = pick(q.get('inhalt'), ['logo', 'pink', 'promo'], state.content);
   // Oberfläche nachziehen
   setActive(document.getElementById('segLocation'), state.location);
   setActive(document.getElementById('segPanelType'), state.panelType);
@@ -1964,6 +1833,7 @@ document.addEventListener('click', () => {
 resize();
 state.personDist = viewingDistanceForPitch(state.pitch);
 applyHash();
+syncLogoVideo();
 applyEnvironment();
 updateGobVisibility();
 updateDistDisplay();
