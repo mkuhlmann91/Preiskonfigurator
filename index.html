@@ -179,6 +179,15 @@
     flex:2;background:var(--accent);border:none;color:#fff;padding:13px;border-radius:10px;
     font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13px;cursor:pointer;
   }
+  .hp-field{position:absolute;left:-9999px;width:1px;height:1px;opacity:0;}
+  .modal label.consent-row{display:flex;gap:10px;align-items:flex-start;font-family:'Inter',sans-serif;font-size:11.5px;line-height:1.5;color:#c9c9cd;margin-bottom:14px;cursor:pointer;}
+  .consent-row input{margin:2px 0 0;accent-color:var(--accent);width:16px;height:16px;flex-shrink:0;}
+  .consent-row a{color:var(--white);}
+  .modal input.invalid, .modal label.consent-row.invalid{outline:1px solid var(--accent);outline-offset:2px;}
+  .form-error{display:none;background:rgba(231,0,127,.12);border:1px solid var(--accent-dim);color:#ffd1e8;border-radius:9px;padding:10px 12px;font-size:12px;line-height:1.5;margin-bottom:14px;}
+  .form-error.show{display:block;}
+  .form-error a{color:#fff;}
+  .btn-primary:disabled{opacity:.6;cursor:wait;}
   .success-box{display:none;text-align:center;padding:10px 0;}
   .success-box.show{display:block;}
   .success-box .check{
@@ -390,18 +399,25 @@
     <div id="formView">
       <h2>Anfrage senden</h2>
       <p class="sub">Ihre Konfiguration wird automatisch mitgeschickt.</p>
-      <label>Name</label>
-      <input type="text" id="fName">
-      <label>Firma</label>
-      <input type="text" id="fCompany">
-      <label>E-Mail</label>
-      <input type="email" id="fEmail">
-      <label>Telefon</label>
-      <input type="tel" id="fPhone">
+      <label for="fName">Name *</label>
+      <input type="text" id="fName" autocomplete="name" required>
+      <label for="fCompany">Firma</label>
+      <input type="text" id="fCompany" autocomplete="organization">
+      <label for="fEmail">E-Mail *</label>
+      <input type="email" id="fEmail" autocomplete="email" required>
+      <label for="fPhone">Telefon</label>
+      <input type="tel" id="fPhone" autocomplete="tel">
       <label>Nachricht</label>
       <textarea id="fMessage" placeholder="Optional: Projektzeitraum, Veranstaltungsort, weitere Hinweise..."></textarea>
       <label>Konfiguration (wird automatisch übernommen)</label>
       <div class="config-preview" id="configPreview"></div>
+      <!-- Honeypot gegen Spam-Bots: bleibt für Menschen unsichtbar und leer -->
+      <input type="text" id="fHoney" class="hp-field" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <label class="consent-row" for="fConsent">
+        <input type="checkbox" id="fConsent">
+        <span>Ich bin einverstanden, dass meine Angaben zur Bearbeitung der Anfrage verarbeitet werden. Details in der <a id="privacyLink" href="#" target="_blank" rel="noopener">Datenschutzerklärung</a>. *</span>
+      </label>
+      <div class="form-error" id="formError" role="alert"></div>
       <div class="modal-actions">
         <button class="btn-secondary" id="closeModalBtn">Abbrechen</button>
         <button class="btn-primary" id="submitBtn">Anfrage absenden</button>
@@ -426,6 +442,12 @@ const CONFIG = {
   // Name des versteckten Feldes im echten Kontaktformular der Website.
   // Bitte an den tatsächlichen Feldnamen anpassen, falls abweichend.
   hiddenFieldName: 'ledwall_konfigurator',
+  // Empfänger der Anfragen. Versand läuft über FormSubmit (formsubmit.co).
+  // Beim allerersten Versand schickt FormSubmit eine Bestätigungs-Mail an diese
+  // Adresse; erst nach Klick auf den Link dort werden Anfragen zugestellt.
+  recipientEmail: 'hallo@ledwall-360.de',
+  // Datenschutzerklärung, verlinkt an der Einwilligungs-Checkbox.
+  privacyUrl: 'https://ledwall-360.de/datenschutz',
   // Gewichte pro Panel in kg (vom Kunden angegeben)
   weightPerPanel: {
     '0.5x0.5': { indoor: 6, outdoor: 6 },
@@ -1305,41 +1327,108 @@ document.getElementById('openModalBtn').addEventListener('click', () => {
   updateConfigPreview();
   document.getElementById('formView').style.display = 'block';
   document.getElementById('successBox').classList.remove('show');
+  showFormError('');
   modalOverlay.classList.add('open');
 });
 document.getElementById('closeModalBtn').addEventListener('click', () => modalOverlay.classList.remove('open'));
 document.getElementById('closeSuccessBtn').addEventListener('click', () => modalOverlay.classList.remove('open'));
 
-document.getElementById('submitBtn').addEventListener('click', () => {
+document.getElementById('privacyLink').href = CONFIG.privacyUrl;
+
+function showFormError(html) {
+  const el = document.getElementById('formError');
+  el.innerHTML = html;
+  el.classList.toggle('show', !!html);
+}
+
+function validateForm() {
+  const name = document.getElementById('fName');
+  const email = document.getElementById('fEmail');
+  const consent = document.getElementById('fConsent');
+  const problems = [];
+  name.classList.toggle('invalid', !name.value.trim());
+  if (!name.value.trim()) problems.push('Name');
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim());
+  email.classList.toggle('invalid', !emailOk);
+  if (!emailOk) problems.push('gültige E-Mail-Adresse');
+  consent.closest('.consent-row').classList.toggle('invalid', !consent.checked);
+  if (!consent.checked) problems.push('Einwilligung zum Datenschutz');
+  return problems;
+}
+
+function mailtoFallbackLink(payload) {
+  const body = encodeURIComponent(
+    `Name: ${payload.fields.name}\nFirma: ${payload.fields.company}\nE-Mail: ${payload.fields.email}\nTelefon: ${payload.fields.phone}\n\nNachricht:\n${payload.fields.message}\n\n--- Konfiguration ---\n${payload.konfiguration}`
+  );
+  return `mailto:${CONFIG.recipientEmail}?subject=${encodeURIComponent('LEDWALL Konfigurator Anfrage')}&body=${body}`;
+}
+
+const submitBtn = document.getElementById('submitBtn');
+submitBtn.addEventListener('click', async () => {
+  showFormError('');
+  const problems = validateForm();
+  if (problems.length) {
+    showFormError(`Bitte ergänzen: ${problems.join(', ')}.`);
+    return;
+  }
+
   const payload = {
     type: 'ledwall-konfigurator-anfrage',
     fields: {
-      name: document.getElementById('fName').value,
-      company: document.getElementById('fCompany').value,
-      email: document.getElementById('fEmail').value,
-      phone: document.getElementById('fPhone').value,
-      message: document.getElementById('fMessage').value
+      name: document.getElementById('fName').value.trim(),
+      company: document.getElementById('fCompany').value.trim(),
+      email: document.getElementById('fEmail').value.trim(),
+      phone: document.getElementById('fPhone').value.trim(),
+      message: document.getElementById('fMessage').value.trim()
     },
     hiddenFieldName: CONFIG.hiddenFieldName,
     konfiguration: buildConfigText()
   };
 
-  // 1) Wenn eingebettet: Nachricht an die übergeordnete Website-Seite senden.
-  //    Dort per window.addEventListener('message', ...) abfangen und den Wert
-  //    in das versteckte Feld (Name siehe CONFIG.hiddenFieldName) des echten
-  //    Kontaktformulars schreiben, danach normal absenden.
-  if (window.parent && window.parent !== window) {
-    window.parent.postMessage(payload, '*');
-  } else {
-    // 2) Fallback für Standalone-Aufruf (z.B. beim Testen): E-Mail-Entwurf öffnen.
-    const body = encodeURIComponent(
-      `Name: ${payload.fields.name}\nFirma: ${payload.fields.company}\nE-Mail: ${payload.fields.email}\nTelefon: ${payload.fields.phone}\n\nNachricht:\n${payload.fields.message}\n\n--- Konfiguration ---\n${payload.konfiguration}`
-    );
-    window.location.href = `mailto:?subject=${encodeURIComponent('LEDWALL Konfigurator Anfrage')}&body=${body}`;
+  // Spam-Bot hat das unsichtbare Feld ausgefüllt: so tun, als wäre alles gut.
+  if (document.getElementById('fHoney').value) {
+    document.getElementById('formView').style.display = 'none';
+    document.getElementById('successBox').classList.add('show');
+    return;
   }
 
-  document.getElementById('formView').style.display = 'none';
-  document.getElementById('successBox').classList.add('show');
+  // Wenn eingebettet, zusätzlich an die übergeordnete Seite melden
+  // (z.B. für Tracking). Der eigentliche Versand läuft unten per FormSubmit.
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage(payload, '*');
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Wird gesendet …';
+  try {
+    const res = await fetch(`https://formsubmit.co/ajax/${CONFIG.recipientEmail}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({
+        _subject: `LEDWALL Konfigurator Anfrage – ${payload.fields.name}${payload.fields.company ? ' (' + payload.fields.company + ')' : ''}`,
+        _replyto: payload.fields.email,
+        _template: 'box',
+        _captcha: 'false',
+        Name: payload.fields.name,
+        Firma: payload.fields.company || '–',
+        'E-Mail': payload.fields.email,
+        Telefon: payload.fields.phone || '–',
+        Nachricht: payload.fields.message || '–',
+        Konfiguration: payload.konfiguration
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || String(data.success) !== 'true') throw new Error(data.message || `HTTP ${res.status}`);
+
+    document.getElementById('formView').style.display = 'none';
+    document.getElementById('successBox').classList.add('show');
+  } catch (err) {
+    console.error('Anfrage konnte nicht gesendet werden:', err);
+    showFormError(`Die Anfrage konnte leider nicht gesendet werden. Bitte versuchen Sie es erneut oder schreiben Sie uns direkt per <a href="${mailtoFallbackLink(payload)}">E-Mail an ${CONFIG.recipientEmail}</a>.`);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Anfrage absenden';
+  }
 });
 
 /* --------------------------- INFO TOOLTIPS (i) ------------------------------ */
