@@ -32,22 +32,7 @@
     flex-shrink:0;
   }
   .brand{display:flex;align-items:center;gap:12px;}
-  .brand-mark{
-    width:30px;height:30px;border-radius:8px;
-    background:linear-gradient(135deg, var(--accent), #7a0048);
-    display:flex;align-items:center;justify-content:center;
-    font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;color:#fff;
-    box-shadow:0 0 18px var(--accent-dim);
-  }
-  .brand-text h1{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:600;margin:0;letter-spacing:.2px;}
-  .brand-text p{margin:0;font-size:11.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;letter-spacing:.3px;}
-  .mode-switch{display:flex;background:var(--panel-bg);border:1px solid var(--line);border-radius:999px;padding:3px;}
-  .mode-switch button{
-    border:none;background:transparent;color:var(--muted);font-family:'Space Grotesk',sans-serif;
-    font-size:13px;font-weight:600;padding:9px 20px;border-radius:999px;cursor:pointer;transition:.25s;
-  }
-  .mode-switch button.active{background:var(--accent);color:#fff;box-shadow:0 0 14px var(--accent-dim);}
-
+  .brand-text h1{font-family:'Inter',sans-serif;font-size:18px;font-weight:600;margin:0;letter-spacing:-.2px;}
   /* Main layout */
   .main{flex:1;display:grid;grid-template-columns:1fr 340px;min-height:0;}
   .viewer{position:relative;background:radial-gradient(ellipse at 50% 30%, #17171a 0%, #0a0a0b 70%);overflow:hidden;touch-action:none;}
@@ -109,6 +94,7 @@
     border-radius:10px;padding:10px 8px;font-size:12px;font-family:'Inter',sans-serif;font-weight:500;
     cursor:pointer;text-align:center;transition:.2s;line-height:1.35;
   }
+  .seg-large .seg-btn{font-size:15px;font-weight:600;padding:14px 8px;}
   .seg-btn .ico{display:block;font-size:16px;margin-bottom:4px;}
   .seg-btn:hover{border-color:#3a3a40;color:var(--white);}
   .seg-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 0 14px var(--accent-dim);}
@@ -117,7 +103,10 @@
   .stepper{display:flex;align-items:center;background:var(--panel-bg-2);border:1px solid var(--line);border-radius:10px;overflow:hidden;}
   .stepper button{background:none;border:none;color:var(--white);width:32px;height:36px;font-size:16px;cursor:pointer;}
   .stepper button:hover{background:var(--line);}
-  .stepper .val{width:62px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:13px;}
+  .stepper .val{width:62px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:13px;background:transparent;border:none;color:var(--white);padding:0;height:36px;}
+  .stepper .val{width:40px;text-align:right;padding-right:4px;}
+  .stepper .unit{width:22px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--white);}
+  .stepper .val:focus{outline:1px solid var(--accent);outline-offset:-1px;}
   .stepper-label{font-size:11.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
 
   select{
@@ -202,10 +191,7 @@
     .hud .eyebrow{font-size:9px;margin-bottom:8px;}
     .hud-row{font-size:11.5px;padding:2px 0;}
     header{padding:10px 14px;}
-    .brand-mark{width:26px;height:26px;font-size:12px;}
-    .brand-text h1{font-size:14px;}
-    .brand-text p{font-size:10px;}
-    .mode-switch button{padding:8px 14px;font-size:12px;}
+      .brand-text h1{font-size:14px;}
     .hint{display:none;}
 
     /* Größere Touch-Ziele */
@@ -223,9 +209,7 @@
   }
 
   @media (max-width: 480px){
-    .brand-text p{display:none;}
     header{gap:8px;}
-    .mode-switch button{padding:8px 11px;font-size:11.5px;}
     .main{grid-template-rows:42vh 1fr;grid-template-rows:42dvh 1fr;}
     .field{margin-bottom:18px;}
     .seg-btn{min-width:70px;}
@@ -243,15 +227,9 @@
 
   <header>
     <div class="brand">
-      <div class="brand-mark">LW</div>
       <div class="brand-text">
         <h1>LED-Wand Konfigurator</h1>
-        <p id="modeSubtitle">STARRE PANELS</p>
       </div>
-    </div>
-    <div class="mode-switch">
-      <button id="btnRigid" class="active">Starre Panels</button>
-      <button id="btnFlex">Flex Panels</button>
     </div>
   </header>
 
@@ -277,9 +255,9 @@
           <span class="title-text">Einsatzort</span>
           <span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Indoor- und Outdoor-Panels unterscheiden sich in Schutzklasse und Aufbau.</span></span>
         </div>
-        <div class="segmented" id="segLocation">
-          <div class="seg-btn active" data-val="indoor"><span class="ico">🏠</span>Indoor</div>
-          <div class="seg-btn" data-val="outdoor"><span class="ico">🌦</span>Outdoor</div>
+        <div class="segmented seg-large" id="segLocation">
+          <div class="seg-btn active" data-val="indoor">Indoor</div>
+          <div class="seg-btn" data-val="outdoor">Outdoor</div>
         </div>
       </div>
 
@@ -289,13 +267,13 @@
           <span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Modulgröße pro Einzelpanel. Das 1 × 0,5 m Panel ist ausschließlich hochkant montierbar.</span></span>
         </div>
         <div class="segmented" id="segPanelType">
-          <div class="seg-btn active" data-val="0.5x0.5">
-            <span class="ico-box"><svg viewBox="0 0 32 32" width="24" height="24"><rect x="6" y="6" width="20" height="20" rx="2" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span>
-            0,5 × 0,5 m
-          </div>
-          <div class="seg-btn" data-val="1x0.5">
+          <div class="seg-btn active" data-val="1x0.5">
             <span class="ico-box"><svg viewBox="0 0 32 32" width="16" height="30"><rect x="9" y="2" width="14" height="28" rx="2" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span>
             0,5 × 1 m
+          </div>
+          <div class="seg-btn" data-val="0.5x0.5">
+            <span class="ico-box"><svg viewBox="0 0 32 32" width="24" height="24"><rect x="6" y="6" width="20" height="20" rx="2" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span>
+            0,5 × 0,5 m
           </div>
         </div>
       </div>
@@ -313,46 +291,41 @@
       </div>
 
       <div class="field">
-        <div class="title-row"><span class="title-text">Größe der Wand</span></div>
+        <div class="title-row">
+          <span class="title-text">Größe der Wand</span>
+          <span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Mit + / – oder direkt eintippen. Die Größe wird auf ganze Panels gerundet.</span></span>
+        </div>
         <div class="stepper-row" style="margin-bottom:10px;">
           <div class="stepper-label" style="width:60px;">Breite</div>
           <div class="stepper">
             <button id="colsMinus">–</button>
-            <div class="val" id="colsVal">4,0 m</div>
+            <input class="val" id="colsVal" type="text" inputmode="decimal" aria-label="Breite in Metern" value="5,0"><span class="unit">m</span>
             <button id="colsPlus">+</button>
           </div>
-          <div class="stepper-label" id="colsPanelsLabel">(8 Panels)</div>
+          <div class="stepper-label" id="colsPanelsLabel">(10 Panels)</div>
         </div>
         <div class="stepper-row">
           <div class="stepper-label" style="width:60px;">Höhe</div>
           <div class="stepper">
             <button id="rowsMinus">–</button>
-            <div class="val" id="rowsVal">2,5 m</div>
+            <input class="val" id="rowsVal" type="text" inputmode="decimal" aria-label="Höhe in Metern" value="3,0"><span class="unit">m</span>
             <button id="rowsPlus">+</button>
           </div>
-          <div class="stepper-label" id="rowsPanelsLabel">(5 Panels)</div>
+          <div class="stepper-label" id="rowsPanelsLabel">(3 Panels)</div>
         </div>
-      </div>
-
-      <div class="field" id="bendField" style="display:none;">
-        <div class="title-row">
-          <span class="title-text">Biegung</span>
-          <span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Nur bei Flex Panels möglich – konkav oder konvex.</span></span>
-        </div>
-        <input type="range" id="bendRange" min="-40" max="40" value="0" step="1">
-        <div class="range-labels"><span>konkav</span><span>gerade</span><span>konvex</span></div>
       </div>
 
       <div class="field">
         <div class="title-row">
           <span class="title-text">Pixel Pitch</span>
-          <span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Abstand zwischen zwei LED-Pixeln in mm. Kleinerer Wert = mehr Pixel pro m² und höhere Auflösung, geeignet für kurze Betrachtungsabstände. Größerer Wert = weniger Pixel, für größere Abstände ausreichend.</span></span>
+          <span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Abstand zwischen zwei LED-Pixeln in mm. Kleinerer Wert = mehr Pixel pro m² und höhere Auflösung, geeignet für kurze Betrachtungsabstände. Größerer Wert = weniger Pixel, für größere Abstände ausreichend. Die Vorschau zeigt die Pixel maßstabsgetreu – zum Vergleichen nah heranzoomen.</span></span>
         </div>
         <select id="pitchSelect">
+          <option value="1.5">P1.5</option>
+          <option value="2">P2</option>
           <option value="2.6">P2.6</option>
           <option value="2.9" selected>P2.9</option>
-          <option value="3.6">P3.6</option>
-          <option value="4.8">P4.8</option>
+          <option value="3.9">P3.9</option>
         </select>
       </div>
 
@@ -368,11 +341,19 @@
 
       <div class="field">
         <div class="switch-row">
-          <div class="txt">Figur anzeigen<span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Blendet die Dummy-Figur am empfohlenen Betrachtungsabstand ein/aus.</span></span></div>
+          <div class="txt">Figur anzeigen<span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Zeigt eine Person zum Größenvergleich. Den Abstand zur Wand stellen Sie darunter ein – voreingestellt ist der empfohlene Betrachtungsabstand.</span></span></div>
           <label class="switch">
             <input type="checkbox" id="dummyToggle" checked>
             <span class="slider-toggle"></span>
           </label>
+        </div>
+        <div id="distField" style="margin-top:12px;">
+          <div class="stepper-row" style="justify-content:space-between;margin-bottom:6px;">
+            <div class="stepper-label">Abstand zur Wand</div>
+            <div class="stepper-label" style="color:var(--white);" id="distVal">3,5 m</div>
+          </div>
+          <input type="range" id="distRange" min="1" max="15" step="0.5" value="3.5" aria-label="Abstand der Figur zur Wand">
+          <div class="range-labels"><span>1 m</span><span id="distHint">Empfohlen: 3,5 m</span><span>15 m</span></div>
         </div>
       </div>
 
@@ -387,7 +368,7 @@
       </div>
 
       <div class="cta-wrap">
-        <button class="cta" id="openModalBtn">Preis freischalten</button>
+        <button class="cta" id="openModalBtn">Angebot anfordern</button>
       </div>
 
     </aside>
@@ -456,17 +437,16 @@ const CONFIG = {
 };
 
 const state = {
-  mode: 'rigid',        // 'rigid' | 'flex'
   location: 'indoor',   // 'indoor' | 'outdoor'
-  panelType: '0.5x0.5', // '0.5x0.5' | '1x0.5'
+  panelType: '1x0.5',   // '1x0.5' (Standard) | '0.5x0.5'
   mount: 'truss',       // 'truss' | 'wall' | 'floor'
-  cols: 8,
-  rows: 5,
-  bend: 0,
+  cols: 10,             // 10 × 0,5 m = 5 m Breite
+  rows: 3,              // 3 × 1 m = 3 m Höhe
   pitch: 2.9,
   gob: false,
   showEdges: true,
-  showDummy: true
+  showDummy: true,
+  personDist: 3.5       // Abstand Figur ↔ Wand in m (folgt dem Pitch-Richtwert, bis man ihn verstellt)
 };
 
 function getPanelDims() {
@@ -551,7 +531,7 @@ window.addEventListener('pointermove', (e) => {
   if (activePointers.size === 2 && pinchStartDist) {
     const dist = pinchDistance();
     const scale = pinchStartDist / dist;
-    orbit.radius = Math.min(Math.max(pinchStartRadius * scale, 4), 22);
+    orbit.radius = Math.min(Math.max(pinchStartRadius * scale, 1.2), 22);
     return;
   }
   if (!isDragging) return;
@@ -562,7 +542,7 @@ window.addEventListener('pointermove', (e) => {
 });
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
-  orbit.radius = Math.min(Math.max(orbit.radius + e.deltaY * 0.01, 4), 22);
+  orbit.radius = Math.min(Math.max(orbit.radius + e.deltaY * 0.01 * Math.max(orbit.radius / 8, 0.25), 1.2), 22);
 }, { passive: false });
 
 function updateCamera() {
@@ -575,34 +555,49 @@ function updateCamera() {
 
 /* ------------------------------ LED TEXTURE ------------------------------ */
 
-function makeLedTexture() {
-  const size = 128;
+// Eine Textur-Kachel entspricht 0,5 × 0,5 m Wandfläche und enthält so viele
+// LED-Punkte, wie ein echtes Panel mit diesem Pitch hat (500 mm / Pitch).
+const TILE_M = 0.5;
+const ledTextureCache = {};
+const maxAnisotropy = renderer.capabilities.getMaxAnisotropy();
+function makeLedTexture(pitchMm) {
+  if (ledTextureCache[pitchMm]) return ledTextureCache[pitchMm];
+  const dotsPerSide = Math.round((TILE_M * 1000) / pitchMm);
+  const size = 2048;
+  const step = size / dotsPerSide;
   const cnv = document.createElement('canvas');
   cnv.width = cnv.height = size;
   const ctx = cnv.getContext('2d');
   ctx.fillStyle = '#08080a';
   ctx.fillRect(0, 0, size, size);
-  const dotsPerSide = 16;
-  const step = size / dotsPerSide;
+
+  // Einen LED-Punkt einmal zeichnen und dann stempeln (schneller als je ein Gradient).
+  const dotPx = Math.max(2, Math.ceil(step));
+  const dot = document.createElement('canvas');
+  dot.width = dot.height = dotPx;
+  const dctx = dot.getContext('2d');
+  const r = dotPx * 0.42;
+  const grad = dctx.createRadialGradient(dotPx / 2, dotPx / 2, 0, dotPx / 2, dotPx / 2, r);
+  grad.addColorStop(0, 'rgba(235,235,245,0.95)');
+  grad.addColorStop(1, 'rgba(10,10,12,0)');
+  dctx.fillStyle = grad;
+  dctx.beginPath();
+  dctx.arc(dotPx / 2, dotPx / 2, r, 0, Math.PI * 2);
+  dctx.fill();
+
   for (let y = 0; y < dotsPerSide; y++) {
     for (let x = 0; x < dotsPerSide; x++) {
-      const cx = x * step + step / 2;
-      const cy = y * step + step / 2;
-      const b = 60 + Math.random() * 40;
-      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, step * 0.42);
-      grad.addColorStop(0, `rgba(${b + 140},${b + 140},${b + 150},0.9)`);
-      grad.addColorStop(1, 'rgba(10,10,12,0)');
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(cx, cy, step * 0.42, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.globalAlpha = 0.7 + Math.random() * 0.3;
+      ctx.drawImage(dot, x * step + (step - dotPx) / 2, y * step + (step - dotPx) / 2);
     }
   }
+  ctx.globalAlpha = 1;
   const tex = new THREE.CanvasTexture(cnv);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = maxAnisotropy;
+  ledTextureCache[pitchMm] = tex;
   return tex;
 }
-const ledTexture = makeLedTexture();
 
 function makeSweepTexture() {
   const w = 256, h = 32;
@@ -661,7 +656,7 @@ function buildWallMeshes() {
   const cols = state.cols, rows = state.rows;
   const totalWidth = cols * panelW;
   const totalHeight = rows * panelH;
-  const bend = state.mode === 'flex' ? state.bend : 0;
+  const bend = 0; // nur starre Panels
   const thickness = 0.09;
 
   const segX = cols, segY = rows;
@@ -708,8 +703,8 @@ function buildWallMeshes() {
   backGeo.setIndex(backIndices);
   backGeo.computeVertexNormals();
 
-  ledTexture.repeat.set(cols, rows);
-  ledTexture.needsUpdate = true;
+  const ledTexture = makeLedTexture(state.pitch);
+  ledTexture.repeat.set(totalWidth / TILE_M, totalHeight / TILE_M);
 
   ledMaterial = new THREE.MeshStandardMaterial({
     map: ledTexture,
@@ -947,7 +942,7 @@ function makeLabelSprite(text) {
   roundRect(ctx, 4, 20, 248, 56, 14);
   ctx.stroke();
   ctx.fillStyle = '#ffffff';
-  ctx.font = '600 30px "JetBrains Mono", monospace';
+  ctx.font = '600 30px "Inter", sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, 128, 50);
@@ -968,119 +963,123 @@ function roundRect(ctx, x, y, w, h, r) {
 }
 
 function buildDummyFigure() {
+  // Stilisierte Person, ca. 1,78 m groß (Hemd, Hose, Schuhe, Haut, Haare).
   const g = new THREE.Group();
-  const yellow = new THREE.MeshStandardMaterial({ color: 0xffb400, roughness: 0.35, metalness: 0.08 });
-  const black = new THREE.MeshStandardMaterial({ color: 0x121214, roughness: 0.4, metalness: 0.15 });
+  const mat = (color, rough = 0.8) => new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: 0 });
+  const shirt = mat(0x9aa4b0);
+  const pants = mat(0x2d3542);
+  const skin = mat(0xc99a7c, 0.7);
+  const hair = mat(0x2b2018, 0.9);
+  const shoe = mat(0x161616, 0.5);
+  const mesh = (geo, m) => new THREE.Mesh(geo, m);
 
-  const mesh = (geo, mat) => new THREE.Mesh(geo, mat);
-
-  // --- Rumpf (bottom-up) ---
-  const hipY = 0.90;
-  const hipBlockH = 0.18;
-  const waistJointH = 0.05;
-  const chestH = 0.35;
-  const neckJointH = 0.05;
-  const headR = 0.11;
-
-  // Hüfte / Slip
-  const hip = mesh(new THREE.BoxGeometry(0.30, hipBlockH, 0.20), yellow);
-  hip.position.set(0, hipY + hipBlockH / 2, 0);
-  g.add(hip);
-  const brief = mesh(new THREE.BoxGeometry(0.31, hipBlockH * 0.55, 0.10), black);
-  brief.position.set(0, hipY + hipBlockH * 0.3, -0.06);
-  g.add(brief);
-
-  // Taillengelenk
-  const waistTop = hipY + hipBlockH;
-  const waist = mesh(new THREE.CylinderGeometry(0.10, 0.11, waistJointH, 16), black);
-  waist.position.set(0, waistTop + waistJointH / 2, 0);
-  g.add(waist);
-
-  // Brust
-  const chestBottom = waistTop + waistJointH;
-  const chest = mesh(new THREE.CylinderGeometry(0.165, 0.135, chestH, 16), yellow);
-  chest.position.set(0, chestBottom + chestH / 2, 0);
-  g.add(chest);
-  // Bauch-Kontrast (Sixpack-Andeutung wie beim Vorbild)
-  const abPanel = mesh(new THREE.BoxGeometry(0.14, chestH * 0.55, 0.03), black);
-  abPanel.position.set(0, chestBottom + chestH * 0.28, 0.145);
-  g.add(abPanel);
-
-  // Halsgelenk + Kopf
-  const chestTop = chestBottom + chestH;
-  const neck = mesh(new THREE.CylinderGeometry(0.045, 0.05, neckJointH, 12), black);
-  neck.position.set(0, chestTop + neckJointH / 2, 0);
-  g.add(neck);
-  const head = mesh(new THREE.SphereGeometry(headR, 20, 20), yellow);
-  head.position.set(0, chestTop + neckJointH + headR, 0);
-  g.add(head);
-
-  // --- Arme ---
-  function buildArm(side) {
-    const ag = new THREE.Group();
-    const upperLen = 0.28, foreLen = 0.24;
-    const shoulder = mesh(new THREE.SphereGeometry(0.07, 12, 12), black);
-    ag.add(shoulder);
-    const upper = mesh(new THREE.CylinderGeometry(0.045, 0.05, upperLen, 12), yellow);
-    upper.position.y = -upperLen / 2 - 0.04;
-    ag.add(upper);
-    const elbow = mesh(new THREE.SphereGeometry(0.05, 12, 12), black);
-    elbow.position.y = -upperLen - 0.04;
-    ag.add(elbow);
-    const fore = mesh(new THREE.CylinderGeometry(0.038, 0.045, foreLen, 12), yellow);
-    fore.position.y = -upperLen - foreLen / 2 - 0.04;
-    ag.add(fore);
-    const wrist = mesh(new THREE.SphereGeometry(0.038, 10, 10), black);
-    wrist.position.y = -upperLen - foreLen - 0.04;
-    ag.add(wrist);
-    const hand = mesh(new THREE.BoxGeometry(0.07, 0.09, 0.05), yellow);
-    hand.position.y = -upperLen - foreLen - 0.09;
-    ag.add(hand);
-    ag.rotation.z = side * -0.16;
-    return ag;
-  }
-  const shoulderY = chestTop - 0.05;
-  const shoulderX = 0.225;
-  const rightArm = buildArm(1); rightArm.position.set(shoulderX, shoulderY, 0); g.add(rightArm);
-  const leftArm = buildArm(-1); leftArm.position.set(-shoulderX, shoulderY, 0); g.add(leftArm);
-
-  // --- Beine ---
-  function buildLeg() {
+  // Gegliedertes Körperteil: Zylinder von a nach b mit abgerundeten Enden
+  function limb(len, rTop, rBottom, m) {
     const lg = new THREE.Group();
-    const upperLen = 0.42, lowerLen = 0.42;
-    const upper = mesh(new THREE.CylinderGeometry(0.075, 0.08, upperLen, 12), yellow);
-    upper.position.y = -upperLen / 2;
-    lg.add(upper);
-    const knee = mesh(new THREE.SphereGeometry(0.075, 12, 12), black);
-    knee.position.y = -upperLen;
-    lg.add(knee);
-    const lower = mesh(new THREE.CylinderGeometry(0.06, 0.07, lowerLen, 12), yellow);
-    lower.position.y = -upperLen - lowerLen / 2;
-    lg.add(lower);
-    const ankle = mesh(new THREE.SphereGeometry(0.055, 10, 10), black);
-    ankle.position.y = -upperLen - lowerLen;
-    lg.add(ankle);
-    const foot = mesh(new THREE.BoxGeometry(0.10, 0.06, 0.24), yellow);
-    foot.position.set(0, -upperLen - lowerLen - 0.03, 0.07);
-    lg.add(foot);
+    const c = mesh(new THREE.CylinderGeometry(rTop, rBottom, len, 16), m);
+    c.position.y = -len / 2;
+    lg.add(c);
+    const top = mesh(new THREE.SphereGeometry(rTop, 16, 12), m);
+    lg.add(top);
+    const bottom = mesh(new THREE.SphereGeometry(rBottom, 16, 12), m);
+    bottom.position.y = -len;
+    lg.add(bottom);
     return lg;
   }
-  const rightLeg = buildLeg(); rightLeg.position.set(0.11, hipY, 0); g.add(rightLeg);
-  const leftLeg = buildLeg(); leftLeg.position.set(-0.11, hipY, 0); g.add(leftLeg);
+
+  // --- Beine & Schuhe ---
+  const hipY = 0.93;
+  [-1, 1].forEach((side) => {
+    const thigh = limb(0.43, 0.085, 0.062, pants);
+    thigh.position.set(side * 0.095, hipY, 0);
+    g.add(thigh);
+    const shin = limb(0.40, 0.06, 0.048, pants);
+    shin.position.set(side * 0.095, hipY - 0.43, 0);
+    g.add(shin);
+    const foot = mesh(new THREE.BoxGeometry(0.10, 0.07, 0.26), shoe);
+    foot.position.set(side * 0.095, 0.035, 0.05);
+    g.add(foot);
+    const toe = mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.07, 16), shoe);
+    toe.position.set(side * 0.095, 0.035, 0.18);
+    g.add(toe);
+  });
+
+  // Becken
+  const pelvis = mesh(new THREE.CylinderGeometry(0.165, 0.15, 0.16, 20), pants);
+  pelvis.scale.z = 0.65;
+  pelvis.position.y = hipY + 0.03;
+  g.add(pelvis);
+
+  // --- Oberkörper als gedrehtes Profil (Taille → Brust → Schultern → Hals) ---
+  const profile = [
+    [0.150, 0.00], [0.148, 0.08], [0.160, 0.22], [0.182, 0.36],
+    [0.190, 0.44], [0.170, 0.50], [0.110, 0.54], [0.055, 0.56], [0.0, 0.56]
+  ].map(([r, y]) => new THREE.Vector2(r, y));
+  const torso = mesh(new THREE.LatheGeometry(profile, 28), shirt);
+  torso.scale.z = 0.6;
+  torso.position.y = hipY + 0.06;
+  g.add(torso);
+  const shoulderY = hipY + 0.06 + 0.46;
+
+  // Hals & Kopf
+  const neck = mesh(new THREE.CylinderGeometry(0.048, 0.052, 0.10, 14), skin);
+  neck.position.y = shoulderY + 0.10;
+  g.add(neck);
+  const headY = shoulderY + 0.24;
+  const head = mesh(new THREE.SphereGeometry(0.1, 24, 20), skin);
+  head.scale.set(0.9, 1.15, 1.0);
+  head.position.y = headY;
+  g.add(head);
+  const hairCap = mesh(new THREE.SphereGeometry(0.106, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.55), hair);
+  hairCap.scale.set(0.92, 1.12, 1.04);
+  hairCap.position.set(0, headY + 0.01, -0.006);
+  hairCap.rotation.x = 0.4; // Haaransatz vorne höher, hinten tiefer
+  g.add(hairCap);
+  [-1, 1].forEach((side) => {
+    const ear = mesh(new THREE.SphereGeometry(0.022, 10, 8), skin);
+    ear.scale.set(0.5, 1, 0.8);
+    ear.position.set(side * 0.09, headY, 0);
+    g.add(ear);
+  });
+  const nose = mesh(new THREE.SphereGeometry(0.018, 10, 8), skin);
+  nose.scale.set(0.8, 1, 1.2);
+  nose.position.set(0, headY - 0.01, 0.1);
+  g.add(nose);
+
+  // --- Arme (leicht angewinkelt, Ärmel lang, Hände hautfarben) ---
+  [-1, 1].forEach((side) => {
+    const arm = new THREE.Group();
+    const upper = limb(0.29, 0.058, 0.046, shirt);
+    arm.add(upper);
+    const foreGroup = new THREE.Group();
+    foreGroup.position.y = -0.29;
+    foreGroup.rotation.x = -0.18; // Ellbogen leicht gebeugt
+    const fore = limb(0.26, 0.045, 0.036, shirt);
+    foreGroup.add(fore);
+    const hand = mesh(new THREE.SphereGeometry(0.045, 14, 12), skin);
+    hand.scale.set(0.6, 1.5, 0.95);
+    hand.position.y = -0.33;
+    foreGroup.add(hand);
+    arm.add(foreGroup);
+    arm.position.set(side * 0.205, shoulderY - 0.02, 0);
+    arm.rotation.z = side * 0.09;
+    g.add(arm);
+  });
 
   return g;
 }
 
 function viewingDistanceForPitch(pitchMm) {
   // Vom Kunden vorgegebene Richtwerte für den empfohlenen Mindestabstand.
-  const table = { 2.6: 3, 2.9: 3.5, 3.6: 4.5, 4.8: 6 };
+  // 1,5 / 2 / 3,9 sind daraus abgeleitet (ca. 1,2–1,3 m pro mm Pitch).
+  const table = { 1.5: 2, 2: 2.5, 2.6: 3, 2.9: 3.5, 3.9: 5 };
   return table[pitchMm] ?? pitchMm;
 }
 
 function buildDistanceIndicator(dims) {
   distanceGroup.clear();
   const wallFrontZ = 0; // Vorderseite der Wand liegt näherungsweise bei z=0 (siehe curvedPoint)
-  const dist = viewingDistanceForPitch(state.pitch);
+  const dist = state.personDist;
 
   // Boden-Linie mit Endmarkierungen (seitlich versetzt, damit sie den Dummy nicht verdeckt)
   const lineX = -1.1;
@@ -1103,12 +1102,13 @@ function buildDistanceIndicator(dims) {
   label.position.set(lineX, 0.55, wallFrontZ + dist / 2);
   distanceGroup.add(label);
 
-  // Dummy-Figur mittig vor der Wand, am empfohlenen Betrachtungsabstand, mit Blick zur Wand
+  // Figur mittig vor der Wand im eingestellten Abstand, mit Blick zur Wand
   const person = buildDummyFigure();
   person.position.set(0, 0, wallFrontZ + dist);
   person.rotation.y = Math.PI;
   person.visible = state.showDummy;
   distanceGroup.add(person);
+  [...distanceGroup.children].forEach((c) => { if (c !== person) c.visible = state.showDummy; });
 
   return dist;
 }
@@ -1175,24 +1175,6 @@ function setActive(container, value, attr = 'data-val') {
   });
 }
 
-document.getElementById('btnRigid').addEventListener('click', () => {
-  state.mode = 'rigid'; state.bend = 0;
-  document.getElementById('btnRigid').classList.add('active');
-  document.getElementById('btnFlex').classList.remove('active');
-  document.getElementById('modeSubtitle').textContent = 'STARRE PANELS';
-  document.getElementById('bendField').style.display = 'none';
-  document.getElementById('bendRange').value = 0;
-  rebuild();
-});
-document.getElementById('btnFlex').addEventListener('click', () => {
-  state.mode = 'flex';
-  document.getElementById('btnFlex').classList.add('active');
-  document.getElementById('btnRigid').classList.remove('active');
-  document.getElementById('modeSubtitle').textContent = 'FLEX PANELS';
-  document.getElementById('bendField').style.display = 'block';
-  rebuild();
-});
-
 function updateGobVisibility() {
   const gobField = document.getElementById('gobField');
   const isIndoor = state.location === 'indoor';
@@ -1231,6 +1213,18 @@ document.getElementById('edgesToggle').addEventListener('change', (e) => {
 });
 document.getElementById('dummyToggle').addEventListener('change', (e) => {
   state.showDummy = e.target.checked;
+  document.getElementById('distField').style.display = state.showDummy ? 'block' : 'none';
+  rebuild();
+});
+
+function updateDistDisplay() {
+  document.getElementById('distRange').value = state.personDist;
+  document.getElementById('distVal').textContent = `${fmtM(state.personDist)} m`;
+  document.getElementById('distHint').textContent = `Empfohlen: ${fmtM(viewingDistanceForPitch(state.pitch))} m`;
+}
+document.getElementById('distRange').addEventListener('input', (e) => {
+  state.personDist = parseFloat(e.target.value);
+  updateDistDisplay();
   rebuild();
 });
 document.getElementById('segMount').addEventListener('click', (e) => {
@@ -1243,13 +1237,37 @@ document.getElementById('segMount').addEventListener('click', (e) => {
 function clamp(v, min, max) { return Math.min(Math.max(v, min), max); }
 function fmtM(v) { return v.toFixed(1).replace('.', ','); }
 
+const LIMITS = { cols: [2, 40], rows: [2, 20] };
+
 function updateSizeDisplay() {
   const { panelW, panelH } = getPanelDims();
-  document.getElementById('colsVal').textContent = `${fmtM(state.cols * panelW)} m`;
+  const colsInput = document.getElementById('colsVal');
+  const rowsInput = document.getElementById('rowsVal');
+  // Während der Eingabe nicht überschreiben
+  if (document.activeElement !== colsInput) colsInput.value = fmtM(state.cols * panelW);
+  if (document.activeElement !== rowsInput) rowsInput.value = fmtM(state.rows * panelH);
   document.getElementById('colsPanelsLabel').textContent = `(${state.cols} Panels)`;
-  document.getElementById('rowsVal').textContent = `${fmtM(state.rows * panelH)} m`;
   document.getElementById('rowsPanelsLabel').textContent = `(${state.rows} Panels)`;
 }
+
+// Eingetippte Meter auf ganze Panels runden (Komma oder Punkt erlaubt).
+function applySizeInput(input, key) {
+  const { panelW, panelH } = getPanelDims();
+  const unit = key === 'cols' ? panelW : panelH;
+  const meters = parseFloat(String(input.value).replace(',', '.').replace(/[^0-9.]/g, ''));
+  if (!isNaN(meters) && meters > 0) {
+    state[key] = clamp(Math.round(meters / unit), LIMITS[key][0], LIMITS[key][1]);
+  }
+  input.blur();
+  updateSizeDisplay();
+  rebuild();
+}
+[['colsVal', 'cols'], ['rowsVal', 'rows']].forEach(([id, key]) => {
+  const input = document.getElementById(id);
+  input.addEventListener('focus', () => input.select());
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') applySizeInput(input, key); });
+  input.addEventListener('change', () => applySizeInput(input, key));
+});
 
 document.getElementById('colsMinus').addEventListener('click', () => {
   state.cols = clamp(state.cols - 1, 2, 40);
@@ -1272,12 +1290,11 @@ document.getElementById('rowsPlus').addEventListener('click', () => {
   rebuild();
 });
 
-document.getElementById('bendRange').addEventListener('input', (e) => {
-  state.bend = parseFloat(e.target.value);
-  rebuild();
-});
 document.getElementById('pitchSelect').addEventListener('change', (e) => {
   state.pitch = parseFloat(e.target.value);
+  // Figur springt auf den neuen empfohlenen Abstand; danach frei verstellbar.
+  state.personDist = viewingDistanceForPitch(state.pitch);
+  updateDistDisplay();
   rebuild();
 });
 document.getElementById('gobToggle').addEventListener('change', (e) => {
@@ -1295,10 +1312,8 @@ function buildConfigText() {
   const w = CONFIG.weightPerPanel[state.panelType][state.location];
   const totalWeight = Math.round(panelCount * w);
   const mountLabel = { truss: 'Hängend an Traverse (Hanging Bars)', wall: 'Feststehend / schwebend an der Wand', floor: 'Auf dem Boden (Standfuß)' }[state.mount];
-  const modeLabel = state.mode === 'rigid' ? 'Starre Panels' : 'Flex Panels';
 
   const lines = [
-    `Konfigurator-Typ: ${modeLabel}`,
     `Einsatzort: ${state.location === 'indoor' ? 'Indoor' : 'Outdoor'}`,
     `Panel-Typ: ${state.panelType === '1x0.5' ? '0,5 × 1 m (hochkant)' : '0,5 × 0,5 m'}`,
     `Wandgröße: ${state.cols} × ${state.rows} Panels (${totalWidth} × ${totalHeight} m)`,
@@ -1308,10 +1323,8 @@ function buildConfigText() {
     `Empf. Betrachtungsabstand ca.: ${viewingDistanceForPitch(state.pitch).toFixed(1)} m`,
     `Aufbauart: ${mountLabel}`,
     `GOB-Beschichtung: ${state.gob ? 'Ja' : 'Nein'}`,
-    `Panel-Kanten sichtbar: ${state.showEdges ? 'Ja' : 'Nein'}`,
     `Gewicht ca.: ${totalWeight} kg`
   ];
-  if (state.mode === 'flex') lines.push(`Biegung: ${state.bend}° (${state.bend === 0 ? 'gerade' : state.bend > 0 ? 'konvex' : 'konkav'})`);
   return lines.join('\n');
 }
 
@@ -1450,6 +1463,8 @@ document.addEventListener('click', () => {
 
 resize();
 updateGobVisibility();
+state.personDist = viewingDistanceForPitch(state.pitch);
+updateDistDisplay();
 rebuild();
 animate();
 </script>
