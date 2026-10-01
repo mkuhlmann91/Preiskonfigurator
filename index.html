@@ -25,15 +25,7 @@
   .app{display:flex;flex-direction:column;height:100vh;height:100dvh;width:100vw;}
 
   /* Titel oben links im 3D-Bereich */
-  .viewer::before{
-    content:"";position:absolute;left:0;right:0;top:0;height:110px;z-index:1;pointer-events:none;
-    background:linear-gradient(180deg, rgba(10,10,11,.85), rgba(10,10,11,0));
-  }
-  .view-title{
-    position:absolute;top:18px;left:20px;margin:0;z-index:2;pointer-events:none;
-    font-family:'Inter',sans-serif;font-size:21px;font-weight:700;letter-spacing:-.3px;
-    color:var(--accent);text-shadow:0 2px 14px rgba(0,0,0,.6);
-  }
+  .hud-title{margin:0 0 10px;font-family:'Inter',sans-serif;font-size:19px;font-weight:700;letter-spacing:-.3px;color:var(--accent);white-space:nowrap;}
   /* Main layout */
   .main{flex:1;display:grid;grid-template-columns:1fr 340px;min-height:0;}
   .left{display:flex;flex-direction:column;min-height:0;min-width:0;}
@@ -49,7 +41,7 @@
 
   /* HUD */
   .hud{
-    position:absolute;top:58px;left:20px;z-index:2;
+    position:absolute;top:20px;left:20px;z-index:2;
     background:rgba(20,20,22,.55);backdrop-filter:blur(10px);
     border:1px solid var(--line);border-radius:var(--radius);
     padding:16px 18px;min-width:210px;
@@ -208,8 +200,8 @@
   @media (max-width: 860px){
     .main{grid-template-columns:1fr;grid-template-rows:48vh 1fr;grid-template-rows:48dvh 1fr;}
     .panel{border-left:none;border-top:1px solid var(--line);padding:18px 16px 16px;}
-    .view-title{top:10px;left:12px;font-size:16px;}
-    .hud{top:38px;left:10px;min-width:150px;padding:10px 12px;}
+    .hud{top:10px;left:10px;min-width:150px;padding:10px 12px;}
+    .hud-title{font-size:15px;margin-bottom:6px;}
     .hud .eyebrow{font-size:9px;margin-bottom:8px;}
     .hud-row{font-size:11.5px;padding:2px 0;}
     .hud .eyebrow{cursor:pointer;}
@@ -256,8 +248,8 @@
 
     <div class="viewer">
       <canvas id="c"></canvas>
-      <h1 class="view-title">LEDWALL Konfigurator</h1>
       <div class="hud collapsed" id="hud">
+        <h1 class="hud-title">LEDWALL Konfigurator</h1>
         <button type="button" class="eyebrow" id="hudToggle" aria-expanded="false">
           <span>Konfiguration</span><span class="hud-summary" id="hudSummary"></span><span class="hud-chevron">▾</span>
         </button>
@@ -385,7 +377,7 @@
 
       <div class="field">
         <div class="switch-row">
-          <div class="txt">Pixli anzeigen<span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Zeigt Pixli (ca. 1,75 m) zum Größenvergleich. Stellen Sie ein, wie weit Ihre Zuschauer von der Wand entfernt stehen – wir empfehlen dazu den passenden Pixel Pitch.</span></span></div>
+          <div class="txt">Figur anzeigen<span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Zeigt eine Person (ca. 1,78 m) zum Größenvergleich. Stellen Sie ein, wie weit Ihre Zuschauer von der Wand entfernt stehen – wir empfehlen dazu den passenden Pixel Pitch.</span></span></div>
           <label class="switch">
             <input type="checkbox" id="dummyToggle" checked>
             <span class="slider-toggle"></span>
@@ -396,7 +388,7 @@
             <div class="stepper-label">Abstand zur Wand</div>
             <div class="stepper-label" style="color:var(--white);" id="distVal">3,5 m</div>
           </div>
-          <input type="range" id="distRange" min="1" max="15" step="0.5" value="3.5" aria-label="Abstand von Pixli zur Wand">
+          <input type="range" id="distRange" min="1" max="15" step="0.5" value="3.5" aria-label="Abstand der Figur zur Wand">
           <div class="range-labels"><span>1 m</span><span>15 m</span></div>
           <div class="pitch-reco" id="pitchReco">
             <span id="pitchRecoText">Für 3,5 m empfehlen wir P2.9</span>
@@ -823,6 +815,25 @@ function syncLogoVideo() {
 // Manche Mobilbrowser starten Videos erst nach der ersten Berührung
 document.addEventListener('pointerdown', syncLogoVideo, { once: true });
 
+// Pinker Verlauf mit langsam rotierenden Lichtstrahlen (Werbung und Logo)
+function promoBackground(ctx, W, H, t) {
+  const sway = 0.5 + 0.5 * Math.sin(t * 0.3);
+  const bg = ctx.createLinearGradient(W * (0.2 * sway), 0, W, H);
+  bg.addColorStop(0, '#e7007f');
+  bg.addColorStop(1, '#5a0032');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+  ctx.save();
+  ctx.translate(W / 2, H * 0.45);
+  ctx.rotate(t * 0.08);
+  ctx.fillStyle = 'rgba(255,255,255,0.07)';
+  for (let i = 0; i < 12; i++) {
+    ctx.rotate(Math.PI / 6);
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(W, -W * 0.12); ctx.lineTo(W, W * 0.12); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+
 const motifs = {
   // Kräftiges Pink (LEDWALL 360) mit weichen, langsam wandernden Lichtflächen
   pink(ctx, W, H, t) {
@@ -862,14 +873,18 @@ const motifs = {
   },
 
   // Pinker Hintergrund mit dem LEDWALL-360-Logo (Video) darüber
+  // Bewegter Werbungs-Hintergrund mit schwebendem LEDWALL-360-Logo
   logo(ctx, W, H, t) {
-    motifs.pink(ctx, W, H, t);
+    promoBackground(ctx, W, H, t);
     const v = logoVideo;
     if (v.readyState < 2 || !v.videoWidth) return;
-    const scale = Math.min((W * 0.8) / v.videoWidth, (H * 0.8) / v.videoHeight);
+    const pulse = 1 + 0.05 * Math.sin(t * 0.5);
+    const scale = Math.min((W * 0.72) / v.videoWidth, (H * 0.72) / v.videoHeight) * pulse;
     const dw = v.videoWidth * scale, dh = v.videoHeight * scale;
+    const cx = W / 2 + Math.sin(t * 0.35) * W * 0.05;
+    const cy = H / 2 + Math.sin(t * 0.55 + 1) * H * 0.06;
     // dunklere Zone hinter dem Logo, damit die pinke "360" nicht im Hintergrund verschwindet
-    const shade = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(dw, dh) * 0.62);
+    const shade = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(dw, dh) * 0.62);
     shade.addColorStop(0, 'rgba(14,0,8,0.78)');
     shade.addColorStop(0.65, 'rgba(14,0,8,0.45)');
     shade.addColorStop(1, 'rgba(14,0,8,0)');
@@ -877,26 +892,12 @@ const motifs = {
     ctx.fillRect(0, 0, W, H);
     // "screen" blendet den schwarzen Videohintergrund aus, das Logo bleibt stehen
     ctx.globalCompositeOperation = 'screen';
-    ctx.drawImage(v, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    ctx.drawImage(v, cx - dw / 2, cy - dh / 2, dw, dh);
     ctx.globalCompositeOperation = 'source-over';
   },
 
   promo(ctx, W, H, t) {
-    const bg = ctx.createLinearGradient(0, 0, W, H);
-    bg.addColorStop(0, '#e7007f');
-    bg.addColorStop(1, '#5a0032');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, W, H);
-    // langsam rotierende Lichtstrahlen
-    ctx.save();
-    ctx.translate(W / 2, H * 0.45);
-    ctx.rotate(t * 0.05);
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
-    for (let i = 0; i < 12; i++) {
-      ctx.rotate(Math.PI / 6);
-      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(W, -W * 0.12); ctx.lineTo(W, W * 0.12); ctx.closePath(); ctx.fill();
-    }
-    ctx.restore();
+    promoBackground(ctx, W, H, t);
     const pulse = 1 + 0.025 * Math.sin(t * 1.2);
     const fs = Math.min(W * 0.16, H * 0.42) * pulse;
     ctx.fillStyle = '#fff';
@@ -1438,30 +1439,112 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-// Pixli, das Maskottchen von LEDWALL 360, als Größenvergleich (ca. 1,75 m).
-// Das Bild dreht sich immer zur Kamera.
-const pixliTexture = new THREE.TextureLoader().load('assets/pixli.png');
-pixliTexture.encoding = THREE.sRGBEncoding;
-pixliTexture.anisotropy = maxAnisotropy;
-let pixli = null;
-const _pixliPos = new THREE.Vector3();
-
-function buildPixli() {
+function buildDummyFigure() {
+  // Weiße 3D-Figur (ca. 1,78 m) mit pinken Akzenten: Cap, Uhr und Sneaker.
   const g = new THREE.Group();
-  const h = 1.75, w = h * (512 / 458);
-  const sprite = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({
-    map: pixliTexture, transparent: true, alphaTest: 0.04, side: THREE.DoubleSide, depthWrite: false
-  }));
-  sprite.position.y = h / 2;
-  g.add(sprite);
-  const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.42, 32), new THREE.MeshBasicMaterial({
-    color: 0x000000, transparent: true, opacity: 0.35, depthWrite: false
-  }));
-  shadow.rotation.x = -Math.PI / 2;
-  shadow.scale.x = 1.4;
-  shadow.position.y = 0.012;
-  g.add(shadow);
-  g.userData.sprite = sprite;
+  const mat = (color, rough = 0.5) => new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: 0 });
+  const body = mat(0xf2f2f4, 0.45);
+  const pink = mat(0xe7007f, 0.4);
+  const sole = mat(0xffffff, 0.6);
+  const mesh = (geo, m) => new THREE.Mesh(geo, m);
+
+  // Gegliedertes Körperteil: Zylinder mit abgerundeten Enden
+  function limb(len, rTop, rBottom, m) {
+    const lg = new THREE.Group();
+    const c = mesh(new THREE.CylinderGeometry(rTop, rBottom, len, 16), m);
+    c.position.y = -len / 2;
+    lg.add(c);
+    lg.add(mesh(new THREE.SphereGeometry(rTop, 16, 12), m));
+    const bottom = mesh(new THREE.SphereGeometry(rBottom, 16, 12), m);
+    bottom.position.y = -len;
+    lg.add(bottom);
+    return lg;
+  }
+
+  // --- Beine & pinke Sneaker ---
+  const hipY = 0.93;
+  [-1, 1].forEach((side) => {
+    const thigh = limb(0.43, 0.088, 0.066, body);
+    thigh.position.set(side * 0.095, hipY, 0);
+    g.add(thigh);
+    const shin = limb(0.40, 0.064, 0.052, body);
+    shin.position.set(side * 0.095, hipY - 0.43, 0);
+    g.add(shin);
+    const foot = mesh(new THREE.BoxGeometry(0.10, 0.065, 0.24), pink);
+    foot.position.set(side * 0.095, 0.055, 0.05);
+    g.add(foot);
+    const toe = mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.065, 16), pink);
+    toe.position.set(side * 0.095, 0.055, 0.17);
+    g.add(toe);
+    const soleMesh = mesh(new THREE.BoxGeometry(0.112, 0.026, 0.31), sole);
+    soleMesh.position.set(side * 0.095, 0.013, 0.07);
+    g.add(soleMesh);
+  });
+
+  // Becken und Oberkörper (glatt, ohne Kleidung, wie eine 3D-Figur)
+  const pelvis = mesh(new THREE.CylinderGeometry(0.165, 0.15, 0.16, 20), body);
+  pelvis.scale.z = 0.65;
+  pelvis.position.y = hipY + 0.03;
+  g.add(pelvis);
+  const profile = [
+    [0.150, 0.00], [0.148, 0.08], [0.160, 0.22], [0.182, 0.36],
+    [0.190, 0.44], [0.170, 0.50], [0.110, 0.54], [0.055, 0.56], [0.0, 0.56]
+  ].map(([r, y]) => new THREE.Vector2(r, y));
+  const torso = mesh(new THREE.LatheGeometry(profile, 28), body);
+  torso.scale.z = 0.62;
+  torso.position.y = hipY + 0.06;
+  g.add(torso);
+  const shoulderY = hipY + 0.06 + 0.46;
+
+  // Hals und großer runder Kopf ohne Gesicht
+  const neck = mesh(new THREE.CylinderGeometry(0.05, 0.055, 0.09, 14), body);
+  neck.position.y = shoulderY + 0.09;
+  g.add(neck);
+  const headY = shoulderY + 0.25;
+  const head = mesh(new THREE.SphereGeometry(0.125, 28, 22), body);
+  head.position.y = headY;
+  g.add(head);
+
+  // Pinke Cap: Kuppel plus Schirm nach vorne
+  const capDome = mesh(new THREE.SphereGeometry(0.131, 28, 14, 0, Math.PI * 2, 0, Math.PI * 0.42), pink);
+  capDome.position.set(0, headY + 0.012, 0);
+  g.add(capDome);
+  const brim = mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.012, 24, 1, false, -Math.PI / 2, Math.PI), pink);
+  brim.scale.set(0.95, 1, 0.95);
+  brim.position.set(0, headY + 0.05, 0.075);
+  brim.rotation.x = 0.15;
+  g.add(brim);
+  const button = mesh(new THREE.SphereGeometry(0.014, 10, 8), pink);
+  button.position.set(0, headY + 0.135, 0);
+  g.add(button);
+
+  // --- Arme, links mit pinker Uhr ---
+  [-1, 1].forEach((side) => {
+    const arm = new THREE.Group();
+    arm.add(limb(0.29, 0.06, 0.048, body));
+    const foreGroup = new THREE.Group();
+    foreGroup.position.y = -0.29;
+    foreGroup.rotation.x = -0.18; // Ellbogen leicht gebeugt
+    foreGroup.add(limb(0.26, 0.047, 0.038, body));
+    const hand = mesh(new THREE.SphereGeometry(0.048, 14, 12), body);
+    hand.scale.set(0.65, 1.4, 1);
+    hand.position.y = -0.33;
+    foreGroup.add(hand);
+    if (side === -1) {
+      const band = mesh(new THREE.CylinderGeometry(0.043, 0.043, 0.03, 18), pink);
+      band.position.y = -0.235;
+      foreGroup.add(band);
+      const face = mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.014, 18), pink);
+      face.rotation.z = Math.PI / 2;
+      face.position.set(-0.044, -0.235, 0);
+      foreGroup.add(face);
+    }
+    arm.add(foreGroup);
+    arm.position.set(side * 0.205, shoulderY - 0.02, 0);
+    arm.rotation.z = side * 0.09;
+    g.add(arm);
+  });
+
   return g;
 }
 
@@ -1498,10 +1581,10 @@ function buildDistanceIndicator(dims) {
   label.position.set(lineX, 0.55, wallFrontZ + dist / 2);
   distanceGroup.add(label);
 
-  // Pixli mittig vor der Wand im eingestellten Abstand
-  const person = buildPixli();
+  // Figur vor der Wand im eingestellten Abstand, mit Blick zur Wand
+  const person = buildDummyFigure();
   person.position.set(0.9, 0, wallFrontZ + dist);
-  pixli = person.userData.sprite;
+  person.rotation.y = Math.PI;
   person.visible = state.showDummy;
   distanceGroup.add(person);
   [...distanceGroup.children].forEach((c) => { if (c !== person) c.visible = state.showDummy; });
@@ -1574,10 +1657,6 @@ function animate() {
   backLight.intensity = 0.6 * (1 - front);
   const building = supportGroup.getObjectByName('building');
   if (building) building.visible = camera.position.z > -0.2;
-  if (pixli) {
-    pixli.getWorldPosition(_pixliPos);
-    pixli.rotation.y = Math.atan2(camera.position.x - _pixliPos.x, camera.position.z - _pixliPos.z);
-  }
   renderer.render(scene, camera);
 }
 
