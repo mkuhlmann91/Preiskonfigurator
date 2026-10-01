@@ -52,7 +52,8 @@
     padding:16px 18px;min-width:210px;
     box-shadow:0 0 0 1px rgba(231,0,127,.08), 0 12px 30px rgba(0,0,0,.4);
   }
-  .hud .eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.5px;color:var(--accent);text-transform:uppercase;margin-bottom:10px;}
+  .hud .eyebrow{display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;padding:0;cursor:default;text-align:left;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.5px;color:var(--accent);text-transform:uppercase;margin-bottom:10px;}
+  .hud-summary,.hud-chevron{display:none;}
   .hud-row{display:flex;justify-content:space-between;gap:18px;font-family:'JetBrains Mono',monospace;font-size:12.5px;padding:3px 0;}
   .hud-row span:first-child{color:var(--muted);}
   .hud-row span:last-child{color:var(--white);font-weight:500;}
@@ -135,6 +136,17 @@
     cursor:pointer;box-shadow:0 8px 24px var(--accent-dim);letter-spacing:.2px;text-align:center;
   }
   .cta:hover{filter:brightness(1.08);}
+  .share-row{display:flex;gap:8px;margin-top:8px;}
+  .share-btn{flex:1;background:var(--panel-bg-2);border:1px solid var(--line);color:var(--white);border-radius:10px;padding:10px 6px;font-family:'Inter',sans-serif;font-size:12px;font-weight:500;cursor:pointer;}
+  .share-btn:hover{border-color:#3a3a40;}
+  .upload-btn{display:block;margin-top:8px;background:var(--panel-bg-2);border:1px dashed #3a3a40;color:var(--white);border-radius:10px;padding:11px 10px;text-align:center;font-size:12px;cursor:pointer;}
+  .upload-btn:hover{border-color:var(--accent);}
+  .upload-btn.active{border-style:solid;border-color:var(--accent);background:rgba(231,0,127,.12);}
+  .pitch-reco{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;background:var(--panel-bg-2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:12px;}
+  .pitch-reco button{background:var(--accent);border:none;color:#fff;border-radius:8px;padding:6px 10px;font-size:11.5px;font-weight:600;cursor:pointer;flex-shrink:0;}
+  .pitch-reco.match button{display:none;}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#0d0d0e;border:1px solid var(--accent);color:#fff;padding:10px 16px;border-radius:999px;font-size:12.5px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none;}
+  .toast.show{opacity:1;}
 
   /* Modal */
   .modal-overlay{
@@ -190,6 +202,14 @@
     .hud{top:10px;left:10px;min-width:150px;padding:10px 12px;}
     .hud .eyebrow{font-size:9px;margin-bottom:8px;}
     .hud-row{font-size:11.5px;padding:2px 0;}
+    .hud .eyebrow{cursor:pointer;}
+    .hud-chevron{display:inline;margin-left:auto;color:var(--muted);transition:transform .2s;}
+    .hud.collapsed{min-width:0;padding:8px 12px;}
+    .hud.collapsed .eyebrow{margin-bottom:0;}
+    .hud.collapsed .eyebrow > span:first-child{display:none;}
+    .hud.collapsed .hud-summary{display:inline;color:var(--white);letter-spacing:.3px;text-transform:none;font-size:11.5px;}
+    .hud.collapsed .hud-row{display:none;}
+    .hud:not(.collapsed) .hud-chevron{transform:rotate(180deg);}
     header{padding:10px 14px;}
       .brand-text h1{font-size:14px;}
     .hint{display:none;}
@@ -236,8 +256,10 @@
   <div class="main">
     <div class="viewer">
       <canvas id="c"></canvas>
-      <div class="hud">
-        <div class="eyebrow">Konfiguration</div>
+      <div class="hud collapsed" id="hud">
+        <button type="button" class="eyebrow" id="hudToggle" aria-expanded="false">
+          <span>Konfiguration</span><span class="hud-summary" id="hudSummary"></span><span class="hud-chevron">▾</span>
+        </button>
         <div class="hud-row"><span>Größe</span><span id="hudSize">–</span></div>
         <div class="hud-row"><span>Panels</span><span id="hudPanels">–</span></div>
         <div class="hud-row"><span>Pixel Pitch</span><span id="hudPitch">–</span></div>
@@ -330,18 +352,24 @@
       </div>
 
       <div class="field">
-        <div class="switch-row">
-          <div class="txt">Panel-Kanten anzeigen<span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Blendet die Fugenlinien zwischen den Panels ein/aus.</span></span></div>
-          <label class="switch">
-            <input type="checkbox" id="edgesToggle" checked>
-            <span class="slider-toggle"></span>
-          </label>
+        <div class="title-row">
+          <span class="title-text">Inhalt auf der Wand</span>
+          <span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Wählen Sie ein Beispielmotiv oder laden Sie ein eigenes Bild, Logo oder Video. Ihre Datei bleibt auf Ihrem Gerät und wird nicht hochgeladen.</span></span>
         </div>
+        <div class="segmented" id="segContent">
+          <div class="seg-btn active" data-val="wave">Animation</div>
+          <div class="seg-btn" data-val="stage">Bühne</div>
+          <div class="seg-btn" data-val="promo">Werbung</div>
+        </div>
+        <label class="upload-btn" id="uploadLabel">
+          <input type="file" id="contentFile" accept="image/*,video/*" hidden>
+          <span id="uploadText">Eigenes Bild oder Video wählen</span>
+        </label>
       </div>
 
       <div class="field">
         <div class="switch-row">
-          <div class="txt">Figur anzeigen<span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Zeigt eine Person zum Größenvergleich. Den Abstand zur Wand stellen Sie darunter ein – voreingestellt ist der empfohlene Betrachtungsabstand.</span></span></div>
+          <div class="txt">Figur anzeigen<span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Zeigt eine Person zum Größenvergleich. Stellen Sie ein, wie weit Ihre Zuschauer von der Wand entfernt stehen – wir empfehlen dazu den passenden Pixel Pitch.</span></span></div>
           <label class="switch">
             <input type="checkbox" id="dummyToggle" checked>
             <span class="slider-toggle"></span>
@@ -353,7 +381,11 @@
             <div class="stepper-label" style="color:var(--white);" id="distVal">3,5 m</div>
           </div>
           <input type="range" id="distRange" min="1" max="15" step="0.5" value="3.5" aria-label="Abstand der Figur zur Wand">
-          <div class="range-labels"><span>1 m</span><span id="distHint">Empfohlen: 3,5 m</span><span>15 m</span></div>
+          <div class="range-labels"><span>1 m</span><span>15 m</span></div>
+          <div class="pitch-reco" id="pitchReco">
+            <span id="pitchRecoText">Für 3,5 m empfehlen wir P2.9</span>
+            <button type="button" id="pitchRecoBtn">Übernehmen</button>
+          </div>
         </div>
       </div>
 
@@ -369,6 +401,10 @@
 
       <div class="cta-wrap">
         <button class="cta" id="openModalBtn">Angebot anfordern</button>
+        <div class="share-row">
+          <button type="button" class="share-btn" id="shareLinkBtn">Link teilen</button>
+          <button type="button" class="share-btn" id="pdfBtn">Als PDF speichern</button>
+        </div>
       </div>
 
     </aside>
@@ -446,6 +482,7 @@ const state = {
   gob: false,
   showEdges: true,
   showDummy: true,
+  content: 'wave',      // 'wave' | 'stage' | 'promo' | 'custom'
   personDist: 3.5       // Abstand Figur ↔ Wand in m (folgt dem Pitch-Richtwert, bis man ihn verstellt)
 };
 
@@ -555,8 +592,10 @@ function updateCamera() {
 
 /* ------------------------------ LED TEXTURE ------------------------------ */
 
-// Eine Textur-Kachel entspricht 0,5 × 0,5 m Wandfläche und enthält so viele
-// LED-Punkte, wie ein echtes Panel mit diesem Pitch hat (500 mm / Pitch).
+// Pixel-Maske: Eine Textur-Kachel entspricht 0,5 × 0,5 m Wandfläche und enthält
+// so viele LED-Punkte, wie ein echtes Panel mit diesem Pitch hat (500 mm / Pitch).
+// Sie wird per Multiplikation über den Wandinhalt gelegt: weiß = LED, dunkel = Fuge.
+const MASK_GAP = '#262628';
 const TILE_M = 0.5;
 const ledTextureCache = {};
 const maxAnisotropy = renderer.capabilities.getMaxAnisotropy();
@@ -568,7 +607,7 @@ function makeLedTexture(pitchMm) {
   const cnv = document.createElement('canvas');
   cnv.width = cnv.height = size;
   const ctx = cnv.getContext('2d');
-  ctx.fillStyle = '#08080a';
+  ctx.fillStyle = MASK_GAP;
   ctx.fillRect(0, 0, size, size);
 
   // Einen LED-Punkt einmal zeichnen und dann stempeln (schneller als je ein Gradient).
@@ -578,8 +617,9 @@ function makeLedTexture(pitchMm) {
   const dctx = dot.getContext('2d');
   const r = dotPx * 0.42;
   const grad = dctx.createRadialGradient(dotPx / 2, dotPx / 2, 0, dotPx / 2, dotPx / 2, r);
-  grad.addColorStop(0, 'rgba(235,235,245,0.95)');
-  grad.addColorStop(1, 'rgba(10,10,12,0)');
+  grad.addColorStop(0, 'rgba(255,255,255,1)');
+  grad.addColorStop(0.7, 'rgba(255,255,255,0.9)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
   dctx.fillStyle = grad;
   dctx.beginPath();
   dctx.arc(dotPx / 2, dotPx / 2, r, 0, Math.PI * 2);
@@ -587,7 +627,7 @@ function makeLedTexture(pitchMm) {
 
   for (let y = 0; y < dotsPerSide; y++) {
     for (let x = 0; x < dotsPerSide; x++) {
-      ctx.globalAlpha = 0.7 + Math.random() * 0.3;
+      ctx.globalAlpha = 0.85 + Math.random() * 0.15;
       ctx.drawImage(dot, x * step + (step - dotPx) / 2, y * step + (step - dotPx) / 2);
     }
   }
@@ -599,25 +639,174 @@ function makeLedTexture(pitchMm) {
   return tex;
 }
 
-function makeSweepTexture() {
-  const w = 256, h = 32;
-  const cnv = document.createElement('canvas');
-  cnv.width = w; cnv.height = h;
-  const ctx = cnv.getContext('2d');
-  const grad = ctx.createLinearGradient(0, 0, w, 0);
-  grad.addColorStop(0.0, 'rgba(231,0,127,0)');
-  grad.addColorStop(0.45, 'rgba(231,0,127,0.55)');
-  grad.addColorStop(0.5, 'rgba(255,255,255,0.75)');
-  grad.addColorStop(0.55, 'rgba(231,0,127,0.55)');
-  grad.addColorStop(1.0, 'rgba(231,0,127,0)');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, w, h);
-  const tex = new THREE.CanvasTexture(cnv);
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.ClampToEdgeWrapping;
-  return tex;
+/* ----------------------------- WANDINHALT ------------------------------- */
+// Der Inhalt wird jedes Frame in ein Canvas gezeichnet, das genau das
+// Seitenverhältnis der Wand hat, und als Textur auf die Wand gelegt.
+
+const content = {
+  canvas: document.createElement('canvas'),
+  texture: null,
+  media: null,      // HTMLImageElement oder HTMLVideoElement (eigene Datei)
+  mediaUrl: null
+};
+content.texture = new THREE.CanvasTexture(content.canvas);
+content.texture.encoding = THREE.sRGBEncoding;
+content.texture.anisotropy = maxAnisotropy;
+
+function sizeContentCanvas(totalWidth, totalHeight) {
+  const w = 1280;
+  const h = Math.round(clamp((w * totalHeight) / totalWidth, 160, 2048));
+  if (content.canvas.width !== w || content.canvas.height !== h) {
+    content.canvas.width = w;
+    content.canvas.height = h;
+    content.texture.dispose();
+  }
 }
-const sweepTexture = makeSweepTexture();
+
+function drawCover(ctx, el, W, H) {
+  const iw = el.videoWidth || el.naturalWidth || el.width;
+  const ih = el.videoHeight || el.naturalHeight || el.height;
+  if (!iw || !ih) return;
+  const scale = Math.max(W / iw, H / ih);
+  const dw = iw * scale, dh = ih * scale;
+  ctx.drawImage(el, (W - dw) / 2, (H - dh) / 2, dw, dh);
+}
+
+const motifs = {
+  // Fließende Farbbänder mit Lichtpartikeln
+  wave(ctx, W, H, t) {
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, '#0b0620');
+    bg.addColorStop(1, '#14052a');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'lighter';
+    const bands = [
+      { c: [231, 0, 127], a: 0.32, f: 1.6, s: 0.55, o: 0.0 },
+      { c: [0, 190, 255], a: 0.26, f: 2.1, s: -0.42, o: 1.7 },
+      { c: [140, 60, 255], a: 0.24, f: 1.2, s: 0.33, o: 3.1 },
+      { c: [255, 140, 0], a: 0.18, f: 2.7, s: -0.27, o: 4.4 }
+    ];
+    bands.forEach((b, i) => {
+      const thick = H * (0.18 + 0.06 * Math.sin(t * 0.7 + i));
+      ctx.beginPath();
+      for (let x = 0; x <= W; x += 16) {
+        const u = x / W;
+        const y = H * (0.5 + 0.28 * Math.sin(u * Math.PI * b.f + t * b.s * 2 + b.o) + 0.08 * Math.sin(u * 9 + t * 1.3 + i));
+        x === 0 ? ctx.moveTo(x, y - thick / 2) : ctx.lineTo(x, y - thick / 2);
+      }
+      for (let x = W; x >= 0; x -= 16) {
+        const u = x / W;
+        const y = H * (0.5 + 0.28 * Math.sin(u * Math.PI * b.f + t * b.s * 2 + b.o) + 0.08 * Math.sin(u * 9 + t * 1.3 + i));
+        ctx.lineTo(x, y + thick / 2);
+      }
+      ctx.closePath();
+      const g = ctx.createLinearGradient(0, 0, W, 0);
+      g.addColorStop(0, `rgba(${b.c},0)`);
+      g.addColorStop(0.5, `rgba(${b.c},${b.a * 2.2})`);
+      g.addColorStop(1, `rgba(${b.c},0)`);
+      ctx.fillStyle = g;
+      ctx.fill();
+    });
+    for (let i = 0; i < 70; i++) {
+      const x = ((i * 137.5 + t * (18 + (i % 7) * 9)) % (W + 40)) - 20;
+      const y = H * (0.5 + 0.45 * Math.sin(i * 12.9898 + t * 0.4));
+      const r = 2 + (i % 5) * 1.6;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r * 3);
+      g.addColorStop(0, 'rgba(255,255,255,0.9)');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(x - r * 3, y - r * 3, r * 6, r * 6);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  },
+
+  // Konzert: bewegte Scheinwerfer und Equalizer
+  stage(ctx, W, H, t) {
+    ctx.fillStyle = '#05030a';
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'lighter';
+    const colors = ['231,0,127', '0,170,255', '255,200,0', '120,60,255', '0,255,170'];
+    for (let i = 0; i < 6; i++) {
+      const x0 = W * (i + 0.5) / 6;
+      const ang = Math.sin(t * (0.8 + i * 0.13) + i * 1.7) * 0.6;
+      const len = H * 1.3;
+      const spread = 0.16;
+      const g = ctx.createLinearGradient(x0, 0, x0 + Math.sin(ang) * len, len);
+      g.addColorStop(0, `rgba(${colors[i % 5]},0.85)`);
+      g.addColorStop(1, `rgba(${colors[i % 5]},0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(x0, -4);
+      ctx.lineTo(x0 + Math.sin(ang - spread) * len, Math.cos(ang - spread) * len);
+      ctx.lineTo(x0 + Math.sin(ang + spread) * len, Math.cos(ang + spread) * len);
+      ctx.closePath();
+      ctx.fill();
+    }
+    const bars = 32, bw = W / bars;
+    for (let i = 0; i < bars; i++) {
+      const v = 0.25 + 0.75 * Math.abs(Math.sin(t * 3.1 + i * 0.55) * Math.cos(t * 1.7 + i * 0.21));
+      const bh = H * 0.35 * v;
+      const g = ctx.createLinearGradient(0, H, 0, H - bh);
+      g.addColorStop(0, 'rgba(231,0,127,0.9)');
+      g.addColorStop(1, 'rgba(0,190,255,0.9)');
+      ctx.fillStyle = g;
+      ctx.fillRect(i * bw + bw * 0.15, H - bh, bw * 0.7, bh);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  },
+
+  // Werbung: pulsierende Headline und Laufschrift
+  promo(ctx, W, H, t) {
+    const hue = (t * 12) % 360;
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, `hsl(${hue},85%,45%)`);
+    bg.addColorStop(1, `hsl(${(hue + 60) % 360},85%,30%)`);
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+    // rotierende Lichtstrahlen
+    ctx.save();
+    ctx.translate(W / 2, H * 0.45);
+    ctx.rotate(t * 0.15);
+    ctx.fillStyle = 'rgba(255,255,255,0.07)';
+    for (let i = 0; i < 12; i++) {
+      ctx.rotate(Math.PI / 6);
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(W, -W * 0.12); ctx.lineTo(W, W * 0.12); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+    const pulse = 1 + 0.05 * Math.sin(t * 3);
+    const fs = Math.min(W * 0.16, H * 0.42) * pulse;
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `800 ${fs}px Inter, Arial, sans-serif`;
+    ctx.fillText('SALE −30 %', W / 2, H * 0.42);
+    // Laufschrift
+    const bandH = Math.max(H * 0.16, 28);
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(0, H - bandH, W, bandH);
+    ctx.fillStyle = '#fff';
+    ctx.font = `600 ${bandH * 0.5}px Inter, Arial, sans-serif`;
+    ctx.textAlign = 'left';
+    const msg = 'Neue Kollektion  ·  Jetzt im Store  ·  Nur diese Woche  ·  ';
+    const mw = ctx.measureText(msg).width;
+    const off = -((t * 120) % mw);
+    for (let x = off; x < W; x += mw) ctx.fillText(msg, x, H - bandH / 2);
+  },
+
+  custom(ctx, W, H, t) {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    if (content.media) drawCover(ctx, content.media, W, H);
+  }
+};
+
+function drawContent(t) {
+  const ctx = content.canvas.getContext('2d');
+  const W = content.canvas.width, H = content.canvas.height;
+  (motifs[state.content] || motifs.wave)(ctx, W, H, t);
+  content.texture.needsUpdate = true;
+}
 
 /* ------------------------------ WALL BUILDING ----------------------------- */
 
@@ -626,7 +815,7 @@ scene.add(wallGroup);
 const supportGroup = new THREE.Group();
 scene.add(supportGroup);
 
-let ledMaterial, sweepMaterial, seamMaterial;
+let seamMaterial;
 
 function curvedPoint(u, v, totalWidth, totalHeight, bendDeg) {
   // u,v in [0,1]. Bend only along horizontal axis (x/z), like real flex/curtain panels.
@@ -703,19 +892,21 @@ function buildWallMeshes() {
   backGeo.setIndex(backIndices);
   backGeo.computeVertexNormals();
 
-  const ledTexture = makeLedTexture(state.pitch);
-  ledTexture.repeat.set(totalWidth / TILE_M, totalHeight / TILE_M);
+  sizeContentCanvas(totalWidth, totalHeight);
 
-  ledMaterial = new THREE.MeshStandardMaterial({
-    map: ledTexture,
-    emissive: new THREE.Color(0xffffff),
-    emissiveMap: ledTexture,
-    emissiveIntensity: 0.85,
-    roughness: 0.5,
-    metalness: 0.05
-  });
-  const frontMesh = new THREE.Mesh(frontGeo, ledMaterial);
+  const contentMat = new THREE.MeshBasicMaterial({ map: content.texture, toneMapped: false });
+  const frontMesh = new THREE.Mesh(frontGeo, contentMat);
   wallGroup.add(frontMesh);
+
+  const mask = makeLedTexture(state.pitch);
+  mask.repeat.set(totalWidth / TILE_M, totalHeight / TILE_M);
+  const maskMat = new THREE.MeshBasicMaterial({
+    map: mask, transparent: true, premultipliedAlpha: true,
+    blending: THREE.MultiplyBlending, depthWrite: false
+  });
+  const maskMesh = new THREE.Mesh(frontGeo.clone(), maskMat);
+  maskMesh.position.z += 0.0015;
+  wallGroup.add(maskMesh);
 
   const backMat = new THREE.MeshStandardMaterial({
     color: state.gob ? 0x1c1c1f : 0x161618,
@@ -814,16 +1005,6 @@ function buildWallMeshes() {
 
   seamGroup.visible = state.showEdges;
   wallGroup.add(seamGroup);
-
-  // Animated content sweep overlay
-  const sweepGeo = frontGeo.clone();
-  sweepMaterial = new THREE.MeshBasicMaterial({
-    map: sweepTexture, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false
-  });
-  sweepTexture.repeat.set(3, 1);
-  const sweepMesh = new THREE.Mesh(sweepGeo, sweepMaterial);
-  sweepMesh.position.z += 0.003 * (bend === 0 ? 1 : 1);
-  wallGroup.add(sweepMesh);
 
   return { totalWidth, totalHeight, gridPoints, thickness };
 }
@@ -963,14 +1144,17 @@ function roundRect(ctx, x, y, w, h, r) {
 }
 
 function buildDummyFigure() {
-  // Stilisierte Person, ca. 1,78 m groß (Hemd, Hose, Schuhe, Haut, Haare).
+  // Stilisierte Person, ca. 1,78 m groß: blaues Shirt, schwarze Hose,
+  // weiße Sneaker, schwarze Cap.
   const g = new THREE.Group();
   const mat = (color, rough = 0.8) => new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: 0 });
-  const shirt = mat(0x9aa4b0);
-  const pants = mat(0x2d3542);
+  const shirt = mat(0x1f5fbf);
+  const pants = mat(0x141416);
   const skin = mat(0xc99a7c, 0.7);
   const hair = mat(0x2b2018, 0.9);
-  const shoe = mat(0x161616, 0.5);
+  const shoe = mat(0xf2f2f2, 0.5);
+  const sole = mat(0xbdbdbd, 0.6);
+  const cap = mat(0x111111, 0.6);
   const mesh = (geo, m) => new THREE.Mesh(geo, m);
 
   // Gegliedertes Körperteil: Zylinder von a nach b mit abgerundeten Enden
@@ -996,12 +1180,16 @@ function buildDummyFigure() {
     const shin = limb(0.40, 0.06, 0.048, pants);
     shin.position.set(side * 0.095, hipY - 0.43, 0);
     g.add(shin);
-    const foot = mesh(new THREE.BoxGeometry(0.10, 0.07, 0.26), shoe);
-    foot.position.set(side * 0.095, 0.035, 0.05);
+    // Sneaker: weißes Obermaterial auf grauer Sohle
+    const foot = mesh(new THREE.BoxGeometry(0.10, 0.06, 0.25), shoe);
+    foot.position.set(side * 0.095, 0.05, 0.05);
     g.add(foot);
-    const toe = mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.07, 16), shoe);
-    toe.position.set(side * 0.095, 0.035, 0.18);
+    const toe = mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.06, 16), shoe);
+    toe.position.set(side * 0.095, 0.05, 0.175);
     g.add(toe);
+    const soleMesh = mesh(new THREE.BoxGeometry(0.11, 0.025, 0.32), sole);
+    soleMesh.position.set(side * 0.095, 0.0125, 0.07);
+    g.add(soleMesh);
   });
 
   // Becken
@@ -1030,11 +1218,21 @@ function buildDummyFigure() {
   head.scale.set(0.9, 1.15, 1.0);
   head.position.y = headY;
   g.add(head);
-  const hairCap = mesh(new THREE.SphereGeometry(0.106, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.55), hair);
-  hairCap.scale.set(0.92, 1.12, 1.04);
-  hairCap.position.set(0, headY + 0.01, -0.006);
-  hairCap.rotation.x = 0.4; // Haaransatz vorne höher, hinten tiefer
-  g.add(hairCap);
+  // Schwarze Cap: Kuppel plus Schirm nach vorne, darunter etwas Haar im Nacken
+  const nape = mesh(new THREE.SphereGeometry(0.1, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.6), hair);
+  nape.scale.set(0.93, 1.1, 1.03);
+  nape.position.set(0, headY - 0.005, -0.01);
+  nape.rotation.x = -0.9;
+  g.add(nape);
+  const capDome = mesh(new THREE.SphereGeometry(0.108, 24, 14, 0, Math.PI * 2, 0, Math.PI * 0.5), cap);
+  capDome.scale.set(0.95, 0.9, 1.03);
+  capDome.position.set(0, headY + 0.035, 0);
+  g.add(capDome);
+  const brim = mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.012, 24, 1, false, -Math.PI / 2, Math.PI), cap);
+  brim.scale.set(0.95, 1, 0.9);
+  brim.position.set(0, headY + 0.035, 0.05);
+  brim.rotation.x = 0.12;
+  g.add(brim);
   [-1, 1].forEach((side) => {
     const ear = mesh(new THREE.SphereGeometry(0.022, 10, 8), skin);
     ear.scale.set(0.5, 1, 0.8);
@@ -1128,6 +1326,7 @@ function updateHUD(dims) {
   document.getElementById('hudPitch').textContent = `P${pitchMm}`;
   document.getElementById('hudRes').textContent = `${resX} × ${resY} px`;
   document.getElementById('hudWeight').textContent = `${totalWeight} kg`;
+  document.getElementById('hudSummary').textContent = `${fmtM(dims.totalWidth)} × ${fmtM(dims.totalHeight)} m · P${pitchMm} · ${totalWeight} kg`;
   document.getElementById('hudDistance').textContent = `${viewingDistanceForPitch(pitchMm).toFixed(1)} m (Richtwert)`;
 }
 
@@ -1162,12 +1361,18 @@ function animate() {
   requestAnimationFrame(animate);
   const t = clock.getElapsedTime();
   updateCamera();
-  if (ledMaterial) ledMaterial.emissiveIntensity = 0.85 + Math.sin(t * 1.4) * 0.12;
-  if (sweepTexture) sweepTexture.offset.x = (t * 0.08) % 1;
+  drawContent(t);
   renderer.render(scene, camera);
 }
 
 /* ============================== UI WIRING ================================= */
+
+document.getElementById('hudToggle').addEventListener('click', () => {
+  if (!window.matchMedia('(max-width: 860px)').matches) return;
+  const hud = document.getElementById('hud');
+  hud.classList.toggle('collapsed');
+  document.getElementById('hudToggle').setAttribute('aria-expanded', String(!hud.classList.contains('collapsed')));
+});
 
 function setActive(container, value, attr = 'data-val') {
   container.querySelectorAll('.seg-btn').forEach(btn => {
@@ -1207,21 +1412,61 @@ document.getElementById('segPanelType').addEventListener('click', (e) => {
   updateSizeDisplay();
   rebuild();
 });
-document.getElementById('edgesToggle').addEventListener('change', (e) => {
-  state.showEdges = e.target.checked;
-  rebuild();
-});
 document.getElementById('dummyToggle').addEventListener('change', (e) => {
   state.showDummy = e.target.checked;
   document.getElementById('distField').style.display = state.showDummy ? 'block' : 'none';
   rebuild();
 });
 
+const PITCHES = [1.5, 2, 2.6, 2.9, 3.9];
+// Gröbster Pitch, dessen Mindestabstand zum eingestellten Abstand passt.
+function recommendedPitchForDistance(d) {
+  const fitting = PITCHES.filter((p) => viewingDistanceForPitch(p) <= d + 1e-9);
+  return fitting.length ? fitting[fitting.length - 1] : PITCHES[0];
+}
 function updateDistDisplay() {
   document.getElementById('distRange').value = state.personDist;
   document.getElementById('distVal').textContent = `${fmtM(state.personDist)} m`;
-  document.getElementById('distHint').textContent = `Empfohlen: ${fmtM(viewingDistanceForPitch(state.pitch))} m`;
+  const reco = recommendedPitchForDistance(state.personDist);
+  document.getElementById('pitchRecoText').textContent = reco === state.pitch
+    ? `✓ P${reco} passt zu ${fmtM(state.personDist)} m Abstand`
+    : `Für ${fmtM(state.personDist)} m empfehlen wir P${reco}`;
+  document.getElementById('pitchReco').classList.toggle('match', reco === state.pitch);
 }
+document.getElementById('pitchRecoBtn').addEventListener('click', () => {
+  state.pitch = recommendedPitchForDistance(state.personDist);
+  document.getElementById('pitchSelect').value = String(state.pitch);
+  updateDistDisplay();
+  rebuild();
+});
+document.getElementById('segContent').addEventListener('click', (e) => {
+  const btn = e.target.closest('.seg-btn'); if (!btn) return;
+  state.content = btn.getAttribute('data-val');
+  setActive(document.getElementById('segContent'), state.content);
+  document.getElementById('uploadLabel').classList.remove('active');
+});
+document.getElementById('contentFile').addEventListener('change', (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  if (content.mediaUrl) URL.revokeObjectURL(content.mediaUrl);
+  if (content.media && content.media.pause) content.media.pause();
+  content.mediaUrl = URL.createObjectURL(file);
+  if (file.type.startsWith('video/')) {
+    const v = document.createElement('video');
+    v.src = content.mediaUrl; v.muted = true; v.loop = true; v.playsInline = true;
+    v.play().catch(() => {});
+    content.media = v;
+  } else {
+    const img = new Image();
+    img.src = content.mediaUrl;
+    content.media = img;
+  }
+  state.content = 'custom';
+  setActive(document.getElementById('segContent'), '');
+  document.getElementById('uploadLabel').classList.add('active');
+  document.getElementById('uploadText').textContent = `✓ ${file.name}`;
+});
+
 document.getElementById('distRange').addEventListener('input', (e) => {
   state.personDist = parseFloat(e.target.value);
   updateDistDisplay();
@@ -1444,6 +1689,106 @@ submitBtn.addEventListener('click', async () => {
   }
 });
 
+/* ------------------------------ TEILEN ------------------------------------- */
+
+function showToast(text) {
+  let el = document.querySelector('.toast');
+  if (!el) { el = document.createElement('div'); el.className = 'toast'; document.body.appendChild(el); }
+  el.textContent = text;
+  el.classList.add('show');
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// Konfiguration steckt im Link (#…), damit ein Empfänger dieselbe Wand sieht.
+function configToHash() {
+  const q = new URLSearchParams({
+    ort: state.location, panel: state.panelType, aufbau: state.mount,
+    b: state.cols, h: state.rows, pitch: state.pitch,
+    gob: state.gob ? 1 : 0, abstand: state.personDist,
+    inhalt: state.content === 'custom' ? 'wave' : state.content
+  });
+  return '#' + q.toString();
+}
+function applyHash() {
+  const q = new URLSearchParams(location.hash.slice(1));
+  if (!q.has('panel')) return false;
+  const pick = (v, allowed, def) => (allowed.includes(v) ? v : def);
+  state.location = pick(q.get('ort'), ['indoor', 'outdoor'], state.location);
+  state.panelType = pick(q.get('panel'), ['1x0.5', '0.5x0.5'], state.panelType);
+  state.mount = pick(q.get('aufbau'), ['truss', 'wall', 'floor'], state.mount);
+  const num = (k, def) => { const n = parseFloat(q.get(k)); return isNaN(n) ? def : n; };
+  state.cols = clamp(Math.round(num('b', state.cols)), LIMITS.cols[0], LIMITS.cols[1]);
+  state.rows = clamp(Math.round(num('h', state.rows)), LIMITS.rows[0], LIMITS.rows[1]);
+  const pitch = num('pitch', state.pitch);
+  state.pitch = PITCHES.includes(pitch) ? pitch : state.pitch;
+  state.gob = q.get('gob') === '1' && state.location === 'indoor';
+  state.personDist = clamp(num('abstand', viewingDistanceForPitch(state.pitch)), 1, 15);
+  state.content = pick(q.get('inhalt'), ['wave', 'stage', 'promo'], state.content);
+  // Oberfläche nachziehen
+  setActive(document.getElementById('segLocation'), state.location);
+  setActive(document.getElementById('segPanelType'), state.panelType);
+  setActive(document.getElementById('segMount'), state.mount);
+  setActive(document.getElementById('segContent'), state.content);
+  document.getElementById('pitchSelect').value = String(state.pitch);
+  document.getElementById('gobToggle').checked = state.gob;
+  return true;
+}
+function shareUrl() {
+  return location.href.split('#')[0] + configToHash();
+}
+
+document.getElementById('shareLinkBtn').addEventListener('click', async () => {
+  const url = shareUrl();
+  history.replaceState(null, '', configToHash());
+  if (navigator.share && window.matchMedia('(hover:none)').matches) {
+    try { await navigator.share({ title: 'LED-Wand Konfiguration', url }); return; } catch (e) { /* abgebrochen */ }
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast('Link kopiert ✓');
+  } catch (e) {
+    window.prompt('Link zum Kopieren:', url);
+  }
+});
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+document.getElementById('pdfBtn').addEventListener('click', () => {
+  // Bild direkt nach dem Rendern abgreifen (ohne preserveDrawingBuffer).
+  renderer.render(scene, camera);
+  const img = renderer.domElement.toDataURL('image/jpeg', 0.9);
+  const date = new Date().toLocaleDateString('de-DE');
+  const rows = buildConfigText().split('\n').map((line) => {
+    const k = line.indexOf(':');
+    return `<tr><td>${escapeHtml(line.slice(0, k))}</td><td>${escapeHtml(line.slice(k + 1).trim())}</td></tr>`;
+  }).join('');
+  const w = window.open('', '_blank');
+  if (!w) { showToast('Bitte Pop-ups erlauben, um das PDF zu erstellen.'); return; }
+  w.document.write(`<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>LED-Wand Konfiguration ${date}</title>
+<style>
+  body{font-family:Inter,Arial,sans-serif;color:#111;margin:32px;}
+  h1{font-size:22px;margin:0 0 4px;} .sub{color:#666;font-size:12px;margin:0 0 18px;}
+  img{width:100%;border-radius:8px;margin-bottom:18px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  td{padding:7px 4px;border-bottom:1px solid #e5e5e5;} td:first-child{color:#666;width:45%;}
+  .foot{margin-top:22px;font-size:12px;color:#444;line-height:1.6;word-break:break-all;}
+  a{color:#e7007f;}
+  @page{margin:14mm;}
+</style></head><body>
+<h1>LED-Wand Konfiguration</h1>
+<p class="sub">Erstellt am ${date}</p>
+<img src="${img}" alt="Vorschau der LED-Wand">
+<table>${rows}</table>
+<p class="foot">Konfiguration online öffnen: <a href="${escapeHtml(shareUrl())}">${escapeHtml(shareUrl())}</a><br>
+Angebot anfragen: <a href="mailto:${CONFIG.recipientEmail}">${CONFIG.recipientEmail}</a></p>
+<script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script>
+</body></html>`);
+  w.document.close();
+});
+
 /* --------------------------- INFO TOOLTIPS (i) ------------------------------ */
 
 document.querySelectorAll('.info-btn').forEach((btn) => {
@@ -1462,9 +1807,12 @@ document.addEventListener('click', () => {
 /* --------------------------------- INIT ------------------------------------ */
 
 resize();
-updateGobVisibility();
 state.personDist = viewingDistanceForPitch(state.pitch);
+applyHash();
+updateGobVisibility();
 updateDistDisplay();
+// Auf dem Desktop ist die Infobox immer offen
+if (!window.matchMedia('(max-width: 860px)').matches) document.getElementById('hud').classList.remove('collapsed');
 rebuild();
 animate();
 </script>
