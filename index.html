@@ -42,7 +42,7 @@
   /* HUD */
   .hud{
     position:absolute;top:20px;left:20px;z-index:2;
-    background:rgba(20,20,22,.55);backdrop-filter:blur(10px);
+    background:rgba(20,20,22,.8);backdrop-filter:blur(10px);
     border:1px solid var(--line);border-radius:var(--radius);
     padding:16px 18px;min-width:210px;
     box-shadow:0 0 0 1px rgba(231,0,127,.08), 0 12px 30px rgba(0,0,0,.4);
@@ -262,10 +262,6 @@
       </div>
       <div class="hint">Ziehen zum Drehen · Scrollen zum Zoomen</div>
       <div class="view-actions">
-        <button type="button" class="view-btn" id="flipViewBtn" title="Wand von hinten ansehen">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/></svg>
-          <span id="flipViewText">Rückseite</span>
-        </button>
         <button type="button" class="view-btn" id="shareLinkBtn" title="Link zu dieser Konfiguration teilen">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
           Link teilen
@@ -542,7 +538,7 @@ scene.add(floor);
 // Indoor = dunkle Halle / Showroom, Outdoor = Tageslicht mit Himmel, Platz und Bäumen.
 
 const ENVIRONMENTS = {
-  indoor: { wallColor: 0x1d1d21 },
+  indoor: { wallColor: 0x77716a },
   outdoor: { wallColor: 0x5e5a54 }
 };
 const envGroup = new THREE.Group();
@@ -585,6 +581,8 @@ function applyEnvironment() {
   if (state.location === 'outdoor') {
     scene.background = skyTexture;
     scene.fog = new THREE.Fog(0xdbe8f2, 30, 75);
+    hemiLight.color.set(0xcfe6ff);
+    hemiLight.groundColor.set(0x5a6b45);
     Object.assign(fogBase, { near: 30, far: 75 });
     const k = Math.max(1, (wallW / 2 + 5) / 11);
     floorMat.color.set(0x2f5a26);   // Rasen
@@ -604,19 +602,21 @@ function applyEnvironment() {
     [[-11, -6, 5], [-7, -10, 6], [-2, -13, 5.5], [4, -12, 6.5], [9, -9, 5], [12, -4, 6], [-13, 2, 5.5], [14, 4, 5]]
       .forEach(([x, z, h]) => envGroup.add(buildTree(x * k, z * k, h)));
   } else {
-    scene.background = new THREE.Color(0x0a0a0b);
-    scene.fog = new THREE.Fog(0x0a0a0b, 16, 36);
-    Object.assign(fogBase, { near: 16, far: 36 });
-    floorMat.color.set(0x1b1b1e);   // glatter Hallenboden
-    floorMat.roughness = 0.92;
-    rimBase = 1.8;
-    ambientLight.intensity = 0.55;
-    hemiLight.intensity = 0;
-    keyLight.intensity = 0.9;
-    fillLight.intensity = 1.2;
-    keyLight.position.set(6, 10, 6);
-    // Hallenwände ohne Decke (eigene Flächen, damit nichts mit dem Boden flimmert)
-    const hallMat = new THREE.MeshStandardMaterial({ color: 0x16161a, roughness: 0.95 });
+    // Heller Showroom: warme helle Wände, Betonboden, Pflanzen und Lounge
+    scene.background = new THREE.Color(0xbfb9b1);
+    scene.fog = new THREE.Fog(0xbfb9b1, 24, 60);
+    Object.assign(fogBase, { near: 24, far: 60 });
+    floorMat.color.set(0x4a4642);   // geschliffener Beton
+    floorMat.roughness = 0.85;
+    rimBase = 0.5;
+    ambientLight.intensity = 0.2;
+    hemiLight.color.set(0xfff6ea);
+    hemiLight.groundColor.set(0x6a625a);
+    hemiLight.intensity = 0.45;
+    keyLight.intensity = 0.6;
+    fillLight.intensity = 0.25;
+    keyLight.position.set(6, 12, 8);
+    const hallMat = new THREE.MeshStandardMaterial({ color: 0x8a847c, roughness: 0.95 });
     const hallW = Math.max(36, wallW + 16), hallH = Math.max(9, wallH + 6);
     [[0, -14, 0, hallW], [-hallW / 2, 3, Math.PI / 2, 34], [hallW / 2, 3, -Math.PI / 2, 34]].forEach(([x, z, ry, w]) => {
       const wall = new THREE.Mesh(new THREE.PlaneGeometry(w, hallH), hallMat);
@@ -624,7 +624,144 @@ function applyEnvironment() {
       wall.rotation.y = ry;
       envGroup.add(wall);
     });
+    // Sockelleiste an den Hallenwänden
+    const skirtMat = new THREE.MeshStandardMaterial({ color: 0x6f6961, roughness: 0.8 });
+    const skirt = new THREE.Mesh(new THREE.BoxGeometry(hallW, 0.12, 0.03), skirtMat);
+    skirt.position.set(0, 0.06, -13.98);
+    envGroup.add(skirt);
+    buildShowroomDecor(wallW);
   }
+}
+
+/* --------------------------- SHOWROOM-DEKO (INDOOR) ------------------------ */
+
+function buildPlant(x, z, h = 1.4) {
+  const g = new THREE.Group();
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.2, 0.5, 20),
+    new THREE.MeshStandardMaterial({ color: 0xf4f1ec, roughness: 0.4 }));
+  pot.position.y = 0.25;
+  g.add(pot);
+  const soil = new THREE.Mesh(new THREE.CircleGeometry(0.24, 20), new THREE.MeshStandardMaterial({ color: 0x3a2a1e }));
+  soil.rotation.x = -Math.PI / 2;
+  soil.position.y = 0.49;
+  g.add(soil);
+  const leafMat = new THREE.MeshStandardMaterial({ color: 0x3f7f45, roughness: 0.8 });
+  const leafMat2 = new THREE.MeshStandardMaterial({ color: 0x2f6a38, roughness: 0.8 });
+  // buschige Krone aus mehreren Kugeln
+  [[0, h * 0.75, 0, 0.42], [0.2, h * 0.6, 0.1, 0.3], [-0.2, h * 0.62, -0.08, 0.32], [0.05, h * 0.95, -0.05, 0.3], [-0.1, h * 0.5, 0.18, 0.26]]
+    .forEach(([lx, ly, lz, r], i) => {
+      const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), i % 2 ? leafMat2 : leafMat);
+      leaf.position.set(lx, ly, lz);
+      g.add(leaf);
+    });
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, h * 0.5, 8), new THREE.MeshStandardMaterial({ color: 0x5a4632 }));
+  stem.position.y = 0.5 + h * 0.2;
+  g.add(stem);
+  g.position.set(x, 0, z);
+  return g;
+}
+
+function buildSofa(x, z, rotY) {
+  const g = new THREE.Group();
+  const fabric = new THREE.MeshStandardMaterial({ color: 0x55585e, roughness: 0.9 });
+  const cushion = new THREE.MeshStandardMaterial({ color: 0xe7007f, roughness: 0.8 });
+  const leg = new THREE.MeshStandardMaterial({ color: 0x2a2a2c, roughness: 0.4, metalness: 0.6 });
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.22, 0.85), fabric);
+  seat.position.y = 0.32;
+  g.add(seat);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.5, 0.2), fabric);
+  back.position.set(0, 0.62, -0.33);
+  g.add(back);
+  [-1, 1].forEach((sx) => {
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.4, 0.85), fabric);
+    arm.position.set(sx * 0.91, 0.45, 0);
+    g.add(arm);
+    const pillow = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.38, 0.12), cushion);
+    pillow.position.set(sx * 0.55, 0.6, -0.17);
+    pillow.rotation.x = -0.2;
+    g.add(pillow);
+    [-1, 1].forEach((sz) => {
+      const l = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.2, 8), leg);
+      l.position.set(sx * 0.9, 0.1, sz * 0.35);
+      g.add(l);
+    });
+  });
+  // Couchtisch davor
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.04, 28),
+    new THREE.MeshStandardMaterial({ color: 0xb08a62, roughness: 0.6 }));
+  top.position.set(0, 0.42, 0.95);
+  g.add(top);
+  const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.12, 0.4, 12), leg);
+  foot.position.set(0, 0.2, 0.95);
+  g.add(foot);
+  // Teppich unter der Lounge
+  const rug = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 2.4), new THREE.MeshStandardMaterial({ color: 0x8c8277, roughness: 1 }));
+  rug.rotation.x = -Math.PI / 2;
+  rug.position.set(0, 0.006, 0.45);
+  g.add(rug);
+  g.position.set(x, 0, z);
+  g.rotation.y = rotY;
+  return g;
+}
+
+function buildBarTable(x, z) {
+  const g = new THREE.Group();
+  const metal = new THREE.MeshStandardMaterial({ color: 0x2a2a2c, roughness: 0.35, metalness: 0.7 });
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.04, 28),
+    new THREE.MeshStandardMaterial({ color: 0xf4f1ec, roughness: 0.35 }));
+  top.position.y = 1.1;
+  g.add(top);
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.08, 10), metal);
+  pole.position.y = 0.55;
+  g.add(pole);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.28, 0.03, 24), metal);
+  base.position.y = 0.015;
+  g.add(base);
+  // kleine Vase mit pinker Blume
+  const vase = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.16, 12), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 }));
+  vase.position.y = 1.2;
+  g.add(vase);
+  const bloom = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), new THREE.MeshStandardMaterial({ color: 0xe7007f, roughness: 0.6 }));
+  bloom.position.y = 1.32;
+  g.add(bloom);
+  g.position.set(x, 0, z);
+  return g;
+}
+
+function buildFloorSpot(x, z, aimX) {
+  const g = new THREE.Group();
+  const metal = new THREE.MeshStandardMaterial({ color: 0x1e1e20, roughness: 0.4, metalness: 0.6 });
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.6, 8), metal);
+  pole.position.y = 0.8;
+  g.add(pole);
+  [0, 2.1, 4.2].forEach((a) => {
+    const legM = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.5, 6), metal);
+    legM.position.set(Math.cos(a) * 0.18, 0.2, Math.sin(a) * 0.18);
+    legM.rotation.set(Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5);
+    g.add(legM);
+  });
+  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 0.26, 16), metal);
+  head.position.y = 1.65;
+  head.rotation.z = Math.sign(aimX - x) * 0.9;
+  g.add(head);
+  const lens = new THREE.Mesh(new THREE.CircleGeometry(0.11, 16), new THREE.MeshBasicMaterial({ color: 0xfff3d6 }));
+  lens.position.set(Math.sign(aimX - x) * 0.11, 1.58, 0);
+  lens.rotation.y = Math.sign(aimX - x) * Math.PI / 2;
+  g.add(lens);
+  g.position.set(x, 0, z);
+  return g;
+}
+
+function buildShowroomDecor(wallW) {
+  const side = wallW / 2;
+  envGroup.add(buildPlant(-side - 1.0, -0.6, 1.5));
+  envGroup.add(buildPlant(side + 1.0, -0.6, 1.3));
+  envGroup.add(buildPlant(-side - 3.6, 5.2, 1.1));
+  envGroup.add(buildSofa(-side - 2.6, 2.6, Math.PI / 3));
+  envGroup.add(buildBarTable(side + 2.2, 2.4));
+  envGroup.add(buildBarTable(side + 3.4, 3.6));
+  envGroup.add(buildFloorSpot(-side - 0.9, 1.4, 0));
+  envGroup.add(buildFloorSpot(side + 0.9, 1.4, 0));
 }
 
 
@@ -648,7 +785,6 @@ function pinchDistance() {
 
 canvas.addEventListener('pointerdown', (e) => {
   canvas.setPointerCapture(e.pointerId);
-  flipAnim = null;
   activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (activePointers.size === 1) {
     isDragging = true; lastX = e.clientX; lastY = e.clientY;
@@ -1642,9 +1778,7 @@ let clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
   const t = clock.getElapsedTime();
-  stepFlip();
   updateCamera();
-  updateFlipLabel();
   drawContent(t);
   updateBackLeds(t);
   if (scene.fog) {
@@ -1661,30 +1795,6 @@ function animate() {
 }
 
 /* ============================== UI WIRING ================================= */
-
-// Kamera sanft auf die andere Seite der Wand drehen
-let flipAnim = null;
-function isBackView() { return Math.cos(orbit.theta) < 0; }
-let flipLabelBack = null;
-function updateFlipLabel() {
-  const back = isBackView();
-  if (back === flipLabelBack) return;
-  flipLabelBack = back;
-  document.getElementById('flipViewText').textContent = back ? 'Vorderseite' : 'Rückseite';
-}
-document.getElementById('flipViewBtn').addEventListener('click', () => {
-  const from = orbit.theta;
-  const to = isBackView() ? Math.round((from - Math.PI) / (2 * Math.PI)) * 2 * Math.PI + 0.5
-                          : Math.round(from / (2 * Math.PI)) * 2 * Math.PI + Math.PI - 0.5;
-  flipAnim = { from, to, start: performance.now() };
-});
-function stepFlip() {
-  if (!flipAnim) return;
-  const u = Math.min((performance.now() - flipAnim.start) / 900, 1);
-  const e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
-  orbit.theta = flipAnim.from + (flipAnim.to - flipAnim.from) * e;
-  if (u >= 1) flipAnim = null;
-}
 
 document.getElementById('hudToggle').addEventListener('click', () => {
   if (!window.matchMedia('(max-width: 860px)').matches) return;
