@@ -1717,25 +1717,33 @@ const distanceGroup = new THREE.Group();
 scene.add(distanceGroup);
 
 function makeLabelSprite(text) {
+  // In 4-facher Auflösung zeichnen, damit die Schrift auch nah dran und auf
+  // hochauflösenden Bildschirmen scharf bleibt.
+  const S = 4;
   const cnv = document.createElement('canvas');
-  cnv.width = 256; cnv.height = 96;
+  cnv.width = 256 * S; cnv.height = 96 * S;
   const ctx = cnv.getContext('2d');
-  ctx.fillStyle = 'rgba(10,10,11,0.75)';
+  ctx.scale(S, S);
+  ctx.fillStyle = 'rgba(10,10,11,0.85)';
   roundRect(ctx, 4, 20, 248, 56, 14);
   ctx.fill();
   ctx.strokeStyle = '#e7007f';
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2.5;
   roundRect(ctx, 4, 20, 248, 56, 14);
   ctx.stroke();
   ctx.fillStyle = '#ffffff';
-  ctx.font = '600 30px "Inter", sans-serif';
+  ctx.font = '700 32px "Inter", "Helvetica Neue", Arial, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(text, 128, 50);
+  ctx.fillText(text, 128, 49);
   const tex = new THREE.CanvasTexture(cnv);
-  const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true });
+  tex.encoding = THREE.sRGBEncoding;
+  tex.anisotropy = maxAnisotropy;
+  // fog: false – sonst verblasst das Label im Nebel und wirkt verwaschen
+  const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true, fog: false });
   const sprite = new THREE.Sprite(mat);
   sprite.scale.set(1.4, 0.52, 1);
+  sprite.renderOrder = 10;
   return sprite;
 }
 function roundRect(ctx, x, y, w, h, r) {
@@ -1865,6 +1873,11 @@ function viewingDistanceForPitch(pitchMm) {
 }
 
 function buildDistanceIndicator(dims) {
+  // Alte Label-Texturen freigeben, sonst sammelt sich beim Schieben des Reglers Grafikspeicher an
+  distanceGroup.traverse(o => {
+    if (o.material) { if (o.material.map) o.material.map.dispose(); o.material.dispose(); }
+    if (o.geometry) o.geometry.dispose();
+  });
   distanceGroup.clear();
   const wallFrontZ = 0; // Vorderseite der Wand liegt näherungsweise bei z=0 (siehe curvedPoint)
   const dist = state.personDist;
@@ -1942,6 +1955,8 @@ function resize() {
   camera.updateProjectionMatrix();
 }
 window.addEventListener('resize', resize);
+// Sobald die Schrift geladen ist, Abstands-Label einmal neu zeichnen (sonst Ersatzschrift)
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => rebuild());
 window.addEventListener('orientationchange', () => setTimeout(resize, 300));
 
 /* --------------------------------- LOOP ------------------------------------ */
