@@ -124,6 +124,8 @@
   .stepper-label{font-size:11.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
   .stepper-row > .stepper-label:first-child{flex:none;}
   .stepper-row > .stepper + .stepper-label{flex:1;min-width:0;line-height:1.3;white-space:nowrap;letter-spacing:-0.2px;}
+  .panel-total{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);font-size:11.5px;line-height:1.5;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+  .panel-total b{color:var(--white);font-weight:600;}
 
   select{
     width:100%;background:var(--panel-bg-2);border:1px solid var(--line);color:var(--white);
@@ -310,7 +312,7 @@
             <input class="val" id="colsVal" type="text" inputmode="decimal" aria-label="Breite in Metern" value="5,0"><span class="unit">m</span>
             <button id="colsPlus">+</button>
           </div>
-          <div class="stepper-label" id="colsPanelsLabel">(10 LED-Panels)</div>
+          <div class="stepper-label" id="colsPanelsLabel">10 Panels<br>nebeneinander</div>
         </div>
         <div class="stepper-row">
           <div class="stepper-label" style="width:48px;">Höhe</div>
@@ -319,8 +321,9 @@
             <input class="val" id="rowsVal" type="text" inputmode="decimal" aria-label="Höhe in Metern" value="3,0"><span class="unit">m</span>
             <button id="rowsPlus">+</button>
           </div>
-          <div class="stepper-label" id="rowsPanelsLabel">3× 0,5×1 m</div>
+          <div class="stepper-label" id="rowsPanelsLabel">3 Panels<br>übereinander</div>
         </div>
+        <div class="panel-total" id="panelTotal"><b>Gesamt: 30 Panels</b><br>30× 0,5×1 m</div>
       </div>
 
       <div class="field">
@@ -509,8 +512,8 @@ function getLayout() {
 }
 function panelMixText(L) {
   const parts = [];
-  if (L.big) parts.push(`${L.big} × groß`);
-  if (L.small) parts.push(`${L.small} × klein`);
+  if (L.big) parts.push(`${L.big}× 0,5×1 m`);
+  if (L.small) parts.push(`${L.small}× 0,5×0,5 m`);
   return parts.join(' + ');
 }
 
@@ -2068,8 +2071,10 @@ function updateSizeDisplay() {
   if (document.activeElement !== colsInput) colsInput.value = fmtM(state.cols * panelW);
   if (document.activeElement !== rowsInput) rowsInput.value = fmtM(state.rows * panelH);
   const L = getLayout();
-  document.getElementById('colsPanelsLabel').textContent = `(${state.cols} LED-Panel${state.cols === 1 ? '' : 's'})`;
-  document.getElementById('rowsPanelsLabel').innerHTML = [L.bigRows ? `${L.bigRows}× 0,5×1 m` : '', L.smallRows ? `${L.smallRows}× 0,5×0,5 m` : ''].filter(Boolean).map(t => `<span style="white-space:nowrap">${t}</span>`).join('<br>');
+  const rowsCount = [L.bigRows, L.smallRows].filter(Boolean).join(' + ');
+  document.getElementById('colsPanelsLabel').innerHTML = `${state.cols} Panel${state.cols === 1 ? '' : 's'}<br>nebeneinander`;
+  document.getElementById('rowsPanelsLabel').innerHTML = `${rowsCount} Panel${L.bigRows + L.smallRows === 1 ? '' : 's'}<br>übereinander`;
+  document.getElementById('panelTotal').innerHTML = `<b>Gesamt: ${L.total} Panels</b><br>${panelMixText(L)}`;
 }
 
 // Eingetippte Meter auf 50 cm runden (Komma oder Punkt erlaubt).
