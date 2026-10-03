@@ -205,7 +205,9 @@
     .hud .eyebrow{font-size:8.5px;margin-bottom:5px;}
     .hud-row{font-size:10.5px;padding:1px 0;gap:10px;}
     .hud .eyebrow{display:flex;cursor:pointer;}
-    .hud-chevron{display:inline;margin-left:auto;color:var(--muted);transition:transform .2s;}
+    .hud{cursor:pointer;}
+    .hud-title{display:flex;align-items:center;gap:10px;}
+    .hud-chevron{display:block;flex:none;width:18px;height:18px;margin-left:auto;color:var(--accent);transition:transform .2s;filter:drop-shadow(0 0 4px rgba(231,0,127,.55));}
     .hud.collapsed{min-width:0;padding:6px 9px;}
     .hud.collapsed .eyebrow{margin-bottom:0;}
     .hud.collapsed .hud-summary{display:inline;color:var(--white);letter-spacing:0;text-transform:none;font-size:10px;}
@@ -249,9 +251,9 @@
     <div class="viewer">
       <canvas id="c"></canvas>
       <div class="hud collapsed" id="hud">
-        <h1 class="hud-title">LEDWALL Konfigurator</h1>
+        <h1 class="hud-title">LEDWALL Konfigurator<svg class="hud-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9l7 7 7-7" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></h1>
         <button type="button" class="eyebrow" id="hudToggle" aria-expanded="false" aria-label="Konfiguration ein- und ausklappen">
-          <span class="hud-summary" id="hudSummary"></span><span class="hud-chevron">▾</span>
+          <span class="hud-summary" id="hudSummary"></span>
         </button>
         <div class="hud-row"><span>Größe</span><span id="hudSize">–</span></div>
         <div class="hud-row"><span>Panels</span><span id="hudPanels">–</span></div>
@@ -1805,7 +1807,8 @@ function animate() {
 
 /* ============================== UI WIRING ================================= */
 
-document.getElementById('hudToggle').addEventListener('click', () => {
+// Auf dem Handy klappt ein Tipp irgendwo auf den Kasten ihn auf oder zu
+document.getElementById('hud').addEventListener('click', () => {
   if (!window.matchMedia('(max-width: 860px)').matches) return;
   const hud = document.getElementById('hud');
   hud.classList.toggle('collapsed');
