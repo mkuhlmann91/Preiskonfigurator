@@ -950,6 +950,15 @@ function syncLogoVideo() {
 }
 // Manche Mobilbrowser starten Videos erst nach der ersten Berührung
 document.addEventListener('pointerdown', syncLogoVideo, { once: true });
+// Standbild als Ersatz, falls das Video nicht abspielt (z. B. iPhone im Stromsparmodus)
+const logoImage = new Image();
+logoImage.src = 'assets/ledwall360-logo.jpg';
+function logoSource() {
+  const v = logoVideo;
+  if (v.readyState >= 2 && v.videoWidth && !v.paused) return [v, v.videoWidth, v.videoHeight];
+  if (logoImage.complete && logoImage.naturalWidth) return [logoImage, logoImage.naturalWidth, logoImage.naturalHeight];
+  return null;
+}
 
 // Pinker Verlauf mit langsam rotierenden Lichtstrahlen (Werbung und Logo)
 function promoBackground(ctx, W, H, t) {
@@ -1008,15 +1017,15 @@ const motifs = {
     ctx.globalCompositeOperation = 'source-over';
   },
 
-  // Pinker Hintergrund mit dem LEDWALL-360-Logo (Video) darüber
   // Bewegter Werbungs-Hintergrund mit schwebendem LEDWALL-360-Logo
   logo(ctx, W, H, t) {
     promoBackground(ctx, W, H, t);
-    const v = logoVideo;
-    if (v.readyState < 2 || !v.videoWidth) return;
+    const src = logoSource();
+    if (!src) return;
+    const [v, vw, vh] = src;
     const pulse = 1 + 0.05 * Math.sin(t * 0.5);
-    const scale = Math.min((W * 0.72) / v.videoWidth, (H * 0.72) / v.videoHeight) * pulse;
-    const dw = v.videoWidth * scale, dh = v.videoHeight * scale;
+    const scale = Math.min((W * 0.72) / vw, (H * 0.72) / vh) * pulse;
+    const dw = vw * scale, dh = vh * scale;
     const cx = W / 2 + Math.sin(t * 0.35) * W * 0.05;
     const cy = H / 2 + Math.sin(t * 0.55 + 1) * H * 0.06;
     // dunklere Zone hinter dem Logo, damit die pinke "360" nicht im Hintergrund verschwindet
