@@ -239,7 +239,7 @@
   @media (hover:none){
     .seg-btn:hover{border-color:var(--line);color:var(--muted);}
     .seg-btn.active:hover{color:#fff;}
-    .info-wrap:hover .tooltip-pop{display:none;}
+    .info-wrap:hover:not(.open) .tooltip-pop{display:none;}
   }
 </style>
 </head>
@@ -499,7 +499,8 @@ function getPanelDims() {
 
 const canvas = document.getElementById('c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const isTouch = window.matchMedia('(pointer: coarse)').matches;
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, isTouch ? 1.5 : 2));
 renderer.outputEncoding = THREE.sRGBEncoding;
 
 const scene = new THREE.Scene();
@@ -942,23 +943,11 @@ function drawCover(ctx, el, W, H) {
   ctx.drawImage(el, (W - dw) / 2, (H - dh) / 2, dw, dh);
 }
 
-// Logo-Video von LEDWALL 360 (stumm, Endlosschleife) für den Standardinhalt
-const logoVideo = document.createElement('video');
-logoVideo.src = 'assets/ledwall360-logo.mp4';
-logoVideo.muted = true; logoVideo.loop = true; logoVideo.playsInline = true; logoVideo.preload = 'auto';
-logoVideo.setAttribute('muted', ''); logoVideo.setAttribute('playsinline', '');
-function syncLogoVideo() {
-  if (state.content === 'logo') logoVideo.play().catch(() => {});
-  else logoVideo.pause();
-}
-// Manche Mobilbrowser starten Videos erst nach der ersten Berührung
-document.addEventListener('pointerdown', syncLogoVideo, { once: true });
-// Standbild als Ersatz, falls das Video nicht abspielt (z. B. iPhone im Stromsparmodus)
+// LEDWALL-360-Logo als Bild. Ein Video lieferte auf manchen Handys (v. a. iPhone)
+// nur schwarze Frames, die Bewegung kommt ohnehin aus der Canvas-Animation.
 const logoImage = new Image();
 logoImage.src = 'assets/ledwall360-logo.jpg';
 function logoSource() {
-  const v = logoVideo;
-  if (v.readyState >= 2 && v.videoWidth && !v.paused) return [v, v.videoWidth, v.videoHeight];
   if (logoImage.complete && logoImage.naturalWidth) return [logoImage, logoImage.naturalWidth, logoImage.naturalHeight];
   return null;
 }
@@ -1046,13 +1035,14 @@ const motifs = {
 
   promo(ctx, W, H, t) {
     promoBackground(ctx, W, H, t);
-    const pulse = 1 + 0.025 * Math.sin(t * 1.2);
+    const pulse = 1 + 0.07 * Math.sin(t * 2.2);
     const fs = Math.min(W * 0.16, H * 0.42) * pulse;
+    const bob = Math.sin(t * 1.1) * H * 0.03;
     ctx.fillStyle = '#fff';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.font = `800 ${fs}px Inter, Arial, sans-serif`;
-    ctx.fillText('SALE −30 %', W / 2, H * 0.42);
+    ctx.fillText('SALE −30 %', W / 2, H * 0.42 + bob);
     // Laufschrift
     const bandH = Math.max(H * 0.16, 28);
     ctx.fillStyle = '#ffffff';
@@ -2012,7 +2002,6 @@ document.getElementById('segContent').addEventListener('click', (e) => {
   state.content = btn.getAttribute('data-val');
   setActive(document.getElementById('segContent'), state.content);
   document.getElementById('uploadLabel').classList.remove('active');
-  syncLogoVideo();
 });
 document.getElementById('contentFile').addEventListener('change', (e) => {
   const file = e.target.files && e.target.files[0];
@@ -2031,7 +2020,6 @@ document.getElementById('contentFile').addEventListener('change', (e) => {
     content.media = img;
   }
   state.content = 'custom';
-  syncLogoVideo();
   setActive(document.getElementById('segContent'), '');
   document.getElementById('uploadLabel').classList.add('active');
   document.getElementById('uploadText').textContent = `✓ ${file.name}`;
@@ -2380,7 +2368,15 @@ document.querySelectorAll('.info-btn').forEach((btn) => {
     const wrap = btn.closest('.info-wrap');
     const wasOpen = wrap.classList.contains('open');
     document.querySelectorAll('.info-wrap.open').forEach((w) => w.classList.remove('open'));
-    if (!wasOpen) wrap.classList.add('open');
+    if (!wasOpen) {
+      wrap.classList.add('open');
+      // am Handy nicht über den Bildschirmrand hinausragen lassen
+      const pop = wrap.querySelector('.tooltip-pop');
+      pop.style.left = '0px';
+      const r = pop.getBoundingClientRect();
+      const over = r.right - (window.innerWidth - 12);
+      if (over > 0) pop.style.left = `${-Math.min(over, r.left - 12)}px`;
+    }
   });
 });
 document.addEventListener('click', () => {
@@ -2392,7 +2388,6 @@ document.addEventListener('click', () => {
 resize();
 state.personDist = viewingDistanceForPitch(state.pitch);
 applyHash();
-syncLogoVideo();
 applyEnvironment();
 updateGobVisibility();
 updateDistDisplay();
