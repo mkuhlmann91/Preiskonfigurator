@@ -118,8 +118,8 @@
   .stepper button{background:none;border:none;color:var(--white);width:32px;height:36px;font-size:16px;cursor:pointer;}
   .stepper button:hover{background:var(--line);}
   .stepper .val{width:62px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:13px;background:transparent;border:none;color:var(--white);padding:0;height:36px;}
-  .stepper .val{width:40px;text-align:right;padding-right:4px;}
-  .stepper .unit{width:22px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--white);}
+  .stepper .val{width:40px;text-align:right;padding-right:1px;}
+  .stepper .unit{width:20px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--white);}
   .stepper .val:focus{outline:1px solid var(--accent);outline-offset:-1px;}
   .stepper-label{font-size:11.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
   .stepper-row > .stepper-label:first-child{flex:none;}
@@ -323,7 +323,7 @@
           </div>
           <div class="stepper-label" id="rowsPanelsLabel">3 Panels<br>übereinander</div>
         </div>
-        <div class="panel-total" id="panelTotal"><b>Gesamt: 30 Panels</b><br>30× 0,5×1 m</div>
+        <div class="panel-total" id="panelTotal"><b>Gesamt: 30 Panels</b><br>30× 0,5×1m</div>
       </div>
 
       <div class="field">
@@ -390,12 +390,12 @@
         <div id="distField" style="margin-top:12px;">
           <div class="stepper-row" style="justify-content:space-between;margin-bottom:6px;">
             <div class="stepper-label">Abstand zur Wand</div>
-            <div class="stepper-label" style="color:var(--white);" id="distVal">3,5 m</div>
+            <div class="stepper-label" style="color:var(--white);" id="distVal">3,5m</div>
           </div>
           <input type="range" id="distRange" min="1" max="15" step="0.5" value="3.5" aria-label="Abstand der Figur zur Wand">
-          <div class="range-labels"><span>1 m</span><span>15 m</span></div>
+          <div class="range-labels"><span>1m</span><span>15m</span></div>
           <div class="pitch-reco" id="pitchReco">
-            <span id="pitchRecoText">Für 3,5 m empfehlen wir P2.9</span>
+            <span id="pitchRecoText">Für 3,5m empfehlen wir P2.9</span>
             <button type="button" id="pitchRecoBtn">Übernehmen</button>
           </div>
         </div>
@@ -512,8 +512,8 @@ function getLayout() {
 }
 function panelMixText(L) {
   const parts = [];
-  if (L.big) parts.push(`${L.big}× 0,5×1 m`);
-  if (L.small) parts.push(`${L.small}× 0,5×0,5 m`);
+  if (L.big) parts.push(`${L.big}× 0,5×1m`);
+  if (L.small) parts.push(`${L.small}× 0,5×0,5m`);
   return parts.join(' + ');
 }
 
@@ -522,7 +522,11 @@ function panelMixText(L) {
 const canvas = document.getElementById('c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
 const isTouch = window.matchMedia('(pointer: coarse)').matches;
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, isTouch ? 1.5 : 2));
+// Auflösung begrenzen: 1,5-fach sieht scharf aus und spart gegenüber 2-fach fast die
+// Hälfte der Rechenarbeit. Ist der Rechner trotzdem zu langsam, wird automatisch
+// weiter heruntergeregelt (siehe adaptQuality im Loop).
+let pixelRatio = Math.min(window.devicePixelRatio, 1.5);
+renderer.setPixelRatio(pixelRatio);
 renderer.outputEncoding = THREE.sRGBEncoding;
 
 const scene = new THREE.Scene();
@@ -848,8 +852,15 @@ canvas.addEventListener('wheel', (e) => {
   orbit.radius = Math.min(Math.max(orbit.radius + e.deltaY * 0.01 * Math.max(orbit.radius / 8, 0.25), 1.2), maxOrbitRadius());
 }, { passive: false });
 
-function updateCamera() {
-  const { theta, phi, radius, target } = orbit;
+// Die Kamera folgt der Maus weich nach (statt ruckartig bei jedem Mausevent).
+const view = { theta: orbit.theta, phi: orbit.phi, radius: orbit.radius, target: orbit.target.clone() };
+function updateCamera(dt) {
+  const k = 1 - Math.exp(-dt * 14);
+  view.theta += (orbit.theta - view.theta) * k;
+  view.phi += (orbit.phi - view.phi) * k;
+  view.radius += (orbit.radius - view.radius) * k;
+  view.target.lerp(orbit.target, k);
+  const { theta, phi, radius, target } = view;
   camera.position.x = target.x + radius * Math.sin(phi) * Math.sin(theta);
   camera.position.y = target.y + radius * Math.cos(phi);
   camera.position.z = target.z + radius * Math.sin(phi) * Math.cos(theta);
@@ -1872,7 +1883,7 @@ function buildDistanceIndicator(dims) {
   });
 
   // Distanz-Label über der Linienmitte
-  const label = makeLabelSprite(`${dist.toFixed(1)} m`);
+  const label = makeLabelSprite(`${fmtM(dist)}m`);
   label.position.set(lineX, 0.55, wallFrontZ + dist / 2);
   distanceGroup.add(label);
 
@@ -1896,13 +1907,13 @@ function updateHUD(dims) {
   const resY = Math.round((dims.totalHeight * 1000) / pitchMm);
   const totalWeight = Math.round(L.weight);
 
-  document.getElementById('hudSize').textContent = `${dims.totalWidth.toFixed(1)} × ${dims.totalHeight.toFixed(1)} m`;
+  document.getElementById('hudSize').textContent = `${fmtM(dims.totalWidth)}m × ${fmtM(dims.totalHeight)}m`;
   document.getElementById('hudPanels').textContent = `${L.total} (${panelMixText(L)})`;
   document.getElementById('hudPitch').textContent = `P${pitchMm}`;
   document.getElementById('hudRes').textContent = `${resX} × ${resY} px`;
   document.getElementById('hudWeight').textContent = `${totalWeight} kg`;
-  document.getElementById('hudSummary').textContent = `${fmtM(dims.totalWidth)} × ${fmtM(dims.totalHeight)} m · P${pitchMm} · ${totalWeight} kg`;
-  document.getElementById('hudDistance').textContent = `${viewingDistanceForPitch(pitchMm).toFixed(1)} m (Richtwert)`;
+  document.getElementById('hudSummary').textContent = `${fmtM(dims.totalWidth)}m × ${fmtM(dims.totalHeight)}m · P${pitchMm} · ${totalWeight} kg`;
+  document.getElementById('hudDistance').textContent = `${fmtM(viewingDistanceForPitch(pitchMm))}m (Richtwert)`;
 }
 
 /* ------------------------------ MAIN REBUILD ------------------------------- */
@@ -1933,15 +1944,34 @@ window.addEventListener('orientationchange', () => setTimeout(resize, 300));
 /* --------------------------------- LOOP ------------------------------------ */
 
 let clock = new THREE.Clock();
+let lastContentT = -1;
+let slowFrames = 0;
+// Fällt die Bildrate dauerhaft unter ca. 40 fps, Auflösung schrittweise senken (bis 1-fach).
+function adaptQuality(dt) {
+  if (pixelRatio <= 1 || document.hidden) return;
+  slowFrames = dt > 0.025 && dt < 0.25 ? slowFrames + 1 : Math.max(0, slowFrames - 2);
+  if (slowFrames > 45) {
+    pixelRatio = Math.max(1, pixelRatio - 0.25);
+    renderer.setPixelRatio(pixelRatio);
+    slowFrames = 0;
+  }
+}
 function animate() {
   requestAnimationFrame(animate);
-  const t = clock.getElapsedTime();
-  updateCamera();
-  drawContent(t);
+  const dt = clock.getDelta();
+  const t = clock.elapsedTime;
+  updateCamera(dt);
+  adaptQuality(dt);
+  // Der Wandinhalt muss nicht 60-mal pro Sekunde neu auf die Grafikkarte:
+  // 30 Bilder pro Sekunde reichen für die Animation und halbieren den Aufwand.
+  if (t - lastContentT >= 1 / 30) {
+    drawContent(t);
+    lastContentT = t;
+  }
   updateBackLeds(t);
   if (scene.fog) {
-    scene.fog.near = Math.max(fogBase.near, orbit.radius * 0.8);
-    scene.fog.far = Math.max(fogBase.far, orbit.radius * 2 + 10);
+    scene.fog.near = Math.max(fogBase.near, view.radius * 0.8);
+    scene.fog.far = Math.max(fogBase.far, view.radius * 2 + 10);
   }
   // Von hinten: pinkes Streiflicht aus, neutrales Licht an, damit die Rückseite schwarz wirkt
   const front = clamp(camera.position.z / 3 + 0.5, 0, 1);
@@ -2000,11 +2030,11 @@ function recommendedPitchForDistance(d) {
 }
 function updateDistDisplay() {
   document.getElementById('distRange').value = state.personDist;
-  document.getElementById('distVal').textContent = `${fmtM(state.personDist)} m`;
+  document.getElementById('distVal').textContent = `${fmtM(state.personDist)}m`;
   const reco = recommendedPitchForDistance(state.personDist);
   document.getElementById('pitchRecoText').textContent = reco === state.pitch
-    ? `✓ P${reco} passt zu ${fmtM(state.personDist)} m Abstand`
-    : `Für ${fmtM(state.personDist)} m empfehlen wir P${reco}`;
+    ? `✓ P${reco} passt zu ${fmtM(state.personDist)}m Abstand`
+    : `Für ${fmtM(state.personDist)}m empfehlen wir P${reco}`;
   document.getElementById('pitchReco').classList.toggle('match', reco === state.pitch);
 }
 document.getElementById('pitchRecoBtn').addEventListener('click', () => {
