@@ -1768,7 +1768,7 @@ function buildStackingFrame(h, depth, tube, mat) {
   return g;
 }
 
-// Fassadentextur: Betonplatten mit Fugen, Sockel, Gesims; draußen Fenster neben der LED-Wand
+// Fassadentextur: Betonplatten mit Fugen, Sockel, Gesims (ohne Fenster)
 function makeFacadeTexture(bw, bh, ledW) {
   const ppm = Math.min(64, 2048 / Math.max(bw, bh));
   const c = document.createElement('canvas');
@@ -1798,28 +1798,6 @@ function makeFacadeTexture(bw, bh, ledW) {
   ctx.lineWidth = Math.max(1, 0.015 * ppm);
   for (let px = -bw / 2 - (bw / 2 % pw); px < bw / 2; px += pw) { ctx.beginPath(); ctx.moveTo(X(px), 0); ctx.lineTo(X(px), c.height); ctx.stroke(); }
   for (let py = 0.45; py < bh; py += ph) { ctx.beginPath(); ctx.moveTo(0, Y(py)); ctx.lineTo(c.width, Y(py)); ctx.stroke(); }
-  // Fenster links und rechts der LED-Wand (nur außen)
-  if (outdoor) {
-    const free = (bw - ledW) / 2;
-    if (free > 1.8) {
-      const ww = Math.min(1.4, free - 1.0), wh = 1.5;
-      for (const side of [-1, 1]) {
-        const cx = side * (ledW / 2 + free / 2);
-        for (let wy = 1.0; wy + wh < bh - 0.6; wy += 2.6) {
-          ctx.fillStyle = '#3a3f44';
-          ctx.fillRect(X(cx - ww / 2) - 4, Y(wy + wh) - 4, ww * ppm + 8, wh * ppm + 8);
-          const g = ctx.createLinearGradient(0, Y(wy + wh), 0, Y(wy));
-          g.addColorStop(0, '#9fb6c8'); g.addColorStop(1, '#4d5d6b');
-          ctx.fillStyle = g;
-          ctx.fillRect(X(cx - ww / 2), Y(wy + wh), ww * ppm, wh * ppm);
-          ctx.fillStyle = '#3a3f44';
-          ctx.fillRect(X(cx) - 2, Y(wy + wh), 4, wh * ppm);
-          ctx.fillStyle = '#e8e4de';
-          ctx.fillRect(X(cx - ww / 2) - 8, Y(wy) , ww * ppm + 16, Math.max(3, 0.06 * ppm));
-        }
-      }
-    }
-  }
   const t = new THREE.CanvasTexture(c);
   t.encoding = THREE.sRGBEncoding;
   t.anisotropy = maxAnisotropy;
