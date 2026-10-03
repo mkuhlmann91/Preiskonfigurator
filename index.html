@@ -633,6 +633,7 @@ function applyEnvironment() {
     envGroup.add(plaza);
     [[-11, -6, 5], [-7, -10, 6], [-2, -13, 5.5], [4, -12, 6.5], [9, -9, 5], [12, -4, 6], [-13, 2, 5.5], [14, 4, 5]]
       .forEach(([x, z, h]) => envGroup.add(buildTree(x * k, z * k, h)));
+    buildPlazaDecor(wallW);
   } else {
     // Heller Showroom: warme helle Wände, Betonboden, Pflanzen und Lounge
     scene.background = new THREE.Color(0xbfb9b1);
@@ -663,6 +664,120 @@ function applyEnvironment() {
     envGroup.add(skirt);
     buildShowroomDecor(wallW);
   }
+}
+
+/* ------------------------------ PLATZ-DEKO (OUTDOOR) ----------------------- */
+
+const woodMat = () => new THREE.MeshStandardMaterial({ color: 0x8a5a33, roughness: 0.8 });
+const darkMetalMat = () => new THREE.MeshStandardMaterial({ color: 0x2b2d30, roughness: 0.5, metalness: 0.6 });
+
+// Parkbank: Holzlatten auf zwei schwarzen Metallgestellen, Sitzfläche zeigt nach +z
+function buildBench(x, z, rotY) {
+  const g = new THREE.Group();
+  const wood = woodMat(), metal = darkMetalMat();
+  const len = 1.8;
+  for (let i = 0; i < 3; i++) {           // Sitzlatten
+    const slat = new THREE.Mesh(new THREE.BoxGeometry(len, 0.035, 0.11), wood);
+    slat.position.set(0, 0.45, -0.15 + i * 0.13);
+    g.add(slat);
+  }
+  for (let i = 0; i < 2; i++) {           // Rückenlehne
+    const slat = new THREE.Mesh(new THREE.BoxGeometry(len, 0.11, 0.035), wood);
+    slat.position.set(0, 0.62 + i * 0.15, -0.24 - i * 0.03);
+    slat.rotation.x = -0.18;
+    g.add(slat);
+  }
+  [-len / 2 + 0.15, len / 2 - 0.15].forEach(lx => {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.45, 0.42), metal);
+    leg.position.set(lx, 0.225, -0.02);
+    g.add(leg);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.42, 0.04), metal);
+    back.position.set(lx, 0.66, -0.26);
+    back.rotation.x = -0.18;
+    g.add(back);
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 0.45), metal);
+    arm.position.set(lx, 0.66, -0.02);
+    g.add(arm);
+  });
+  g.position.set(x, 0, z);
+  g.rotation.y = rotY;
+  return g;
+}
+
+// Straßenlaterne mit warm leuchtendem Kopf
+function buildStreetLamp(x, z, h = 4) {
+  const g = new THREE.Group();
+  const metal = darkMetalMat();
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, h, 10), metal);
+  pole.position.y = h / 2;
+  g.add(pole);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.35, 12), metal);
+  base.position.y = 0.175;
+  g.add(base);
+  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.26, 0.28, 12), metal);
+  head.position.y = h + 0.1;
+  g.add(head);
+  const glow = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.04, 12),
+    new THREE.MeshBasicMaterial({ color: 0xffe2a8 }));
+  glow.position.y = h - 0.05;
+  g.add(glow);
+  g.position.set(x, 0, z);
+  return g;
+}
+
+// Mülleimer: dunkler Zylinder mit Holzverkleidung
+function buildBin(x, z) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.22, 0.85, 16), darkMetalMat());
+  body.position.y = 0.425;
+  g.add(body);
+  const wood = woodMat();
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2;
+    const slat = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.7, 0.025), wood);
+    slat.position.set(Math.sin(a) * 0.245, 0.42, Math.cos(a) * 0.245);
+    slat.rotation.y = a;
+    g.add(slat);
+  }
+  g.position.set(x, 0, z);
+  return g;
+}
+
+// Holz-Pflanzkübel mit Gras und pinken Blüten
+function buildPlanter(x, z, rotY = 0) {
+  const g = new THREE.Group();
+  const box = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.5, 0.55), woodMat());
+  box.position.y = 0.25;
+  g.add(box);
+  const soil = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.04, 0.45),
+    new THREE.MeshStandardMaterial({ color: 0x3a2a1c, roughness: 1 }));
+  soil.position.y = 0.5;
+  g.add(soil);
+  const green = new THREE.MeshStandardMaterial({ color: 0x3f7a2e, roughness: 0.9 });
+  const pink = new THREE.MeshStandardMaterial({ color: 0xe7007f, roughness: 0.6 });
+  for (let i = 0; i < 7; i++) {
+    const bush = new THREE.Mesh(new THREE.SphereGeometry(0.16 + (i % 3) * 0.03, 10, 8), green);
+    bush.position.set(-0.54 + i * 0.18, 0.6, (i % 2 ? 0.08 : -0.08));
+    g.add(bush);
+    const bloom = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), pink);
+    bloom.position.set(-0.54 + i * 0.18 + 0.05, 0.76 + (i % 2) * 0.04, (i % 2 ? 0.02 : -0.04));
+    g.add(bloom);
+  }
+  g.position.set(x, 0, z);
+  g.rotation.y = rotY;
+  return g;
+}
+
+function buildPlazaDecor(wallW) {
+  const side = wallW / 2;
+  // alles vor der Wandebene (z > 0) und seitlich, damit Figur und Abstandslinie frei bleiben
+  envGroup.add(buildStreetLamp(-side - 1.0, 0.9));
+  envGroup.add(buildStreetLamp(side + 1.0, 0.9));
+  envGroup.add(buildBench(side + 2.4, 2.4, -Math.PI / 2 - 0.35));
+  envGroup.add(buildBench(-side - 2.6, 3.2, Math.PI / 2 + 0.35));
+  envGroup.add(buildBin(side + 2.2, 3.9));
+  envGroup.add(buildPlanter(-side - 1.9, 0.9, Math.PI / 2));
+  envGroup.add(buildPlanter(side + 3.6, 0.9, 0));
 }
 
 /* --------------------------- SHOWROOM-DEKO (INDOOR) ------------------------ */
@@ -1653,7 +1768,7 @@ function buildStackingFrame(h, depth, tube, mat) {
   return g;
 }
 
-// Fassadentextur: Betonplatten mit Fugen, Sockel, Gesims; draußen Fenster neben der LED-Wand
+// Fassadentextur: Betonplatten mit Fugen, Sockel, Gesims (ohne Fenster)
 function makeFacadeTexture(bw, bh, ledW) {
   const ppm = Math.min(64, 2048 / Math.max(bw, bh));
   const c = document.createElement('canvas');
@@ -1683,28 +1798,6 @@ function makeFacadeTexture(bw, bh, ledW) {
   ctx.lineWidth = Math.max(1, 0.015 * ppm);
   for (let px = -bw / 2 - (bw / 2 % pw); px < bw / 2; px += pw) { ctx.beginPath(); ctx.moveTo(X(px), 0); ctx.lineTo(X(px), c.height); ctx.stroke(); }
   for (let py = 0.45; py < bh; py += ph) { ctx.beginPath(); ctx.moveTo(0, Y(py)); ctx.lineTo(c.width, Y(py)); ctx.stroke(); }
-  // Fenster links und rechts der LED-Wand (nur außen)
-  if (outdoor) {
-    const free = (bw - ledW) / 2;
-    if (free > 1.8) {
-      const ww = Math.min(1.4, free - 1.0), wh = 1.5;
-      for (const side of [-1, 1]) {
-        const cx = side * (ledW / 2 + free / 2);
-        for (let wy = 1.0; wy + wh < bh - 0.6; wy += 2.6) {
-          ctx.fillStyle = '#3a3f44';
-          ctx.fillRect(X(cx - ww / 2) - 4, Y(wy + wh) - 4, ww * ppm + 8, wh * ppm + 8);
-          const g = ctx.createLinearGradient(0, Y(wy + wh), 0, Y(wy));
-          g.addColorStop(0, '#9fb6c8'); g.addColorStop(1, '#4d5d6b');
-          ctx.fillStyle = g;
-          ctx.fillRect(X(cx - ww / 2), Y(wy + wh), ww * ppm, wh * ppm);
-          ctx.fillStyle = '#3a3f44';
-          ctx.fillRect(X(cx) - 2, Y(wy + wh), 4, wh * ppm);
-          ctx.fillStyle = '#e8e4de';
-          ctx.fillRect(X(cx - ww / 2) - 8, Y(wy) , ww * ppm + 16, Math.max(3, 0.06 * ppm));
-        }
-      }
-    }
-  }
   const t = new THREE.CanvasTexture(c);
   t.encoding = THREE.sRGBEncoding;
   t.anisotropy = maxAnisotropy;
