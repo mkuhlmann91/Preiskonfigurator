@@ -291,23 +291,6 @@
 
       <div class="field">
         <div class="title-row">
-          <span class="title-text">Panel-Typ</span>
-          <span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Modulgröße pro Einzelpanel. Das 1 × 0,5 m Panel ist ausschließlich hochkant montierbar.</span></span>
-        </div>
-        <div class="segmented" id="segPanelType">
-          <div class="seg-btn active" data-val="1x0.5">
-            <span class="ico-box"><svg viewBox="0 0 32 32" width="16" height="30"><rect x="9" y="2" width="14" height="28" rx="2" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span>
-            0,5 × 1 m
-          </div>
-          <div class="seg-btn" data-val="0.5x0.5">
-            <span class="ico-box"><svg viewBox="0 0 32 32" width="24" height="24"><rect x="6" y="6" width="20" height="20" rx="2" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span>
-            0,5 × 0,5 m
-          </div>
-        </div>
-      </div>
-
-      <div class="field">
-        <div class="title-row">
           <span class="title-text">Aufbauart</span>
           <span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Bestimmt Traverse, Wandhalterung oder Standfuß in der Vorschau.</span></span>
         </div>
@@ -321,7 +304,7 @@
       <div class="field">
         <div class="title-row">
           <span class="title-text">Größe der Wand</span>
-          <span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Mit + / – oder direkt eintippen. Die Größe wird auf ganze Panels gerundet.</span></span>
+          <span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Mit + / – oder direkt eintippen, in 50-cm-Schritten. Wir verwenden zuerst die großen Panels (0,5 × 1 m) und ergänzen bei Bedarf eine Reihe kleiner Panels (0,5 × 0,5 m) oben.</span></span>
         </div>
         <div class="stepper-row" style="margin-bottom:10px;">
           <div class="stepper-label" style="width:60px;">Breite</div>
@@ -330,7 +313,7 @@
             <input class="val" id="colsVal" type="text" inputmode="decimal" aria-label="Breite in Metern" value="5,0"><span class="unit">m</span>
             <button id="colsPlus">+</button>
           </div>
-          <div class="stepper-label" id="colsPanelsLabel">(10 Panels)</div>
+          <div class="stepper-label" id="colsPanelsLabel">(10 Spalten)</div>
         </div>
         <div class="stepper-row">
           <div class="stepper-label" style="width:60px;">Höhe</div>
@@ -339,7 +322,7 @@
             <input class="val" id="rowsVal" type="text" inputmode="decimal" aria-label="Höhe in Metern" value="3,0"><span class="unit">m</span>
             <button id="rowsPlus">+</button>
           </div>
-          <div class="stepper-label" id="rowsPanelsLabel">(3 Panels)</div>
+          <div class="stepper-label" id="rowsPanelsLabel">(3× groß)</div>
         </div>
       </div>
 
@@ -477,10 +460,9 @@ const CONFIG = {
 
 const state = {
   location: 'indoor',   // 'indoor' | 'outdoor'
-  panelType: '1x0.5',   // '1x0.5' (Standard) | '0.5x0.5'
   mount: 'truss',       // 'truss' | 'wall' | 'floor'
   cols: 10,             // 10 × 0,5 m = 5 m Breite
-  rows: 3,              // 3 × 1 m = 3 m Höhe
+  rows: 6,              // 6 × 0,5 m = 3 m Höhe (Aufteilung siehe getLayout)
   pitch: 2.9,
   gob: false,
   showEdges: true,
@@ -489,10 +471,27 @@ const state = {
   personDist: 3.5       // Abstand Figur ↔ Wand in m (folgt dem Pitch-Richtwert, bis man ihn verstellt)
 };
 
+// Raster für die Größe: Breite und Höhe in 50-cm-Schritten
 function getPanelDims() {
-  // Das 1 × 0,5 m Panel ist ausschließlich hochkant montierbar.
-  if (state.panelType === '1x0.5') return { panelW: 0.5, panelH: 1 };
   return { panelW: 0.5, panelH: 0.5 };
+}
+
+// Aufteilung der Wand: zuerst große Panels (0,5 × 1 m, hochkant), bei einem
+// Rest von 50 cm eine Reihe kleiner Panels (0,5 × 0,5 m) oben.
+function getLayout() {
+  const cols = state.cols;
+  const bigRows = Math.floor(state.rows / 2), smallRows = state.rows % 2;
+  const rowHeights = [...Array(bigRows).fill(1), ...Array(smallRows).fill(0.5)]; // von unten nach oben
+  const big = cols * bigRows, small = cols * smallRows;
+  const weight = big * CONFIG.weightPerPanel['1x0.5'][state.location] + small * CONFIG.weightPerPanel['0.5x0.5'][state.location];
+  return { cols, bigRows, smallRows, rowHeights, big, small, total: big + small, weight,
+    totalWidth: cols * 0.5, totalHeight: state.rows * 0.5 };
+}
+function panelMixText(L) {
+  const parts = [];
+  if (L.big) parts.push(`${L.big} × groß`);
+  if (L.small) parts.push(`${L.small} × klein`);
+  return parts.join(' + ');
 }
 
 /* ---------------------------- THREE.JS SETUP ---------------------------- */
@@ -1103,10 +1102,12 @@ function curvedPoint(u, v, totalWidth, totalHeight, bendDeg) {
 function buildWallMeshes() {
   wallGroup.clear();
 
-  const { panelW, panelH } = getPanelDims();
-  const cols = state.cols, rows = state.rows;
-  const totalWidth = cols * panelW;
-  const totalHeight = rows * panelH;
+  const L = getLayout();
+  const cols = L.cols, rows = L.rowHeights.length;
+  const totalWidth = L.totalWidth;
+  const totalHeight = L.totalHeight;
+  const rowEdges = [0];
+  L.rowHeights.forEach((h) => rowEdges.push(rowEdges[rowEdges.length - 1] + h));
   const bend = 0; // nur starre Panels
   const thickness = 0.09;
 
@@ -1117,7 +1118,7 @@ function buildWallMeshes() {
   for (let j = 0; j <= segY; j++) {
     const row = [];
     for (let i = 0; i <= segX; i++) {
-      const u = i / segX, v = j / segY;
+      const u = i / segX, v = rowEdges[j] / totalHeight;
       const p = curvedPoint(u, v, totalWidth, totalHeight, bend);
       row.push(p);
     }
@@ -1132,7 +1133,7 @@ function buildWallMeshes() {
       const p = gridPoints[j][i];
       frontPos.push(p.x, p.y, p.z);
       backPos.push(p.x - p.nx * thickness, p.y - p.ny * thickness, p.z - p.nz * thickness);
-      uvs.push(i / segX, j / segY);
+      uvs.push(i / segX, rowEdges[j] / totalHeight);
     }
   }
   for (let j = 0; j < segY; j++) {
@@ -1294,14 +1295,14 @@ function buildWallMeshes() {
     wallGroup.add(coat);
   }
 
-  buildBackside(totalWidth, totalHeight, panelW, panelH, thickness);
+  buildBackside(L, thickness);
 
   return { totalWidth, totalHeight, gridPoints, thickness };
 }
 
 /* ------------------------------ RÜCKSEITE --------------------------------- */
 // Alles als InstancedMesh, damit auch 30 × 30 m flüssig bleiben.
-const backLeds = { group: null, mesh: null, phases: [], kinds: [] };
+const backLeds = { group: null, sets: [] };
 const _m4 = new THREE.Matrix4();
 const _ledColor = new THREE.Color();
 
@@ -1315,17 +1316,26 @@ function makeCableGeometry(len, sag) {
   return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 10, 0.007, 5, false);
 }
 
-function buildBackside(totalWidth, totalHeight, panelW, panelH, thickness) {
+function buildBackside(L, thickness) {
+  const group = new THREE.Group();
+  backLeds.sets = [];
+  const y0 = -L.totalHeight / 2;
+  if (L.bigRows) buildBacksideBand(group, L.totalWidth, L.cols, L.bigRows, 1, y0, thickness);
+  if (L.smallRows) buildBacksideBand(group, L.totalWidth, L.cols, L.smallRows, 0.5, y0 + L.bigRows, thickness);
+  backLeds.group = group;
+  wallGroup.add(group);
+}
+
+function buildBacksideBand(group, totalWidth, cols, rows, panelH, yStart, thickness) {
   // Nachgebaut nach der Panel-Rückseite: schwarzes Gehäuse mit Querstreben,
   // senkrechter Mittelsteg (Netzteil + Empfangskarte) mit Status-LEDs,
   // Strom (rote Stecker) oben, Daten (orange Stecker) unten, Griffe an den Seiten.
-  const cols = state.cols, rows = state.rows, n = cols * rows;
+  const panelW = 0.5, n = cols * rows;
   const backZ = -thickness;
-  const group = new THREE.Group();
   const centers = [];
   for (let j = 0; j < rows; j++) {
     for (let i = 0; i < cols; i++) {
-      centers.push([-totalWidth / 2 + (i + 0.5) * panelW, -totalHeight / 2 + (j + 0.5) * panelH]);
+      centers.push([-totalWidth / 2 + (i + 0.5) * panelW, yStart + (j + 0.5) * panelH]);
     }
   }
   function instanced(geo, mat, count, place) {
@@ -1400,26 +1410,24 @@ function buildBackside(totalWidth, totalHeight, panelW, panelH, thickness) {
 
   // Status-LEDs mittig auf dem Steg: grün = Betrieb, orange = Datensignal
   const ledMat = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false });
-  backLeds.mesh = instanced(new THREE.SphereGeometry(0.0065, 8, 6), ledMat, n * 2,
+  const ledMesh = instanced(new THREE.SphereGeometry(0.0065, 8, 6), ledMat, n * 2,
     each((put, x, y) => { put(x + 0.009, y - panelH * 0.02, backZ - 0.051); put(x - 0.009, y - panelH * 0.02, backZ - 0.051); }));
-  backLeds.phases = Array.from({ length: n * 2 }, () => Math.random() * 10);
-  backLeds.kinds = Array.from({ length: n * 2 }, (_, k) => k % 2);
-  for (let k = 0; k < n * 2; k++) backLeds.mesh.setColorAt(k, _ledColor.set(0x00ff66));
-
-  backLeds.group = group;
-  wallGroup.add(group);
+  const phases = Array.from({ length: n * 2 }, () => Math.random() * 10);
+  const kinds = Array.from({ length: n * 2 }, (_, k) => k % 2);
+  for (let k = 0; k < n * 2; k++) ledMesh.setColorAt(k, _ledColor.set(0x00ff66));
+  backLeds.sets.push({ mesh: ledMesh, phases, kinds });
 }
 
 function updateBackLeds(t) {
   // Rückseite nur zeichnen, wenn man sie auch sieht
   if (backLeds.group) backLeds.group.visible = camera.position.z < 0.3;
-  const m = backLeds.mesh;
-  if (!m || !m.instanceColor) return;
   // nur aktualisieren, wenn man auf die Rückseite schaut
   if (camera.position.z > wallGroup.position.z) return;
+  backLeds.sets.forEach(({ mesh: m, phases, kinds }) => {
+  if (!m.instanceColor) return;
   for (let k = 0; k < m.count; k++) {
-    const ph = backLeds.phases[k];
-    if (backLeds.kinds[k] === 0) {
+    const ph = phases[k];
+    if (kinds[k] === 0) {
       const on = Math.sin(t * 2.2 + ph) > -0.3;
       _ledColor.setRGB(0, on ? 1 : 0.08, on ? 0.4 : 0.03);
     } else {
@@ -1429,6 +1437,7 @@ function updateBackLeds(t) {
     m.setColorAt(k, _ledColor);
   }
   m.instanceColor.needsUpdate = true;
+  });
 }
 
 /* ------------------------------ SUPPORT RIGS ------------------------------ */
@@ -1858,15 +1867,14 @@ function buildDistanceIndicator(dims) {
 
 
 function updateHUD(dims) {
-  const panelCount = state.cols * state.rows;
+  const L = getLayout();
   const pitchMm = state.pitch;
   const resX = Math.round((dims.totalWidth * 1000) / pitchMm);
   const resY = Math.round((dims.totalHeight * 1000) / pitchMm);
-  const w = CONFIG.weightPerPanel[state.panelType][state.location];
-  const totalWeight = Math.round(panelCount * w);
+  const totalWeight = Math.round(L.weight);
 
   document.getElementById('hudSize').textContent = `${dims.totalWidth.toFixed(1)} × ${dims.totalHeight.toFixed(1)} m`;
-  document.getElementById('hudPanels').textContent = `${panelCount} (${state.cols}×${state.rows})`;
+  document.getElementById('hudPanels').textContent = `${L.total} (${panelMixText(L)})`;
   document.getElementById('hudPitch').textContent = `P${pitchMm}`;
   document.getElementById('hudRes').textContent = `${resX} × ${resY} px`;
   document.getElementById('hudWeight').textContent = `${totalWeight} kg`;
@@ -1955,21 +1963,6 @@ document.getElementById('segLocation').addEventListener('click', (e) => {
   applyEnvironment();
   rebuild();
 });
-document.getElementById('segPanelType').addEventListener('click', (e) => {
-  const btn = e.target.closest('.seg-btn'); if (!btn) return;
-  const oldDims = getPanelDims();
-  const widthM = state.cols * oldDims.panelW;
-  const heightM = state.rows * oldDims.panelH;
-
-  state.panelType = btn.getAttribute('data-val');
-  setActive(document.getElementById('segPanelType'), state.panelType);
-
-  const newDims = getPanelDims();
-  state.cols = clamp(Math.round(widthM / newDims.panelW), 2, 40);
-  state.rows = clamp(Math.round(heightM / newDims.panelH), 2, 20);
-  updateSizeDisplay();
-  rebuild();
-});
 document.getElementById('dummyToggle').addEventListener('change', (e) => {
   state.showDummy = e.target.checked;
   document.getElementById('distField').style.display = state.showDummy ? 'block' : 'none';
@@ -2044,7 +2037,7 @@ function fmtM(v) { return v.toFixed(1).replace('.', ','); }
 const MAX_WALL_M = 30;
 const LIMITS = {
   get cols() { return [2, Math.round(MAX_WALL_M / getPanelDims().panelW)]; },
-  get rows() { return [2, Math.round(MAX_WALL_M / getPanelDims().panelH)]; }
+  get rows() { return [2, Math.round(MAX_WALL_M / getPanelDims().panelH)]; } // in 0,5-m-Schritten
 };
 
 function updateSizeDisplay() {
@@ -2054,11 +2047,12 @@ function updateSizeDisplay() {
   // Während der Eingabe nicht überschreiben
   if (document.activeElement !== colsInput) colsInput.value = fmtM(state.cols * panelW);
   if (document.activeElement !== rowsInput) rowsInput.value = fmtM(state.rows * panelH);
-  document.getElementById('colsPanelsLabel').textContent = `(${state.cols} Panels)`;
-  document.getElementById('rowsPanelsLabel').textContent = `(${state.rows} Panels)`;
+  const L = getLayout();
+  document.getElementById('colsPanelsLabel').textContent = `(${state.cols} Spalten)`;
+  document.getElementById('rowsPanelsLabel').textContent = `(${[L.bigRows ? `${L.bigRows}× groß` : '', L.smallRows ? `${L.smallRows}× klein` : ''].filter(Boolean).join(' + ')})`;
 }
 
-// Eingetippte Meter auf ganze Panels runden (Komma oder Punkt erlaubt).
+// Eingetippte Meter auf 50 cm runden (Komma oder Punkt erlaubt).
 function applySizeInput(input, key) {
   const { panelW, panelH } = getPanelDims();
   const unit = key === 'cols' ? panelW : panelH;
@@ -2113,19 +2107,17 @@ document.getElementById('gobToggle').addEventListener('change', (e) => {
 /* ------------------------------ CONFIG TEXT -------------------------------- */
 
 function buildConfigText() {
-  const { panelW, panelH } = getPanelDims();
-  const totalWidth = (state.cols * panelW).toFixed(1);
-  const totalHeight = (state.rows * panelH).toFixed(1);
-  const panelCount = state.cols * state.rows;
-  const w = CONFIG.weightPerPanel[state.panelType][state.location];
-  const totalWeight = Math.round(panelCount * w);
+  const L = getLayout();
+  const totalWidth = L.totalWidth.toFixed(1);
+  const totalHeight = L.totalHeight.toFixed(1);
+  const totalWeight = Math.round(L.weight);
   const mountLabel = { truss: 'Hängend an Traverse (Hanging Bars)', wall: 'Feststehend / schwebend an der Wand', floor: 'Auf dem Boden (Ground Beam + Stacking Structures)' }[state.mount];
 
   const lines = [
     `Einsatzort: ${state.location === 'indoor' ? 'Indoor' : 'Outdoor'}`,
-    `Panel-Typ: ${state.panelType === '1x0.5' ? '0,5 × 1 m (hochkant)' : '0,5 × 0,5 m'}`,
-    `Wandgröße: ${state.cols} × ${state.rows} Panels (${totalWidth} × ${totalHeight} m)`,
-    `Panelanzahl gesamt: ${panelCount}`,
+    `Wandgröße: ${totalWidth} × ${totalHeight} m`,
+    `Panels: ${L.big} × 0,5 × 1 m (hochkant)${L.small ? ` + ${L.small} × 0,5 × 0,5 m (oberste Reihe)` : ''}`,
+    `Panelanzahl gesamt: ${L.total}`,
     `Pixel Pitch: P${state.pitch}`,
     `Auflösung ca.: ${Math.round((totalWidth * 1000) / state.pitch)} × ${Math.round((totalHeight * 1000) / state.pitch)} px`,
     `Empf. Betrachtungsabstand ca.: ${viewingDistanceForPitch(state.pitch).toFixed(1)} m`,
@@ -2274,8 +2266,8 @@ function showToast(text) {
 // Konfiguration steckt im Link (#…), damit ein Empfänger dieselbe Wand sieht.
 function configToHash() {
   const q = new URLSearchParams({
-    ort: state.location, panel: state.panelType, aufbau: state.mount,
-    b: state.cols, h: state.rows, pitch: state.pitch,
+    ort: state.location, aufbau: state.mount,
+    b: state.cols, hm: state.rows, pitch: state.pitch,
     gob: state.gob ? 1 : 0, abstand: state.personDist,
     inhalt: state.content === 'custom' ? 'logo' : state.content
   });
@@ -2283,14 +2275,15 @@ function configToHash() {
 }
 function applyHash() {
   const q = new URLSearchParams(location.hash.slice(1));
-  if (!q.has('panel')) return false;
+  if (!q.has('ort')) return false;
   const pick = (v, allowed, def) => (allowed.includes(v) ? v : def);
   state.location = pick(q.get('ort'), ['indoor', 'outdoor'], state.location);
-  state.panelType = pick(q.get('panel'), ['1x0.5', '0.5x0.5'], state.panelType);
   state.mount = pick(q.get('aufbau'), ['truss', 'wall', 'floor'], state.mount);
   const num = (k, def) => { const n = parseFloat(q.get(k)); return isNaN(n) ? def : n; };
   state.cols = clamp(Math.round(num('b', state.cols)), LIMITS.cols[0], LIMITS.cols[1]);
-  state.rows = clamp(Math.round(num('h', state.rows)), LIMITS.rows[0], LIMITS.rows[1]);
+  // alte Links: h = Panelreihen des gewählten Typs (0,5 × 1 m zählte doppelt)
+  const legacyRows = q.has('h') ? num('h', 3) * (q.get('panel') === '0.5x0.5' ? 1 : 2) : state.rows;
+  state.rows = clamp(Math.round(num('hm', legacyRows)), LIMITS.rows[0], LIMITS.rows[1]);
   const pitch = num('pitch', state.pitch);
   state.pitch = PITCHES.includes(pitch) ? pitch : state.pitch;
   state.gob = q.get('gob') === '1' && state.location === 'indoor';
@@ -2298,7 +2291,6 @@ function applyHash() {
   state.content = pick(q.get('inhalt'), ['logo', 'pink', 'promo'], state.content);
   // Oberfläche nachziehen
   setActive(document.getElementById('segLocation'), state.location);
-  setActive(document.getElementById('segPanelType'), state.panelType);
   setActive(document.getElementById('segMount'), state.mount);
   setActive(document.getElementById('segContent'), state.content);
   document.getElementById('pitchSelect').value = String(state.pitch);
