@@ -478,7 +478,9 @@ const CONFIG = {
   weightPerPanel: {
     '0.5x0.5': { indoor: 6, outdoor: 6 },
     '1x0.5':   { indoor: 11, outdoor: 11 }
-  }
+  },
+  // Strom- + Datenkabel (je ca. 60 cm, von Panel zu Panel), pro Panel in kg
+  cableWeightPerPanel: 0.5
 };
 
 const state = {
@@ -506,7 +508,8 @@ function getLayout() {
   const bigRows = Math.floor(state.rows / 2), smallRows = state.rows % 2;
   const rowHeights = [...Array(bigRows).fill(1), ...Array(smallRows).fill(0.5)]; // von unten nach oben
   const big = cols * bigRows, small = cols * smallRows;
-  const weight = big * CONFIG.weightPerPanel['1x0.5'][state.location] + small * CONFIG.weightPerPanel['0.5x0.5'][state.location];
+  const weight = big * CONFIG.weightPerPanel['1x0.5'][state.location] + small * CONFIG.weightPerPanel['0.5x0.5'][state.location]
+    + (big + small) * CONFIG.cableWeightPerPanel;
   return { cols, bigRows, smallRows, rowHeights, big, small, total: big + small, weight,
     totalWidth: cols * 0.5, totalHeight: state.rows * 0.5 };
 }
@@ -2178,7 +2181,7 @@ function buildConfigText() {
     `Empf. Betrachtungsabstand ca.: ${viewingDistanceForPitch(state.pitch).toFixed(1)} m`,
     `Aufbauart: ${mountLabel}`,
     `GOB-Beschichtung: ${state.gob ? 'Ja' : 'Nein'}`,
-    `Gewicht ca.: ${totalWeight} kg`
+    `Gewicht ca.: ${totalWeight} kg (inkl. Kabel)`
   ];
   return lines.join('\n');
 }
