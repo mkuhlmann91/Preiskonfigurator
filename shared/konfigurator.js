@@ -1142,39 +1142,67 @@ function buildSupport(dims) {
   if (state.mount === 'truss') {
     const wallBottomY = 1.6; // lifted off the ground
     wallGroup.position.y = wallBottomY + totalHeight / 2;
-    const trussY = wallBottomY + totalHeight + 0.35;
+    // 4-Punkt-Traverse (Box-Truss, ca. 29 × 29 cm): vier Gurtrohre, die Diagonalen
+    // laufen auf allen vier Seiten im Zickzack und treffen sich genau in den Gurtrohren.
+    const trussHalf = 0.145;
+    const trussY = wallBottomY + totalHeight + 0.35 + trussHalf; // Mitte der Traverse
     const trussLen = totalWidth + 0.8;
-
-    // Truss box (simple triangular truss look via 3 tubes + cross bars)
     const trussGroup = new THREE.Group();
-    const tubeR = 0.035;
-    [-0.28, 0.28].forEach((dz) => {
-      [0.28, -0.05].forEach((dy) => {
-        const tube = new THREE.Mesh(new THREE.CylinderGeometry(tubeR, tubeR, trussLen, 8), metalMat);
-        tube.rotation.z = Math.PI / 2;
-        tube.position.set(0, dy, dz);
-        trussGroup.add(tube);
-      });
+    const chordR = 0.024, braceR = 0.009;
+    const h = trussHalf;
+    const corners = [[h, h], [h, -h], [-h, -h], [-h, h]]; // [y, z]
+    corners.forEach(([y, z]) => {
+      const tube = new THREE.Mesh(new THREE.CylinderGeometry(chordR, chordR, trussLen, 12), metalMat);
+      tube.rotation.z = Math.PI / 2;
+      tube.position.set(0, y, z);
+      trussGroup.add(tube);
     });
-    const braceCount = Math.max(4, Math.round(trussLen * 1.5));
-    for (let i = 0; i <= braceCount; i++) {
-      const x = -trussLen / 2 + (i / braceCount) * trussLen;
-      const brace = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.42, 6), metalMat);
-      brace.rotation.x = Math.PI / 2.6 * (i % 2 === 0 ? 1 : -1);
-      brace.position.set(x, 0.13, 0);
-      trussGroup.add(brace);
+    // Stab zwischen zwei Punkten (Zylinder entlang der Verbindungslinie)
+    const yAxis = new THREE.Vector3(0, 1, 0);
+    const strut = (geo, a, b) => {
+      const m = new THREE.Mesh(geo, metalMat);
+      const dir = new THREE.Vector3().subVectors(b, a);
+      m.position.copy(a).addScaledVector(dir, 0.5);
+      m.quaternion.setFromUnitVectors(yAxis, dir.normalize());
+      trussGroup.add(m);
+    };
+    const segs = Math.max(2, Math.round(trussLen / 0.5));
+    const step = trussLen / segs;
+    const diagGeo = new THREE.CylinderGeometry(braceR, braceR, Math.hypot(step, 2 * h), 6);
+    const endGeo = new THREE.CylinderGeometry(braceR * 1.3, braceR * 1.3, 2 * h, 6);
+    // jede Seite der Box = zwei benachbarte Gurtrohre
+    for (let f = 0; f < 4; f++) {
+      const [y1, z1] = corners[f];
+      const [y2, z2] = corners[(f + 1) % 4];
+      for (let i = 0; i < segs; i++) {
+        const xa = -trussLen / 2 + i * step, xb = xa + step;
+        const flip = (i + f) % 2 === 0;
+        strut(diagGeo,
+          new THREE.Vector3(xa, flip ? y1 : y2, flip ? z1 : z2),
+          new THREE.Vector3(xb, flip ? y2 : y1, flip ? z2 : z1));
+      }
+      // Abschlussrahmen an beiden Enden
+      [-trussLen / 2, trussLen / 2].forEach((x) =>
+        strut(endGeo, new THREE.Vector3(x, y1, z1), new THREE.Vector3(x, y2, z2)));
     }
     trussGroup.position.y = trussY;
     supportGroup.add(trussGroup);
+    const trussBottom = trussY - h;
 
     // Hanging bars + cables down to wall
     const barCount = Math.min(Math.max(Math.round(totalWidth / 1.2), 2), 10);
     for (let i = 0; i < barCount; i++) {
       const x = -totalWidth / 2 + (i + 0.5) * (totalWidth / barCount);
-      const cableGeo = new THREE.CylinderGeometry(0.008, 0.008, trussY - (wallBottomY + totalHeight) + 0.05, 6);
+      const cableGeo = new THREE.CylinderGeometry(0.008, 0.008, trussBottom - (wallBottomY + totalHeight), 6);
       const cable = new THREE.Mesh(cableGeo, darkMat);
-      cable.position.set(x, (trussY + (wallBottomY + totalHeight)) / 2, totalWidth > 0 ? 0 : 0);
+      cable.position.set(x, (trussBottom + (wallBottomY + totalHeight)) / 2, 0);
       supportGroup.add(cable);
+
+      // Querstange zwischen den unteren Gurtrohren, an der das Seil hängt
+      const clamp = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 2 * trussHalf, 8), darkMat);
+      clamp.rotation.x = Math.PI / 2;
+      clamp.position.set(x, trussBottom, 0);
+      supportGroup.add(clamp);
 
       const bar = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.2), metalMat);
       bar.position.set(x, wallBottomY + totalHeight + 0.03, 0);
