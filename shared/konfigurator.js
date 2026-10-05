@@ -455,7 +455,7 @@ function buildShowroomDecor(wallW) {
 /* -------------------------- CUSTOM ORBIT CONTROLS ------------------------ */
 /* Ein Finger / Maus = Rotieren, zwei Finger = Pinch-Zoom, Mausrad = Zoom (Desktop) */
 
-const orbit = { theta: 0.5, phi: 1.15, radius: 13, target: new THREE.Vector3(0, 1.6, 0) };
+const orbit = { theta: 0.25, phi: 1.15, radius: 13, target: new THREE.Vector3(0, 1.6, 0) };
 // Je größer die Wand, desto weiter darf man zurückgehen
 function maxOrbitRadius() {
   const { panelW, panelH } = getPanelDims();
