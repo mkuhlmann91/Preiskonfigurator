@@ -1970,7 +1970,7 @@ submitBtn.addEventListener('click', async () => {
     document.getElementById('successBox').classList.add('show');
   } catch (err) {
     console.error('Anfrage konnte nicht gesendet werden:', err);
-    showFormError(`Die Anfrage konnte leider nicht gesendet werden. Bitte versuchen Sie es erneut oder schreiben Sie uns direkt per <a href="${mailtoFallbackLink(payload)}">E-Mail an ${CONFIG.recipientEmail}</a>.`);
+    showFormError(`Die Anfrage konnte leider nicht gesendet werden. Bitte versuch es erneut oder schreib uns direkt per <a href="${mailtoFallbackLink(payload)}">E-Mail an ${CONFIG.recipientEmail}</a>.`);
   } finally {
     clearTimeout(abortTimer);
     submitBtn.disabled = false;

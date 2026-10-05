@@ -69,7 +69,11 @@
   }
   .info-wrap:hover .tooltip-pop, .info-wrap.open .tooltip-pop{display:block;}
   .switch-row .txt .info-wrap{margin-left:6px;}
-  .switch-row .txt .tooltip-pop{top:20px;}
+  /* Tooltip über die volle Breite der Zeile, damit er nie rechts aus dem Bereich ragt */
+  .title-row, .switch-row{position:relative;}
+  .title-row .info-wrap, .switch-row .info-wrap{position:static;}
+  .title-row .tooltip-pop{top:22px;left:0 !important;right:0;width:auto;}
+  .switch-row .tooltip-pop{top:calc(100% + 6px);left:0 !important;right:0;width:auto;}
 
   .ico-box{display:flex;align-items:center;justify-content:center;height:26px;margin-bottom:6px;color:inherit;}
   .ico-box svg{display:block;stroke:currentColor;}
