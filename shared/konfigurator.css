@@ -69,7 +69,11 @@
   }
   .info-wrap:hover .tooltip-pop, .info-wrap.open .tooltip-pop{display:block;}
   .switch-row .txt .info-wrap{margin-left:6px;}
-  .switch-row .txt .tooltip-pop{top:20px;}
+  /* Tooltip über die volle Breite der Zeile, damit er nie rechts aus dem Bereich ragt */
+  .title-row, .switch-row{position:relative;}
+  .title-row .info-wrap, .switch-row .info-wrap{position:static;}
+  .title-row .tooltip-pop{top:22px;left:0 !important;right:0;width:auto;}
+  .switch-row .tooltip-pop{top:calc(100% + 6px);left:0 !important;right:0;width:auto;}
 
   .ico-box{display:flex;align-items:center;justify-content:center;height:26px;margin-bottom:6px;color:inherit;}
   .ico-box svg{display:block;stroke:currentColor;}
@@ -238,3 +242,4 @@
   .mount-hint{margin:10px 0 0;font-size:11.5px;line-height:1.5;color:var(--muted);font-family:'Inter',sans-serif;}
   .mount-hint a{color:var(--accent);font-weight:600;text-decoration:none;white-space:nowrap;}
   .mount-hint a:hover{text-decoration:underline;}
+  .mount-hint .hint-i{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;margin-right:6px;border:1px solid currentColor;border-radius:50%;font-size:9px;font-weight:600;line-height:1;vertical-align:1px;font-family:inherit;color:inherit;}
