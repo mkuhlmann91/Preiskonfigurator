@@ -1499,8 +1499,8 @@ function buildDummyFigure() {
 
 function viewingDistanceForPitch(pitchMm) {
   // Vom Kunden vorgegebene Richtwerte für den empfohlenen Mindestabstand.
-  // 1,5 / 2 / 3,9 sind daraus abgeleitet (ca. 1,2–1,3 m pro mm Pitch).
-  const table = { 1.5: 2, 2: 2.5, 2.6: 3, 2.9: 3.5, 3.9: 5 };
+  // 1,5 / 2 / 3,9 / 4,8 sind daraus abgeleitet (ca. 1,2–1,3 m pro mm Pitch).
+  const table = { 1.5: 2, 2: 2.5, 2.6: 3, 2.9: 3.5, 3.9: 5, 4.8: 6 };
   return table[pitchMm] ?? pitchMm;
 }
 
@@ -1663,6 +1663,8 @@ document.getElementById('segLocation').addEventListener('click', (e) => {
   state.location = btn.getAttribute('data-val');
   setActive(document.getElementById('segLocation'), state.location);
   updateGobVisibility();
+  syncPitchOptions();
+  updateDistDisplay();
   applyEnvironment();
   rebuild();
 });
@@ -1672,9 +1674,27 @@ document.getElementById('dummyToggle').addEventListener('change', (e) => {
   rebuild();
 });
 
-const PITCHES = [1.5, 2, 2.6, 2.9, 3.9];
+// Verfügbare Pixel Pitches je Einsatzort
+const PITCHES = {
+  indoor: [1.5, 2, 2.6, 2.9, 3.9],
+  outdoor: [2.6, 2.9, 3.9, 4.8]
+};
+const pitchesFor = (loc) => PITCHES[loc] || PITCHES.indoor;
+// Auswahlliste an den Einsatzort anpassen. Gibt es den gewählten Pitch dort nicht,
+// wird der nächstliegende genommen und die Figur auf dessen Richtwert gesetzt.
+function syncPitchOptions() {
+  const list = pitchesFor(state.location);
+  const sel = document.getElementById('pitchSelect');
+  sel.innerHTML = list.map((p) => `<option value="${p}">P${p}</option>`).join('');
+  if (!list.includes(state.pitch)) {
+    state.pitch = list.reduce((best, p) => (Math.abs(p - state.pitch) < Math.abs(best - state.pitch) ? p : best), list[0]);
+    state.personDist = viewingDistanceForPitch(state.pitch);
+  }
+  sel.value = String(state.pitch);
+}
 // Gröbster Pitch, dessen Mindestabstand zum eingestellten Abstand passt.
 function recommendedPitchForDistance(d) {
+  const PITCHES = pitchesFor(state.location);
   const fitting = PITCHES.filter((p) => viewingDistanceForPitch(p) <= d + 1e-9);
   return fitting.length ? fitting[fitting.length - 1] : PITCHES[0];
 }
@@ -1993,7 +2013,7 @@ function applyHash() {
   const legacyRows = q.has('h') ? num('h', 3) * (q.get('panel') === '0.5x0.5' ? 1 : 2) : state.rows;
   state.rows = clamp(Math.round(num('hm', legacyRows)), LIMITS.rows[0], LIMITS.rows[1]);
   const pitch = num('pitch', state.pitch);
-  state.pitch = PITCHES.includes(pitch) ? pitch : state.pitch;
+  state.pitch = pitchesFor(state.location).includes(pitch) ? pitch : state.pitch;
   state.gob = q.get('gob') === '1' && state.location === 'indoor';
   state.personDist = clamp(num('abstand', viewingDistanceForPitch(state.pitch)), 1, 15);
   state.content = pick(q.get('inhalt'), ['logo', 'pink', 'promo'], state.content);
@@ -2088,6 +2108,7 @@ document.addEventListener('click', () => {
 resize();
 state.personDist = viewingDistanceForPitch(state.pitch);
 applyHash();
+syncPitchOptions();
 applyEnvironment();
 updateGobVisibility();
 updateDistDisplay();
