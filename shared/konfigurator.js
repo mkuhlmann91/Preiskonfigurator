@@ -24,8 +24,8 @@ const CONFIG = {
   },
   // Strom- + Datenkabel (je ca. 60 cm, von Panel zu Panel), pro Panel in kg
   cableWeightPerPanel: 0.5,
-  // Festinstallation: Kabinett 960 × 960 mm, Alu-Druckguss ca. 26 kg/m²
-  fest: { cabinet: 0.96, weightPerM2: 26 }
+  // Festinstallation: Kabinette 960 × 960 mm und 640 × 480 mm, Alu-Druckguss ca. 26 kg/m²
+  fest: { cabinet: 0.96, small: { w: 0.64, h: 0.48 }, weightPerM2: 26 }
 };
 
 const state = {
@@ -34,6 +34,7 @@ const state = {
   cols: IS_FEST ? 5 : 10,  // mobil: 10 × 0,5 m = 5 m; fest: 5 × 0,96 m = 4,8 m
   rows: IS_FEST ? 3 : 6,   // mobil: 6 × 0,5 m = 3 m; fest: 3 × 0,96 m = 2,88 m
   pitch: IS_FEST ? 2.5 : 2.9,
+  panelType: 'p960',    // Festinstallation: 'p960' | 'p640' | 'mix' (960er + 640×480 kombiniert)
   bracket: true,        // Festinstallation: Wandhalterung (Gestell) inklusive
   frameView: false,     // Festinstallation: Module ausblenden, nur das Gestell zeigen
   gob: false,
@@ -43,20 +44,44 @@ const state = {
   personDist: 3.5       // Abstand Figur ↔ Wand in m (folgt dem Pitch-Richtwert, bis man ihn verstellt)
 };
 
-// Raster für die Größe: mobil in 50-cm-Schritten, fest in Kabinett-Schritten (0,96 m)
+// Raster für die Größe: mobil in 50-cm-Schritten, fest je nach Panel:
+// 960er in 0,96 m, 640×480 in 0,64 × 0,48 m, kombiniert Breite in 0,32 m, Höhe in 0,96 m
 function getPanelDims() {
-  if (IS_FEST) return { panelW: CONFIG.fest.cabinet, panelH: CONFIG.fest.cabinet };
+  if (IS_FEST) {
+    if (state.panelType === 'p640') return { panelW: 0.64, panelH: 0.48 };
+    if (state.panelType === 'mix') return { panelW: 0.32, panelH: 0.96 };
+    return { panelW: 0.96, panelH: 0.96 };
+  }
   return { panelW: 0.5, panelH: 0.5 };
+}
+
+// Festinstallation: Spaltenbreiten der Wand. Kombiniert: möglichst viele 960er,
+// der Rest (0,64 oder 1,28 m) mit 640×480 am Rand.
+function festColumns() {
+  if (state.panelType === 'p640') return Array(state.cols).fill(0.64);
+  if (state.panelType !== 'mix') return Array(state.cols).fill(0.96);
+  const n = state.cols, small = [0, 2, 1][n % 3], big = (n - 2 * small) / 3;
+  const cols = Array(big).fill(0.96);
+  if (small === 2) return [0.64, ...cols, 0.64];
+  if (small === 1) return [...cols, 0.64];
+  return cols;
 }
 
 // Aufteilung der Wand: zuerst große Panels (0,5 × 1 m, hochkant), bei einem
 // Rest von 50 cm eine Reihe kleiner Panels (0,5 × 0,5 m) oben.
 function getLayout() {
   if (IS_FEST) {
-    const c = CONFIG.fest.cabinet, total = state.cols * state.rows;
-    return { cols: state.cols, bigRows: state.rows, smallRows: 0, rowHeights: Array(state.rows).fill(c),
-      big: total, small: 0, total, weight: total * c * c * CONFIG.fest.weightPerM2,
-      totalWidth: state.cols * c, totalHeight: state.rows * c };
+    const colWidths = festColumns();
+    const colPanelH = colWidths.map((w) => (w === 0.96 ? 0.96 : 0.48));
+    const totalWidth = colWidths.reduce((a, b) => a + b, 0);
+    const totalHeight = state.rows * getPanelDims().panelH;
+    const fine = colPanelH.includes(0.48);
+    const rowH = fine ? 0.48 : 0.96, nRows = Math.round(totalHeight / rowH);
+    const nBigCols = colWidths.filter((w) => w === 0.96).length;
+    const big = nBigCols * Math.round(totalHeight / 0.96);
+    const small = (colWidths.length - nBigCols) * Math.round(totalHeight / 0.48);
+    return { cols: colWidths.length, colWidths, colPanelH, bigRows: nRows, smallRows: 0, rowHeights: Array(nRows).fill(rowH),
+      big, small, total: big + small, weight: totalWidth * totalHeight * CONFIG.fest.weightPerM2, totalWidth, totalHeight };
   }
   const cols = state.cols;
   const bigRows = Math.floor(state.rows / 2), smallRows = state.rows % 2;
@@ -68,7 +93,12 @@ function getLayout() {
     totalWidth: cols * 0.5, totalHeight: state.rows * 0.5 };
 }
 function panelMixText(L) {
-  if (IS_FEST) return `${L.total}× 960×960mm`;
+  if (IS_FEST) {
+    const parts = [];
+    if (L.big) parts.push(`${L.big}× 960×960mm`);
+    if (L.small) parts.push(`${L.small}× 640×480mm`);
+    return parts.join(' + ');
+  }
   const parts = [];
   if (L.big) parts.push(`${L.big}× 0,5×1m`);
   if (L.small) parts.push(`${L.small}× 0,5×0,5m`);
@@ -661,54 +691,80 @@ function buildGym(wallW, wallH) {
 // Schwarzes Stahlgestell wie im Foto: Rahmen im 960-mm-Raster, waagerechte
 // Flachstähle, zwei senkrechte Streben je Feld mit Empfangskarte und Netzteilen.
 function buildWallBracket(totalWidth, totalHeight, centerY) {
-  const c = CONFIG.fest.cabinet, cols = state.cols, rows = state.rows;
+  const L = getLayout();
   const g = new THREE.Group();
   const steel = new THREE.MeshStandardMaterial({ color: 0x141416, roughness: 0.6, metalness: 0.2 });
   const zBack = festHallWallZ(), zFront = -0.09;
   const zMid = (zBack + zFront) / 2, dz = zFront - zBack;
   const x0 = -totalWidth / 2, y0 = centerY - totalHeight / 2;
-  // Rahmenprofile an jeder Feldkante
-  for (let i = 0; i <= cols; i++) {
+  // Felder = einzelne Panels (960 × 960 oder 640 × 480)
+  const cells = [];
+  let cx = x0;
+  L.colWidths.forEach((w, i) => {
+    const h = L.colPanelH[i], n = Math.round(totalHeight / h);
+    for (let j = 0; j < n; j++) cells.push({ x: cx + w / 2, y: y0 + (j + 0.5) * h, w, h });
+    cx += w;
+  });
+  // Rahmenprofile: senkrecht an jeder Spaltenkante, waagerecht an jeder Panelkante
+  cx = x0;
+  [0, ...L.colWidths].forEach((w) => {
+    cx += w;
     const m = new THREE.Mesh(new THREE.BoxGeometry(0.04, totalHeight, dz), steel);
-    m.position.set(x0 + i * c, centerY, zMid);
+    m.position.set(cx, centerY, zMid);
     g.add(m);
-  }
-  for (let j = 0; j <= rows; j++) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(totalWidth + 0.04, 0.04, dz), steel);
-    m.position.set(0, y0 + j * c, zMid);
-    g.add(m);
-  }
-  const n = cols * rows;
-  const centers = [];
-  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) centers.push([x0 + (i + 0.5) * c, y0 + (j + 0.5) * c]);
+  });
+  const anchors = [];
+  cells.forEach((c) => {
+    [c.y - c.h / 2, c.y + c.h / 2].forEach((y) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(c.w + 0.04, 0.04, dz), steel);
+      m.position.set(c.x, y, zMid);
+      g.add(m);
+      anchors.push([c.x - c.w / 2, y], [c.x + c.w / 2, y]);
+    });
+  });
+  // Bauteile je Feld, auf die Feldgröße skaliert (Maße bezogen auf 960 × 960)
+  const _s = new THREE.Vector3(), _p = new THREE.Vector3(), _q = new THREE.Quaternion();
   const inst = (geo, mat, perCell, place) => {
-    const mesh = new THREE.InstancedMesh(geo, mat, Math.max(1, n * perCell));
+    const mesh = new THREE.InstancedMesh(geo, mat, Math.max(1, cells.length * perCell));
     let k = 0;
-    centers.forEach(([x, y]) => place((px, py, pz) => { _m4.makeTranslation(px, py, pz); mesh.setMatrixAt(k++, _m4); }, x, y));
+    cells.forEach((c) => {
+      const kx = c.w / 0.96, ky = c.h / 0.96;
+      place((px, py, pz, sx = 1, sy = 1) => {
+        _m4.compose(_p.set(c.x + px * kx, c.y + py * ky, pz), _q, _s.set(sx, sy, 1));
+        mesh.setMatrixAt(k++, _m4);
+      }, kx, ky, c);
+    });
     mesh.count = k;
     g.add(mesh);
   };
-  // waagerechte Flachstähle (6 je Feld) und zwei senkrechte Streben
-  const flats = [-0.36, -0.22, -0.08, 0.08, 0.22, 0.36];
-  inst(new THREE.BoxGeometry(c - 0.04, 0.025, 0.012), steel, flats.length,
-    (put, x, y) => flats.forEach((f) => put(x, y + f, zFront - 0.008)));
-  inst(new THREE.BoxGeometry(0.035, c - 0.04, 0.02), steel, 2,
-    (put, x, y) => [-0.2, 0.2].forEach((f) => put(x + f, y, zFront - 0.012)));
+  // waagerechte Flachstähle (6 je 960er-Feld, 3 je 640×480) und zwei senkrechte Streben
+  inst(new THREE.BoxGeometry(0.92, 0.025, 0.012), steel, 6, (put, kx, ky, c) => {
+    const flats = c.h > 0.5 ? [-0.36, -0.22, -0.08, 0.08, 0.22, 0.36] : [-0.3, 0, 0.3];
+    flats.forEach((f) => put(0, f, zFront - 0.008, (c.w - 0.04) / 0.92, 1));
+  });
+  inst(new THREE.BoxGeometry(0.035, 0.92, 0.02), steel, 2,
+    (put, kx, ky, c) => [-0.2, 0.2].forEach((f) => put(f, 0, zFront - 0.012, 1, (c.h - 0.04) / 0.92)));
   // Empfangskarte + Netzteile (hell) und Kabel (rot)
   const boxMat = new THREE.MeshStandardMaterial({ color: 0xd9dbe0, roughness: 0.5, metalness: 0.4 });
-  inst(new THREE.BoxGeometry(0.07, 0.15, 0.03), boxMat, 4,
-    (put, x, y) => [-0.2, 0.2].forEach((f) => { put(x + f, y + 0.17, zFront + 0.012); put(x + f, y - 0.12, zFront + 0.012); }));
+  inst(new THREE.BoxGeometry(0.07, 0.15, 0.03), boxMat, 4, (put, kx, ky, c) => [-0.2, 0.2].forEach((f) => {
+    if (c.h > 0.5) { put(f, 0.17, zFront + 0.012); put(f, -0.12, zFront + 0.012); }
+    else put(f, 0, zFront + 0.012, 1, 0.8);
+  }));
   const cableMat = new THREE.MeshStandardMaterial({ color: 0xc8261e, roughness: 0.6 });
   inst(new THREE.BoxGeometry(0.11, 0.008, 0.008), cableMat, 4,
-    (put, x, y) => [-0.2, 0.2].forEach((f) => { put(x + f - 0.08, y + 0.24, zFront + 0.004); put(x + f + 0.08, y - 0.2, zFront + 0.004); }));
+    (put) => [-0.2, 0.2].forEach((f) => { put(f - 0.08, 0.24, zFront + 0.004); put(f + 0.08, -0.2, zFront + 0.004); }));
   // Wandanker an jedem Kreuzungspunkt
+  const seen = new Set();
   const anchorMat = new THREE.MeshStandardMaterial({ color: 0x9a9aa2, roughness: 0.4, metalness: 0.8 });
-  for (let i = 0; i <= cols; i++) for (let j = 0; j <= rows; j++) {
+  anchors.forEach(([x, y]) => {
+    const key = `${x.toFixed(3)}|${y.toFixed(3)}`;
+    if (seen.has(key)) return;
+    seen.add(key);
     const a = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.01, 10), anchorMat);
     a.rotation.x = Math.PI / 2;
-    a.position.set(x0 + i * c, y0 + j * c, zFront + 0.004);
+    a.position.set(x, y, zFront + 0.004);
     g.add(a);
-  }
+  });
   supportGroup.add(g);
 }
 
@@ -1113,6 +1169,11 @@ function buildWallMeshes() {
   const totalHeight = L.totalHeight;
   const rowEdges = [0];
   L.rowHeights.forEach((h) => rowEdges.push(rowEdges[rowEdges.length - 1] + h));
+  const colEdges = [0];
+  (L.colWidths || Array(cols).fill(totalWidth / cols)).forEach((w) => colEdges.push(colEdges[colEdges.length - 1] + w));
+  // Waagerechte Fuge nur dort, wo in dieser Spalte ein Panel endet (960er über zwei 0,48-m-Reihen)
+  const hSeam = (i, j) => !L.colPanelH || j === 0 || j === rows
+    || Math.abs(rowEdges[j] / L.colPanelH[i] - Math.round(rowEdges[j] / L.colPanelH[i])) < 1e-6;
   const bend = 0; // nur starre Panels
   const thickness = 0.09;
 
@@ -1123,7 +1184,7 @@ function buildWallMeshes() {
   for (let j = 0; j <= segY; j++) {
     const row = [];
     for (let i = 0; i <= segX; i++) {
-      const u = i / segX, v = rowEdges[j] / totalHeight;
+      const u = colEdges[i] / totalWidth, v = rowEdges[j] / totalHeight;
       const p = curvedPoint(u, v, totalWidth, totalHeight, bend);
       row.push(p);
     }
@@ -1138,7 +1199,7 @@ function buildWallMeshes() {
       const p = gridPoints[j][i];
       frontPos.push(p.x, p.y, p.z);
       backPos.push(p.x - p.nx * thickness, p.y - p.ny * thickness, p.z - p.nz * thickness);
-      uvs.push(i / segX, rowEdges[j] / totalHeight);
+      uvs.push(colEdges[i] / totalWidth, rowEdges[j] / totalHeight);
     }
   }
   for (let j = 0; j < segY; j++) {
@@ -1244,6 +1305,7 @@ function buildWallMeshes() {
     // Horizontale Fugen (zwischen Reihen), Breite in Y (Krümmung ist Y-invariant)
     for (let j = 0; j <= segY; j++) {
       for (let i = 0; i < segX; i++) {
+        if (!hSeam(i, j)) continue;
         const p1 = points2D[j][i], p2 = points2D[j][i + 1];
         const a1 = { x: p1.x, y: p1.y + hw, z: p1.z };
         const a2 = { x: p1.x, y: p1.y - hw, z: p1.z };
@@ -1850,7 +1912,7 @@ function buildDummyFigure() {
 function viewingDistanceForPitch(pitchMm) {
   // Vom Kunden vorgegebene Richtwerte für den empfohlenen Mindestabstand.
   // 1,5 / 2 / 3,9 / 4,8 sind daraus abgeleitet (ca. 1,2–1,3 m pro mm Pitch).
-  const table = { 1.5: 2, 2: 2.5, 2.5: 3, 2.6: 3, 2.9: 3.5, 3.9: 5, 4.8: 6 };
+  const table = { 1.5: 2, 1.86: 2.3, 2: 2.5, 2.5: 3, 2.6: 3, 2.9: 3.5, 3.9: 5, 4.8: 6 };
   return table[pitchMm] ?? pitchMm;
 }
 
@@ -2028,12 +2090,12 @@ document.getElementById('dummyToggle').addEventListener('change', (e) => {
 
 // Verfügbare Pixel Pitches je Einsatzort
 const PITCHES = IS_FEST ? {
-  indoor: [2.5]                 // 960 × 960 mm; P1.86 folgt mit 640 × 480 mm
+  indoor: [2.5]                 // 960 × 960 mm und kombiniert; P1.86 nur bei reinen 640 × 480 mm
 } : {
   indoor: [1.5, 2, 2.6, 2.9, 3.9],
   outdoor: [2.6, 2.9, 3.9, 4.8]
 };
-const pitchesFor = (loc) => PITCHES[loc] || PITCHES.indoor;
+const pitchesFor = (loc) => (IS_FEST && state.panelType === 'p640' ? [1.86, 2.5] : PITCHES[loc] || PITCHES.indoor);
 // Auswahlliste an den Einsatzort anpassen. Gibt es den gewählten Pitch dort nicht,
 // wird der nächstliegende genommen und die Figur auf dessen Richtwert gesetzt.
 function syncPitchOptions() {
@@ -2113,7 +2175,7 @@ function fmtM(v) { return v.toFixed(1).replace('.', ','); }
 // Maximal 30 × 30 m Wandfläche
 const MAX_WALL_M = 30;
 const LIMITS = {
-  get cols() { return [IS_FEST ? 1 : 2, Math.floor(MAX_WALL_M / getPanelDims().panelW + 1e-9)]; },
+  get cols() { return [IS_FEST ? (state.panelType === 'mix' ? 2 : 1) : 2, Math.floor(MAX_WALL_M / getPanelDims().panelW + 1e-9)]; },
   get rows() { return [IS_FEST ? 1 : 2, Math.floor(MAX_WALL_M / getPanelDims().panelH + 1e-9)]; } // in Panel-Schritten
 };
 
@@ -2127,8 +2189,12 @@ function updateSizeDisplay() {
   if (document.activeElement !== rowsInput) rowsInput.value = fmtSize(state.rows * panelH);
   const L = getLayout();
   const rowsCount = [L.bigRows, L.smallRows].filter(Boolean).join(' + ');
-  document.getElementById('colsPanelsLabel').innerHTML = `${state.cols} Panel${state.cols === 1 ? '' : 's'}<br>nebeneinander`;
-  document.getElementById('rowsPanelsLabel').innerHTML = `${rowsCount} Panel${L.bigRows + L.smallRows === 1 ? '' : 's'}<br>übereinander`;
+  const nCols = IS_FEST ? L.cols : state.cols;
+  const nRows = IS_FEST ? state.rows : L.bigRows + L.smallRows;
+  document.getElementById('colsPanelsLabel').innerHTML = `${nCols} Panel${nCols === 1 ? '' : 's'}<br>nebeneinander`;
+  document.getElementById('rowsPanelsLabel').innerHTML = IS_FEST && L.small && L.big
+    ? `${nRows}× 960 / ${nRows * 2}× 480<br>übereinander`
+    : `${IS_FEST ? nRows : rowsCount} Panel${nRows === 1 ? '' : 's'}<br>übereinander`;
   document.getElementById('panelTotal').innerHTML = `<b>Gesamt: ${L.total} Panels</b><br>${panelMixText(L)}`;
 }
 
@@ -2168,6 +2234,21 @@ document.getElementById('rowsMinus').addEventListener('click', () => {
 });
 document.getElementById('rowsPlus').addEventListener('click', () => {
   state.rows = clamp(state.rows + 1, ...LIMITS.rows);
+  updateSizeDisplay();
+  rebuild();
+});
+
+// Festinstallation: Panelgröße wählen, die Wandmaße bleiben möglichst erhalten
+document.getElementById('segPanel')?.addEventListener('click', (e) => {
+  const btn = e.target.closest('.seg-btn'); if (!btn) return;
+  const L = getLayout();
+  state.panelType = btn.getAttribute('data-val');
+  setActive(document.getElementById('segPanel'), state.panelType);
+  const { panelW, panelH } = getPanelDims();
+  state.cols = clamp(Math.round(L.totalWidth / panelW), ...LIMITS.cols);
+  state.rows = clamp(Math.round(L.totalHeight / panelH), ...LIMITS.rows);
+  syncPitchOptions();
+  updateDistDisplay();
   updateSizeDisplay();
   rebuild();
 });
@@ -2217,7 +2298,7 @@ function buildConfigText() {
       'Bereich: Festinstallation',
       `Einsatzort: ${state.location === 'indoor' ? 'Indoor' : 'Outdoor'}`,
       `Wandgröße: ${L.totalWidth.toFixed(2)} × ${L.totalHeight.toFixed(2)} m`,
-      `Panels: ${L.total} × 960 × 960 mm (${L.cols} × ${state.rows})`,
+      `Panels: ${[L.big ? `${L.big} × 960 × 960 mm` : '', L.small ? `${L.small} × 640 × 480 mm` : ''].filter(Boolean).join(' + ')} (gesamt ${L.total})`,
       `Pixel Pitch: P${state.pitch}`,
       `Auflösung ca.: ${Math.round((L.totalWidth * 1000) / state.pitch)} × ${Math.round((L.totalHeight * 1000) / state.pitch)} px`,
       `Empf. Betrachtungsabstand ca.: ${viewingDistanceForPitch(state.pitch).toFixed(1)} m`,
@@ -2384,7 +2465,7 @@ function configToHash() {
     ort: state.location, aufbau: state.mount,
     b: state.cols, hm: state.rows, pitch: state.pitch,
     gob: state.gob ? 1 : 0, abstand: state.personDist,
-    ...(IS_FEST ? { halter: state.bracket ? 1 : 0 } : {}),
+    ...(IS_FEST ? { halter: state.bracket ? 1 : 0, panel: state.panelType } : {}),
     inhalt: state.content === 'custom' ? 'logo' : state.content
   });
   return '#' + q.toString();
@@ -2400,6 +2481,7 @@ function applyHash() {
   if (IS_FEST) state.mount = 'fixed';
   else if (!document.querySelector(`#segMount [data-val="${state.mount}"]`)) state.mount = 'truss';
   if (IS_FEST) state.bracket = q.get('halter') !== '0';
+  if (IS_FEST) state.panelType = pick(q.get('panel'), ['p960', 'p640', 'mix'], 'p960');
   const num = (k, def) => { const n = parseFloat(q.get(k)); return isNaN(n) ? def : n; };
   state.cols = clamp(Math.round(num('b', state.cols)), LIMITS.cols[0], LIMITS.cols[1]);
   // alte Links: h = Panelreihen des gewählten Typs (0,5 × 1 m zählte doppelt)
@@ -2415,6 +2497,7 @@ function applyHash() {
   if (document.getElementById('segMount')) setActive(document.getElementById('segMount'), state.mount);
   setActive(document.getElementById('segContent'), state.content);
   if (document.getElementById('bracketToggle')) document.getElementById('bracketToggle').checked = state.bracket;
+  if (document.getElementById('segPanel')) setActive(document.getElementById('segPanel'), state.panelType);
   document.getElementById('pitchSelect').value = String(state.pitch);
   document.getElementById('gobToggle').checked = state.gob;
   return true;
