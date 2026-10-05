@@ -312,11 +312,11 @@ function buildPlazaDecor(wallW) {
   // alles vor der Wandebene (z > 0) und seitlich, damit Figur und Abstandslinie frei bleiben
   envGroup.add(buildStreetLamp(-side - 1.0, 0.9));
   envGroup.add(buildStreetLamp(side + 1.0, 0.9));
-  envGroup.add(buildBench(side + 2.4, 2.4, -Math.PI / 2 - 0.35));
+  envGroup.add(buildBench(side + 2.9, 3.3, -Math.PI / 2 - 0.35));
   envGroup.add(buildBench(-side - 2.6, 3.2, Math.PI / 2 + 0.35));
-  envGroup.add(buildBin(side + 2.2, 3.9));
+  envGroup.add(buildBin(side + 1.5, 5.6));
   envGroup.add(buildPlanter(-side - 1.9, 0.9, Math.PI / 2));
-  envGroup.add(buildPlanter(side + 3.6, 0.9, 0));
+  envGroup.add(buildPlanter(side + 4.4, 0.7, 0));
 }
 
 /* --------------------------- SHOWROOM-DEKO (INDOOR) ------------------------ */
