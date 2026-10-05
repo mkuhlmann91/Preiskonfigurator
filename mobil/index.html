@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Mobile LED-Wand Konfigurator | LEDWALL 360</title>
+<meta name="description" content="LED-Wand in Wunschgröße konfigurieren, live in 3D ansehen und direkt ein Angebot anfragen.">
+<!-- Link-Vorschau (WhatsApp, Facebook, LinkedIn, iMessage) -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://konfigurator.ledwall-360.de/mobil/">
+<meta property="og:site_name" content="LEDWALL 360">
+<meta property="og:title" content="Mobile LED-Wand Konfigurator">
+<meta property="og:description" content="LED-Wand in Wunschgröße konfigurieren, live in 3D ansehen und direkt ein Angebot anfragen.">
+<meta property="og:image" content="https://konfigurator.ledwall-360.de/assets/og-image.jpg">
+<meta property="og:image:secure_url" content="https://konfigurator.ledwall-360.de/assets/og-image.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Pixli, das LEDWALL-360-Maskottchen, mit Logo">
+<meta property="og:locale" content="de_DE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://konfigurator.ledwall-360.de/assets/og-image.jpg">
+<link rel="icon" type="image/png" href="/assets/pixli-icon.png">
+<link rel="apple-touch-icon" href="/assets/pixli-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<link rel="stylesheet" href="/shared/konfigurator.css">
+</head>
+<body data-track="mobil">
+<div class="app">
+ <div class="main">
+  <div class="left">
+
+    <div class="viewer">
+      <canvas id="c"></canvas>
+      <div class="hud collapsed" id="hud">
+        <h1 class="hud-title">LEDWALL Konfigurator<svg class="hud-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9l7 7 7-7" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></h1>
+        <button type="button" class="eyebrow" id="hudToggle" aria-expanded="false" aria-label="Konfiguration ein- und ausklappen">
+          <span class="hud-summary" id="hudSummary"></span>
+        </button>
+        <div class="hud-row"><span>Größe</span><span id="hudSize">–</span></div>
+        <div class="hud-row"><span>Panels</span><span id="hudPanels">–</span></div>
+        <div class="hud-row"><span>Pixel Pitch</span><span id="hudPitch">–</span></div>
+        <div class="hud-row"><span>Auflösung ca.</span><span id="hudRes">–</span></div>
+        <div class="hud-row"><span>Gewicht ca.</span><span id="hudWeight">–</span></div>
+        <div class="hud-row"><span>Betrachtungsabstand</span><span id="hudDistance">–</span></div>
+      </div>
+      <div class="hint">Ziehen zum Drehen · Scrollen zum Zoomen</div>
+      <div class="view-actions">
+        <button type="button" class="view-btn" id="shareLinkBtn" title="Link zu dieser Konfiguration teilen">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
+          Link teilen
+        </button>
+        <button type="button" class="view-btn" id="pdfBtn" title="Konfiguration als PDF speichern">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+          PDF
+        </button>
+      </div>
+    </div>
+  </div>
+
+    <aside class="panel">
+
+      <div class="field">
+        <div class="title-row">
+          <span class="title-text">Größe der Wand</span>
+          <span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Mit + / – oder direkt eintippen, in 50-cm-Schritten. Wir verwenden zuerst die großen Panels (0,5 × 1 m) und ergänzen bei Bedarf eine Reihe kleiner Panels (0,5 × 0,5 m) oben.</span></span>
+        </div>
+        <div class="stepper-row" style="margin-bottom:10px;">
+          <div class="stepper-label" style="width:48px;">Breite</div>
+          <div class="stepper">
+            <button id="colsMinus">–</button>
+            <input class="val" id="colsVal" type="text" inputmode="decimal" aria-label="Breite in Metern" value="5,0"><span class="unit">m</span>
+            <button id="colsPlus">+</button>
+          </div>
+          <div class="stepper-label" id="colsPanelsLabel">10 Panels<br>nebeneinander</div>
+        </div>
+        <div class="stepper-row">
+          <div class="stepper-label" style="width:48px;">Höhe</div>
+          <div class="stepper">
+            <button id="rowsMinus">–</button>
+            <input class="val" id="rowsVal" type="text" inputmode="decimal" aria-label="Höhe in Metern" value="3,0"><span class="unit">m</span>
+            <button id="rowsPlus">+</button>
+          </div>
+          <div class="stepper-label" id="rowsPanelsLabel">3 Panels<br>übereinander</div>
+        </div>
+        <div class="panel-total" id="panelTotal"><b>Gesamt: 30 Panels</b><br>30× 0,5×1m</div>
+      </div>
+
+      <div class="field">
+        <div class="title-row">
+          <span class="title-text">Aufbauart</span>
+          <span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Hängend an einer Traverse oder auf dem Boden gestapelt (Ground Beam + Stacking Structure). Beides ist für schnellen Auf- und Abbau bei Events gedacht.</span></span>
+        </div>
+        <div class="segmented" id="segMount">
+          <div class="seg-btn active" data-val="truss"><span class="ico">⛓</span>Hängend<br>Traverse</div>
+          <div class="seg-btn" data-val="floor"><span class="ico">▮</span>Boden<br>Standfuß</div>
+        </div>
+        <p class="mount-hint">Mobile Panels sind für schnellen Auf- und Abbau gebaut. Für eine flache, dauerhafte Montage an der Wand: <a href="mailto:hallo@ledwall-360.de?subject=Anfrage%20LED-Wand%20Festinstallation">Festinstallation anfragen</a></p>
+      </div>
+
+      <div class="field">
+        <div class="title-row">
+          <span class="title-text">Einsatzort</span>
+          <span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Indoor- und Outdoor-Panels unterscheiden sich in Schutzklasse und Aufbau.</span></span>
+        </div>
+        <div class="segmented seg-large" id="segLocation">
+          <div class="seg-btn active" data-val="indoor">Indoor</div>
+          <div class="seg-btn" data-val="outdoor">Outdoor</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="title-row">
+          <span class="title-text">Pixel Pitch</span>
+          <span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Abstand zwischen zwei LED-Pixeln in mm. Kleinerer Wert = mehr Pixel pro m² und höhere Auflösung, geeignet für kurze Betrachtungsabstände. Größerer Wert = weniger Pixel, für größere Abstände ausreichend. Die Vorschau zeigt die Pixel maßstabsgetreu – zum Vergleichen nah heranzoomen.</span></span>
+        </div>
+        <select id="pitchSelect">
+          <option value="1.5">P1.5</option>
+          <option value="2">P2</option>
+          <option value="2.6">P2.6</option>
+          <option value="2.9" selected>P2.9</option>
+          <option value="3.9">P3.9</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <div class="title-row">
+          <span class="title-text">Inhalt auf der Wand</span>
+          <span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Wählen Sie ein Beispielmotiv oder laden Sie ein eigenes Bild, Logo oder Video. Ihre Datei bleibt auf Ihrem Gerät und wird nicht hochgeladen.</span></span>
+        </div>
+        <div class="segmented" id="segContent">
+          <div class="seg-btn active" data-val="logo">Logo</div>
+          <div class="seg-btn" data-val="pink">Pink</div>
+          <div class="seg-btn" data-val="promo">Werbung</div>
+        </div>
+        <label class="upload-btn" id="uploadLabel">
+          <input type="file" id="contentFile" accept="image/*,video/*" hidden>
+          <span id="uploadText">Eigenes Bild oder Video wählen</span>
+        </label>
+      </div>
+
+      <div class="field">
+        <div class="switch-row">
+          <div class="txt">Figur anzeigen<span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Zeigt eine Person (ca. 1,78 m) zum Größenvergleich. Stellen Sie ein, wie weit Ihre Zuschauer von der Wand entfernt stehen – wir empfehlen dazu den passenden Pixel Pitch.</span></span></div>
+          <label class="switch">
+            <input type="checkbox" id="dummyToggle" checked>
+            <span class="slider-toggle"></span>
+          </label>
+        </div>
+        <div id="distField" style="margin-top:12px;">
+          <div class="stepper-row" style="justify-content:space-between;margin-bottom:6px;">
+            <div class="stepper-label">Abstand zur Wand</div>
+            <div class="stepper-label" style="color:var(--white);" id="distVal">3,5m</div>
+          </div>
+          <input type="range" id="distRange" min="1" max="15" step="0.5" value="3.5" aria-label="Abstand der Figur zur Wand">
+          <div class="range-labels"><span>1m</span><span>15m</span></div>
+          <div class="pitch-reco" id="pitchReco">
+            <span id="pitchRecoText">Für 3,5m empfehlen wir P2.9</span>
+            <button type="button" id="pitchRecoBtn">Übernehmen</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field" id="gobField">
+        <div class="switch-row">
+          <div class="txt">GOB-Beschichtung<span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">GOB (Glue on Board): Eine transparente Harzschicht wird direkt auf die LEDs gegossen. Sie dient als Spritz- und Stoßschutz und schützt die LEDs vor Feuchtigkeit, Staub und Beschädigung, z. B. beim Reinigen oder bei Berührung. Nur bei Indoor-Panels verfügbar.</span></span></div>
+          <label class="switch">
+            <input type="checkbox" id="gobToggle">
+            <span class="slider-toggle"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="cta-wrap">
+        <button class="cta" id="openModalBtn">Angebot anfordern</button>
+      </div>
+
+    </aside>
+ </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <button type="button" class="modal-close" id="modalCloseX" aria-label="Schließen">×</button>
+    <div id="formView">
+      <h2>Anfrage senden</h2>
+      <p class="sub">Ihre Konfiguration wird automatisch mitgeschickt.</p>
+      <label for="fName">Name *</label>
+      <input type="text" id="fName" autocomplete="name" required>
+      <label for="fCompany">Firma</label>
+      <input type="text" id="fCompany" autocomplete="organization">
+      <label for="fEmail">E-Mail *</label>
+      <input type="email" id="fEmail" autocomplete="email" required>
+      <label for="fPhone">Telefon</label>
+      <input type="tel" id="fPhone" autocomplete="tel">
+      <label>Nachricht</label>
+      <textarea id="fMessage" placeholder="Optional: Projektzeitraum, Veranstaltungsort, weitere Hinweise..."></textarea>
+      <label>Konfiguration (wird automatisch übernommen)</label>
+      <div class="config-preview" id="configPreview"></div>
+      <!-- Honeypot gegen Spam-Bots: bleibt für Menschen unsichtbar und leer -->
+      <input type="text" id="fHoney" class="hp-field" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <label class="consent-row" for="fConsent">
+        <input type="checkbox" id="fConsent">
+        <span>Ich bin einverstanden, dass meine Angaben zur Bearbeitung der Anfrage verarbeitet werden. Details in der <a id="privacyLink" href="#" target="_blank" rel="noopener">Datenschutzerklärung</a>. *</span>
+      </label>
+      <div class="form-error" id="formError" role="alert"></div>
+      <div class="modal-actions">
+        <button class="btn-secondary" id="closeModalBtn">Abbrechen</button>
+        <button class="btn-primary" id="submitBtn">Anfrage absenden</button>
+      </div>
+    </div>
+    <div class="success-box" id="successBox">
+      <div class="check">✓</div>
+      <h2 style="text-align:center;">Anfrage übermittelt</h2>
+      <p class="sub" style="text-align:center;">Vielen Dank – wir melden uns zeitnah bei Ihnen.</p>
+      <button class="btn-secondary" style="width:100%;margin-top:10px;" id="closeSuccessBtn">Schließen</button>
+    </div>
+  </div>
+</div>
+
+<script src="/shared/konfigurator.js"></script>
+</body>
+</html>
