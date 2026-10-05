@@ -472,7 +472,7 @@ function buildShowroomDecor(wallW) {
 
 /* ------------------------ TURNHALLE (FESTINSTALLATION) --------------------- */
 // Nachgebaut nach den Fotos aus der Sporthalle: blauer Hallenboden mit Spielfeldlinien,
-// braun-beige Prallwand, dunkles Band unter der Decke, Banner, Anzeigetafel, Handballtor.
+// braun-beige Prallwand, dunkles Band unter der Decke, Banner, Anzeigetafel, Spielfeld mit Mittellinie.
 
 const FEST_WALL_BOTTOM = () => 2.4;          // Unterkante der LED-Wand über dem Hallenboden
 const FEST_BRACKET_DEPTH = 0.06;             // Wandhalterung zwischen Modulen und Hallenwand
@@ -516,38 +516,31 @@ function makeGymWallTexture(w, h) {
   });
 }
 
-// Spielfeldlinien (Handball weiß, dazu gelbe und grüne Linien anderer Sportarten)
-function makeCourtTexture(cw, cd, goalZ) {
+// Spielfeldlinien: Die LED-Wand hängt an der Längsseite der Halle, mittig
+// über der Mittellinie (Handball weiß, dazu Linien anderer Sportarten)
+function makeCourtTexture(cw, cd, sideZ) {
   const ppm = 40;
   return canvasTexture(cw * ppm, cd * ppm, (ctx, W, H) => {
     ctx.clearRect(0, 0, W, H);
     const X = (m) => (m + cw / 2) * ppm, Z = (m) => m * ppm;
-    const line = (color, w, pts, dash) => {
-      ctx.strokeStyle = color; ctx.lineWidth = w * ppm; ctx.setLineDash(dash ? dash.map((d) => d * ppm) : []);
+    const line = (color, w, pts) => {
+      ctx.strokeStyle = color; ctx.lineWidth = w * ppm; ctx.setLineDash([]);
       ctx.beginPath(); pts.forEach(([x, z], i) => (i ? ctx.lineTo(X(x), Z(z)) : ctx.moveTo(X(x), Z(z)))); ctx.stroke();
     };
-    // Grundlinie (Torlinie) und Seitenlinien
-    line('#f4f4f2', 0.05, [[-10, goalZ], [10, goalZ]]);
-    line('#f4f4f2', 0.05, [[-10, goalZ], [-10, cd]]);
-    line('#f4f4f2', 0.05, [[10, goalZ], [10, cd]]);
-    // 6-m-Raum und 9-m-Linie (gestrichelt)
-    const area = (r, dash) => {
-      ctx.strokeStyle = '#f4f4f2'; ctx.lineWidth = 0.05 * ppm; ctx.setLineDash(dash ? dash.map((d) => d * ppm) : []);
-      ctx.beginPath();
-      ctx.arc(X(-1.5), Z(goalZ), r * ppm, Math.PI, Math.PI / 2, true);
-      ctx.lineTo(X(1.5), Z(goalZ + r));
-      ctx.arc(X(1.5), Z(goalZ), r * ppm, Math.PI / 2, 0, true);
-      ctx.stroke();
-    };
-    area(6);
-    area(9, [0.15, 0.15]);
-    // 7-m-Strich
-    line('#f4f4f2', 0.05, [[-0.5, goalZ + 7], [0.5, goalZ + 7]]);
-    // weitere Linien anderer Sportarten
-    line('#f2c21b', 0.05, [[-9, goalZ + 1.0], [9, goalZ + 1.0]]);
-    line('#f2c21b', 0.05, [[-9, goalZ + 1.0], [-9, cd]]);
-    line('#2f9d55', 0.05, [[-7.5, goalZ + 2.2], [7.5, goalZ + 2.2]]);
-    line('#2f9d55', 0.05, [[3.2, goalZ + 2.2], [3.2, cd]]);
+    const half = cw / 2;
+    // Seitenlinie entlang der Wand und Mittellinie quer durchs Feld
+    line('#f4f4f2', 0.05, [[-half, sideZ], [half, sideZ]]);
+    line('#f4f4f2', 0.05, [[0, sideZ], [0, cd]]);
+    // Wechselraum-Markierungen 4,5 m links und rechts der Mittellinie
+    [-4.5, 4.5].forEach((x) => line('#f4f4f2', 0.05, [[x, sideZ - 0.15], [x, sideZ + 0.15]]));
+    // Basketball: gelbe Seitenlinie und Mittelkreis
+    line('#f2c21b', 0.05, [[-half, sideZ + 1.0], [half, sideZ + 1.0]]);
+    line('#f2c21b', 0.05, [[0, sideZ + 1.0], [0, cd]]);
+    ctx.strokeStyle = '#f2c21b'; ctx.lineWidth = 0.05 * ppm;
+    ctx.beginPath(); ctx.arc(X(0), Z(sideZ + 1.0 + 7.5), 1.8 * ppm, 0, Math.PI * 2); ctx.stroke();
+    // Volleyball: grüne Seitenlinie und Angriffslinien 3 m neben der Mitte
+    line('#2f9d55', 0.05, [[-9, sideZ + 2.2], [9, sideZ + 2.2]]);
+    [-3, 3].forEach((x) => line('#2f9d55', 0.05, [[x, sideZ + 2.2], [x, cd]]));
   });
 }
 
@@ -591,68 +584,6 @@ function buildScoreboard(x, y, z) {
     new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }), darkMetalMat()]);
   g.add(box);
   g.position.set(x, y, z + 0.06);
-  return g;
-}
-
-function buildHandballGoal(z) {
-  const g = new THREE.Group();
-  const w = 3, h = 2, d = 1, s = 0.08;
-  // rot-weiß gestreifte Pfosten und Latte
-  const stripes = canvasTexture(16, 128, (ctx, W, H) => {
-    for (let i = 0; i < 8; i++) { ctx.fillStyle = i % 2 ? '#ffffff' : '#d81e2a'; ctx.fillRect(0, (i * H) / 8, W, H / 8); }
-  });
-  const postMat = new THREE.MeshStandardMaterial({ map: stripes, roughness: 0.5 });
-  [-w / 2 - s / 2, w / 2 + s / 2].forEach((x) => {
-    const p = new THREE.Mesh(new THREE.BoxGeometry(s, h + s, s), postMat);
-    p.position.set(x, (h + s) / 2, 0);
-    g.add(p);
-  });
-  const barTex = stripes.clone(); barTex.needsUpdate = true;
-  barTex.wrapS = barTex.wrapT = THREE.RepeatWrapping;
-  barTex.repeat.set(1, 1.6);
-  const bar = new THREE.Mesh(new THREE.BoxGeometry(s, w + 2 * s, s), new THREE.MeshStandardMaterial({ map: barTex, roughness: 0.5 }));
-  bar.rotation.z = Math.PI / 2;
-  bar.position.set(0, h + s / 2, 0);
-  g.add(bar);
-  // Netzbügel hinten und Netz (halbtransparentes Gitter)
-  const tubeMat = darkMetalMat();
-  const back = new THREE.Mesh(new THREE.BoxGeometry(w + 2 * s, 0.03, 0.03), tubeMat);
-  back.position.set(0, 0.015, -d);
-  g.add(back);
-  [-w / 2, w / 2].forEach((x) => {
-    const side = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, d), tubeMat);
-    side.position.set(x, 0.015, -d / 2);
-    g.add(side);
-  });
-  const netTex = canvasTexture(256, 256, (ctx, W, H) => {
-    ctx.clearRect(0, 0, W, H);
-    ctx.strokeStyle = 'rgba(245,245,245,0.85)'; ctx.lineWidth = 2;
-    for (let i = 0; i <= 16; i++) {
-      ctx.beginPath(); ctx.moveTo((i * W) / 16, 0); ctx.lineTo((i * W) / 16, H); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(0, (i * H) / 16); ctx.lineTo(W, (i * H) / 16); ctx.stroke();
-    }
-  });
-  netTex.wrapS = netTex.wrapT = THREE.RepeatWrapping;
-  const netMat = (rx, ry) => {
-    const t = netTex.clone(); t.needsUpdate = true; t.repeat.set(rx, ry);
-    return new THREE.MeshBasicMaterial({ map: t, transparent: true, side: THREE.DoubleSide, depthWrite: false });
-  };
-  // Rückwand des Netzes schräg vom Querbalken zum Bodenbügel, dazu Seitennetze
-  const slant = Math.hypot(h, d);
-  const backNet = new THREE.Mesh(new THREE.PlaneGeometry(w, slant), netMat(w * 2.5, slant * 2.5));
-  backNet.position.set(0, h / 2, -d / 2);
-  backNet.rotation.x = Math.atan2(d, h);
-  g.add(backNet);
-  [-w / 2, w / 2].forEach((x) => {
-    const shape = new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(-d, 0), new THREE.Vector2(0, h)]);
-    const geo = new THREE.ShapeGeometry(shape);
-    const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 2.5, uv.getY(i) * 2.5);
-    const m = new THREE.Mesh(geo, netMat(1, 1));
-    m.rotation.y = Math.PI / 2;
-    m.position.set(x, 0, 0);
-    g.add(m);
-  });
-  g.position.set(0, 0, z);
   return g;
 }
 
@@ -700,14 +631,13 @@ function buildGym(wallW, wallH) {
   envGroup.add(right);
 
   // Spielfeldlinien auf dem Boden
-  const goalZ = 1.6;
-  const courtD = 20, courtW = 22;
+  const sideZ = 1.2;
+  const courtD = 20, courtW = hallW;
   const court = new THREE.Mesh(new THREE.PlaneGeometry(courtW, courtD),
-    new THREE.MeshBasicMaterial({ map: makeCourtTexture(courtW, courtD, goalZ), transparent: true, depthWrite: false }));
+    new THREE.MeshBasicMaterial({ map: makeCourtTexture(courtW, courtD, sideZ), transparent: true, depthWrite: false }));
   court.rotation.x = -Math.PI / 2;
   court.position.set(0, 0.003, courtD / 2);
   envGroup.add(court);
-  envGroup.add(buildHandballGoal(goalZ));
 
   // Anzeigetafel rechts neben der LED-Wand
   envGroup.add(buildScoreboard(wallW / 2 + 1.0, bottom + Math.min(wallH, 2.4) * 0.4, wallZ));
