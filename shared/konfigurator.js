@@ -3,6 +3,10 @@
    Anpassbare Eckdaten (Gewichte, Feld-Name fürs CRM etc.) unten in CONFIG.
    ========================================================================= */
 
+// Welcher Konfigurator: 'mobil' (Events / Vermietung) oder 'fest' (Festinstallation)
+const TRACK = document.body.dataset.track === 'fest' ? 'fest' : 'mobil';
+const IS_FEST = TRACK === 'fest';
+
 const CONFIG = {
   // Name des versteckten Feldes im echten Kontaktformular der Website.
   // Bitte an den tatsächlichen Feldnamen anpassen, falls abweichend.
@@ -19,15 +23,19 @@ const CONFIG = {
     '1x0.5':   { indoor: 11, outdoor: 11 }
   },
   // Strom- + Datenkabel (je ca. 60 cm, von Panel zu Panel), pro Panel in kg
-  cableWeightPerPanel: 0.5
+  cableWeightPerPanel: 0.5,
+  // Festinstallation: Kabinett 960 × 960 mm, Alu-Druckguss ca. 26 kg/m²
+  fest: { cabinet: 0.96, weightPerM2: 26 }
 };
 
 const state = {
   location: 'indoor',   // 'indoor' | 'outdoor'
-  mount: 'truss',       // 'truss' | 'wall' | 'floor'
-  cols: 10,             // 10 × 0,5 m = 5 m Breite
-  rows: 6,              // 6 × 0,5 m = 3 m Höhe (Aufteilung siehe getLayout)
-  pitch: 2.9,
+  mount: IS_FEST ? 'fixed' : 'truss', // 'truss' | 'wall' | 'floor' | 'fixed' (Festinstallation an der Hallenwand)
+  cols: IS_FEST ? 5 : 10,  // mobil: 10 × 0,5 m = 5 m; fest: 5 × 0,96 m = 4,8 m
+  rows: IS_FEST ? 3 : 6,   // mobil: 6 × 0,5 m = 3 m; fest: 3 × 0,96 m = 2,88 m
+  pitch: IS_FEST ? 2.5 : 2.9,
+  bracket: true,        // Festinstallation: Wandhalterung (Gestell) inklusive
+  frameView: false,     // Festinstallation: Module ausblenden, nur das Gestell zeigen
   gob: false,
   showEdges: true,
   showDummy: true,
@@ -35,14 +43,21 @@ const state = {
   personDist: 3.5       // Abstand Figur ↔ Wand in m (folgt dem Pitch-Richtwert, bis man ihn verstellt)
 };
 
-// Raster für die Größe: Breite und Höhe in 50-cm-Schritten
+// Raster für die Größe: mobil in 50-cm-Schritten, fest in Kabinett-Schritten (0,96 m)
 function getPanelDims() {
+  if (IS_FEST) return { panelW: CONFIG.fest.cabinet, panelH: CONFIG.fest.cabinet };
   return { panelW: 0.5, panelH: 0.5 };
 }
 
 // Aufteilung der Wand: zuerst große Panels (0,5 × 1 m, hochkant), bei einem
 // Rest von 50 cm eine Reihe kleiner Panels (0,5 × 0,5 m) oben.
 function getLayout() {
+  if (IS_FEST) {
+    const c = CONFIG.fest.cabinet, total = state.cols * state.rows;
+    return { cols: state.cols, bigRows: state.rows, smallRows: 0, rowHeights: Array(state.rows).fill(c),
+      big: total, small: 0, total, weight: total * c * c * CONFIG.fest.weightPerM2,
+      totalWidth: state.cols * c, totalHeight: state.rows * c };
+  }
   const cols = state.cols;
   const bigRows = Math.floor(state.rows / 2), smallRows = state.rows % 2;
   const rowHeights = [...Array(bigRows).fill(1), ...Array(smallRows).fill(0.5)]; // von unten nach oben
@@ -53,6 +68,7 @@ function getLayout() {
     totalWidth: cols * 0.5, totalHeight: state.rows * 0.5 };
 }
 function panelMixText(L) {
+  if (IS_FEST) return `${L.total}× 960×960mm`;
   const parts = [];
   if (L.big) parts.push(`${L.big}× 0,5×1m`);
   if (L.small) parts.push(`${L.small}× 0,5×0,5m`);
@@ -149,7 +165,9 @@ function applyEnvironment() {
   envGroup.clear();
   const { panelW, panelH } = getPanelDims();
   const wallW = state.cols * panelW, wallH = state.rows * panelH;
-  if (state.location === 'outdoor') {
+  if (IS_FEST) {
+    buildGym(wallW, wallH);
+  } else if (state.location === 'outdoor') {
     scene.background = skyTexture;
     scene.fog = new THREE.Fog(0xdbe8f2, 30, 75);
     hemiLight.color.set(0xcfe6ff);
@@ -452,6 +470,318 @@ function buildShowroomDecor(wallW) {
 }
 
 
+/* ------------------------ TURNHALLE (FESTINSTALLATION) --------------------- */
+// Nachgebaut nach den Fotos aus der Sporthalle: blauer Hallenboden mit Spielfeldlinien,
+// braun-beige Prallwand, dunkles Band unter der Decke, Banner, Anzeigetafel, Handballtor.
+
+const FEST_WALL_BOTTOM = () => 2.4;          // Unterkante der LED-Wand über dem Hallenboden
+const FEST_BRACKET_DEPTH = 0.06;             // Wandhalterung zwischen Modulen und Hallenwand
+const festHallWallZ = () => -0.09 - FEST_BRACKET_DEPTH;
+
+function canvasTexture(w, h, draw) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  t.anisotropy = maxAnisotropy;
+  return t;
+}
+
+// Hallenwand: Holzfaserplatten mit Fugen, Stoßkante unten, dunkles Band oben
+function makeGymWallTexture(w, h) {
+  const ppm = Math.min(48, 2048 / Math.max(w, h));
+  return canvasTexture(Math.round(w * ppm), Math.round(h * ppm), (ctx, W, H) => {
+    ctx.fillStyle = '#b48d5e';
+    ctx.fillRect(0, 0, W, H);
+    // leichte Struktur
+    for (let i = 0; i < W * H / 900; i++) {
+      ctx.fillStyle = `rgba(${Math.random() < 0.5 ? '90,60,30' : '230,200,160'},${0.05 + Math.random() * 0.06})`;
+      ctx.fillRect(Math.random() * W, Math.random() * H, 2 + Math.random() * 5, 1 + Math.random() * 3);
+    }
+    const y = (m) => H - m * ppm;          // Meter über dem Boden → Pixel
+    // untere Prallwand etwas heller, bis 1,2 m
+    ctx.fillStyle = 'rgba(255,235,205,0.10)';
+    ctx.fillRect(0, y(1.2), W, 1.2 * ppm);
+    ctx.strokeStyle = 'rgba(70,45,20,0.35)';
+    ctx.lineWidth = Math.max(1, ppm * 0.02);
+    for (let x = 0; x < w; x += 1.25) { ctx.beginPath(); ctx.moveTo(x * ppm, y(0)); ctx.lineTo(x * ppm, y(h - 1)); ctx.stroke(); }
+    [1.2, 3.7].forEach((m) => { if (m < h - 1) { ctx.beginPath(); ctx.moveTo(0, y(m)); ctx.lineTo(W, y(m)); ctx.stroke(); } });
+    // Holzleiste unten
+    ctx.fillStyle = '#8a6a44';
+    ctx.fillRect(0, y(0.12), W, 0.12 * ppm);
+    // dunkles Band unter der Decke
+    ctx.fillStyle = '#3b2a20';
+    ctx.fillRect(0, 0, W, ppm * 1.0);
+  });
+}
+
+// Spielfeldlinien (Handball weiß, dazu gelbe und grüne Linien anderer Sportarten)
+function makeCourtTexture(cw, cd, goalZ) {
+  const ppm = 40;
+  return canvasTexture(cw * ppm, cd * ppm, (ctx, W, H) => {
+    ctx.clearRect(0, 0, W, H);
+    const X = (m) => (m + cw / 2) * ppm, Z = (m) => m * ppm;
+    const line = (color, w, pts, dash) => {
+      ctx.strokeStyle = color; ctx.lineWidth = w * ppm; ctx.setLineDash(dash ? dash.map((d) => d * ppm) : []);
+      ctx.beginPath(); pts.forEach(([x, z], i) => (i ? ctx.lineTo(X(x), Z(z)) : ctx.moveTo(X(x), Z(z)))); ctx.stroke();
+    };
+    // Grundlinie (Torlinie) und Seitenlinien
+    line('#f4f4f2', 0.05, [[-10, goalZ], [10, goalZ]]);
+    line('#f4f4f2', 0.05, [[-10, goalZ], [-10, cd]]);
+    line('#f4f4f2', 0.05, [[10, goalZ], [10, cd]]);
+    // 6-m-Raum und 9-m-Linie (gestrichelt)
+    const area = (r, dash) => {
+      ctx.strokeStyle = '#f4f4f2'; ctx.lineWidth = 0.05 * ppm; ctx.setLineDash(dash ? dash.map((d) => d * ppm) : []);
+      ctx.beginPath();
+      ctx.arc(X(-1.5), Z(goalZ), r * ppm, Math.PI, Math.PI / 2, true);
+      ctx.lineTo(X(1.5), Z(goalZ + r));
+      ctx.arc(X(1.5), Z(goalZ), r * ppm, Math.PI / 2, 0, true);
+      ctx.stroke();
+    };
+    area(6);
+    area(9, [0.15, 0.15]);
+    // 7-m-Strich
+    line('#f4f4f2', 0.05, [[-0.5, goalZ + 7], [0.5, goalZ + 7]]);
+    // weitere Linien anderer Sportarten
+    line('#f2c21b', 0.05, [[-9, goalZ + 1.0], [9, goalZ + 1.0]]);
+    line('#f2c21b', 0.05, [[-9, goalZ + 1.0], [-9, cd]]);
+    line('#2f9d55', 0.05, [[-7.5, goalZ + 2.2], [7.5, goalZ + 2.2]]);
+    line('#2f9d55', 0.05, [[3.2, goalZ + 2.2], [3.2, cd]]);
+  });
+}
+
+function makeBannerTexture(kind) {
+  return canvasTexture(640, 320, (ctx, W, H) => {
+    const designs = {
+      white: ['#f3f1ec', '#1d3f8f', 'SPONSOR', 'Deine Werbung hier'],
+      blue: ['#1f3f86', '#ffffff', 'BAUSTOFFE', 'Partner des Sports'],
+      black: ['#17181b', '#ffffff', 'AUTOHAUS', 'Mobilitätspartner'],
+      grey: ['#4a4f57', '#7fd0ff', 'KÄLTETECHNIK', 'Service · Montage']
+    };
+    const [bg, fg, title, sub] = designs[kind];
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 6; ctx.strokeRect(3, 3, W - 6, H - 6);
+    ctx.fillStyle = fg; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '800 76px Inter, Arial, sans-serif';
+    ctx.fillText(title, W / 2, H * 0.42);
+    ctx.font = '500 36px Inter, Arial, sans-serif';
+    ctx.fillText(sub, W / 2, H * 0.7);
+  });
+}
+
+function buildScoreboard(x, y, z) {
+  const g = new THREE.Group();
+  const tex = canvasTexture(512, 400, (ctx, W, H) => {
+    ctx.fillStyle = '#141416'; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = '#c9c9cc'; ctx.lineWidth = 14; ctx.strokeRect(7, 7, W - 14, H - 14);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ff7a12';
+    ctx.font = '700 120px "Courier New", monospace';
+    ctx.fillText('10:00', W / 2, H * 0.24);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '800 48px Arial, sans-serif';
+    ctx.fillText('Heim', W * 0.28, H * 0.5); ctx.fillText('Gast', W * 0.72, H * 0.5);
+    ctx.fillStyle = '#ff7a12';
+    ctx.font = '700 120px "Courier New", monospace';
+    ctx.fillText('0', W * 0.25, H * 0.77); ctx.fillText(':', W / 2, H * 0.77); ctx.fillText('0', W * 0.75, H * 0.77);
+  });
+  const box = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.9, 0.12), [
+    darkMetalMat(), darkMetalMat(), darkMetalMat(), darkMetalMat(),
+    new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }), darkMetalMat()]);
+  g.add(box);
+  g.position.set(x, y, z + 0.06);
+  return g;
+}
+
+function buildHandballGoal(z) {
+  const g = new THREE.Group();
+  const w = 3, h = 2, d = 1, s = 0.08;
+  // rot-weiß gestreifte Pfosten und Latte
+  const stripes = canvasTexture(16, 128, (ctx, W, H) => {
+    for (let i = 0; i < 8; i++) { ctx.fillStyle = i % 2 ? '#ffffff' : '#d81e2a'; ctx.fillRect(0, (i * H) / 8, W, H / 8); }
+  });
+  const postMat = new THREE.MeshStandardMaterial({ map: stripes, roughness: 0.5 });
+  [-w / 2 - s / 2, w / 2 + s / 2].forEach((x) => {
+    const p = new THREE.Mesh(new THREE.BoxGeometry(s, h + s, s), postMat);
+    p.position.set(x, (h + s) / 2, 0);
+    g.add(p);
+  });
+  const barTex = stripes.clone(); barTex.needsUpdate = true;
+  barTex.wrapS = barTex.wrapT = THREE.RepeatWrapping;
+  barTex.repeat.set(1, 1.6);
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(s, w + 2 * s, s), new THREE.MeshStandardMaterial({ map: barTex, roughness: 0.5 }));
+  bar.rotation.z = Math.PI / 2;
+  bar.position.set(0, h + s / 2, 0);
+  g.add(bar);
+  // Netzbügel hinten und Netz (halbtransparentes Gitter)
+  const tubeMat = darkMetalMat();
+  const back = new THREE.Mesh(new THREE.BoxGeometry(w + 2 * s, 0.03, 0.03), tubeMat);
+  back.position.set(0, 0.015, -d);
+  g.add(back);
+  [-w / 2, w / 2].forEach((x) => {
+    const side = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, d), tubeMat);
+    side.position.set(x, 0.015, -d / 2);
+    g.add(side);
+  });
+  const netTex = canvasTexture(256, 256, (ctx, W, H) => {
+    ctx.clearRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(245,245,245,0.85)'; ctx.lineWidth = 2;
+    for (let i = 0; i <= 16; i++) {
+      ctx.beginPath(); ctx.moveTo((i * W) / 16, 0); ctx.lineTo((i * W) / 16, H); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, (i * H) / 16); ctx.lineTo(W, (i * H) / 16); ctx.stroke();
+    }
+  });
+  netTex.wrapS = netTex.wrapT = THREE.RepeatWrapping;
+  const netMat = (rx, ry) => {
+    const t = netTex.clone(); t.needsUpdate = true; t.repeat.set(rx, ry);
+    return new THREE.MeshBasicMaterial({ map: t, transparent: true, side: THREE.DoubleSide, depthWrite: false });
+  };
+  // Rückwand des Netzes schräg vom Querbalken zum Bodenbügel, dazu Seitennetze
+  const slant = Math.hypot(h, d);
+  const backNet = new THREE.Mesh(new THREE.PlaneGeometry(w, slant), netMat(w * 2.5, slant * 2.5));
+  backNet.position.set(0, h / 2, -d / 2);
+  backNet.rotation.x = Math.atan2(d, h);
+  g.add(backNet);
+  [-w / 2, w / 2].forEach((x) => {
+    const shape = new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(-d, 0), new THREE.Vector2(0, h)]);
+    const geo = new THREE.ShapeGeometry(shape);
+    const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 2.5, uv.getY(i) * 2.5);
+    const m = new THREE.Mesh(geo, netMat(1, 1));
+    m.rotation.y = Math.PI / 2;
+    m.position.set(x, 0, 0);
+    g.add(m);
+  });
+  g.position.set(0, 0, z);
+  return g;
+}
+
+function buildGym(wallW, wallH) {
+  const bottom = FEST_WALL_BOTTOM();
+  const hallH = Math.max(7, bottom + wallH + 1.8);
+  const hallW = Math.max(26, wallW + 14);
+  const wallZ = festHallWallZ();
+  const depth = 30;
+
+  scene.background = new THREE.Color(0xd8d3cb);
+  scene.fog = new THREE.Fog(0xd8d3cb, 28, 70);
+  Object.assign(fogBase, { near: 28, far: 70 });
+  floorMat.color.set(0x3f86c8);   // blauer Hallenboden
+  floorMat.roughness = 0.35;
+  rimBase = 0.25;
+  ambientLight.intensity = 0.35;
+  hemiLight.color.set(0xffffff);
+  hemiLight.groundColor.set(0x5b7fa6);
+  hemiLight.intensity = 0.55;
+  keyLight.intensity = 0.55;
+  fillLight.intensity = 0.25;
+  keyLight.position.set(5, 14, 10);
+
+  // Hallenwand hinter der LED-Wand
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(hallW, hallH),
+    new THREE.MeshStandardMaterial({ map: makeGymWallTexture(hallW, hallH), roughness: 0.9 }));
+  back.position.set(0, hallH / 2, wallZ);
+  envGroup.add(back);
+  // Seitenwände: links Holzwand, rechts Prallschutz-Matten
+  const sideTex = makeGymWallTexture(depth, hallH);
+  const left = new THREE.Mesh(new THREE.PlaneGeometry(depth, hallH), new THREE.MeshStandardMaterial({ map: sideTex, roughness: 0.9 }));
+  left.position.set(-hallW / 2, hallH / 2, wallZ + depth / 2);
+  left.rotation.y = Math.PI / 2;
+  envGroup.add(left);
+  const padTex = canvasTexture(1024, 256, (ctx, W, H) => {
+    ctx.fillStyle = '#e6dcc4'; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(120,100,70,0.35)'; ctx.lineWidth = 3;
+    for (let x = 0; x < W; x += W / 24) { ctx.beginPath(); ctx.moveTo(x, H * 0.25); ctx.lineTo(x, H); ctx.stroke(); }
+    ctx.fillStyle = '#3b2a20'; ctx.fillRect(0, 0, W, H * 0.12);
+  });
+  const right = new THREE.Mesh(new THREE.PlaneGeometry(depth, hallH), new THREE.MeshStandardMaterial({ map: padTex, roughness: 0.95 }));
+  right.position.set(hallW / 2, hallH / 2, wallZ + depth / 2);
+  right.rotation.y = -Math.PI / 2;
+  envGroup.add(right);
+
+  // Spielfeldlinien auf dem Boden
+  const goalZ = 1.6;
+  const courtD = 20, courtW = 22;
+  const court = new THREE.Mesh(new THREE.PlaneGeometry(courtW, courtD),
+    new THREE.MeshBasicMaterial({ map: makeCourtTexture(courtW, courtD, goalZ), transparent: true, depthWrite: false }));
+  court.rotation.x = -Math.PI / 2;
+  court.position.set(0, 0.003, courtD / 2);
+  envGroup.add(court);
+  envGroup.add(buildHandballGoal(goalZ));
+
+  // Anzeigetafel rechts neben der LED-Wand
+  envGroup.add(buildScoreboard(wallW / 2 + 1.0, bottom + Math.min(wallH, 2.4) * 0.4, wallZ));
+
+  // Banner: links neben der LED-Wand in Wandhöhe und unten an der Prallwand
+  const banner = (kind, w, h, x, y) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: makeBannerTexture(kind), roughness: 0.85 }));
+    m.position.set(x, y, wallZ + 0.01);
+    envGroup.add(m);
+  };
+  const leftEdge = -wallW / 2 - 0.35;
+  banner('white', 1.9, 1.0, leftEdge - 0.95, bottom + 1.55);
+  banner('blue', 1.9, 1.0, leftEdge - 0.95, bottom + 0.35);
+  banner('grey', 1.1, 0.75, wallW / 2 + 2.3, bottom + 1.9);
+  const lowY = 1.0, lowH = 1.3;
+  [[-1, 'white'], [1, 'black']].forEach(([side, kind]) => banner(kind, 3.0, lowH, side * (Math.max(3.4, wallW / 2) + 0.4), lowY));
+  [[-1, 'blue'], [1, 'white']].forEach(([side, kind]) => banner(kind, 3.0, lowH, side * (Math.max(3.4, wallW / 2) + 3.8), lowY));
+}
+
+/* -------------------------- WANDHALTERUNG (FESTINSTALLATION) --------------- */
+// Schwarzes Stahlgestell wie im Foto: Rahmen im 960-mm-Raster, waagerechte
+// Flachstähle, zwei senkrechte Streben je Feld mit Empfangskarte und Netzteilen.
+function buildWallBracket(totalWidth, totalHeight, centerY) {
+  const c = CONFIG.fest.cabinet, cols = state.cols, rows = state.rows;
+  const g = new THREE.Group();
+  const steel = new THREE.MeshStandardMaterial({ color: 0x141416, roughness: 0.6, metalness: 0.2 });
+  const zBack = festHallWallZ(), zFront = -0.09;
+  const zMid = (zBack + zFront) / 2, dz = zFront - zBack;
+  const x0 = -totalWidth / 2, y0 = centerY - totalHeight / 2;
+  // Rahmenprofile an jeder Feldkante
+  for (let i = 0; i <= cols; i++) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.04, totalHeight, dz), steel);
+    m.position.set(x0 + i * c, centerY, zMid);
+    g.add(m);
+  }
+  for (let j = 0; j <= rows; j++) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(totalWidth + 0.04, 0.04, dz), steel);
+    m.position.set(0, y0 + j * c, zMid);
+    g.add(m);
+  }
+  const n = cols * rows;
+  const centers = [];
+  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) centers.push([x0 + (i + 0.5) * c, y0 + (j + 0.5) * c]);
+  const inst = (geo, mat, perCell, place) => {
+    const mesh = new THREE.InstancedMesh(geo, mat, Math.max(1, n * perCell));
+    let k = 0;
+    centers.forEach(([x, y]) => place((px, py, pz) => { _m4.makeTranslation(px, py, pz); mesh.setMatrixAt(k++, _m4); }, x, y));
+    mesh.count = k;
+    g.add(mesh);
+  };
+  // waagerechte Flachstähle (6 je Feld) und zwei senkrechte Streben
+  const flats = [-0.36, -0.22, -0.08, 0.08, 0.22, 0.36];
+  inst(new THREE.BoxGeometry(c - 0.04, 0.025, 0.012), steel, flats.length,
+    (put, x, y) => flats.forEach((f) => put(x, y + f, zFront - 0.008)));
+  inst(new THREE.BoxGeometry(0.035, c - 0.04, 0.02), steel, 2,
+    (put, x, y) => [-0.2, 0.2].forEach((f) => put(x + f, y, zFront - 0.012)));
+  // Empfangskarte + Netzteile (hell) und Kabel (rot)
+  const boxMat = new THREE.MeshStandardMaterial({ color: 0xd9dbe0, roughness: 0.5, metalness: 0.4 });
+  inst(new THREE.BoxGeometry(0.07, 0.15, 0.03), boxMat, 4,
+    (put, x, y) => [-0.2, 0.2].forEach((f) => { put(x + f, y + 0.17, zFront + 0.012); put(x + f, y - 0.12, zFront + 0.012); }));
+  const cableMat = new THREE.MeshStandardMaterial({ color: 0xc8261e, roughness: 0.6 });
+  inst(new THREE.BoxGeometry(0.11, 0.008, 0.008), cableMat, 4,
+    (put, x, y) => [-0.2, 0.2].forEach((f) => { put(x + f - 0.08, y + 0.24, zFront + 0.004); put(x + f + 0.08, y - 0.2, zFront + 0.004); }));
+  // Wandanker an jedem Kreuzungspunkt
+  const anchorMat = new THREE.MeshStandardMaterial({ color: 0x9a9aa2, roughness: 0.4, metalness: 0.8 });
+  for (let i = 0; i <= cols; i++) for (let j = 0; j <= rows; j++) {
+    const a = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.01, 10), anchorMat);
+    a.rotation.x = Math.PI / 2;
+    a.position.set(x0 + i * c, y0 + j * c, zFront + 0.004);
+    g.add(a);
+  }
+  supportGroup.add(g);
+}
+
 /* -------------------------- CUSTOM ORBIT CONTROLS ------------------------ */
 /* Ein Finger / Maus = Rotieren, zwei Finger = Pinch-Zoom, Mausrad = Zoom (Desktop) */
 
@@ -502,6 +832,8 @@ window.addEventListener('pointermove', (e) => {
   const dx = e.clientX - lastX, dy = e.clientY - lastY;
   lastX = e.clientX; lastY = e.clientY;
   orbit.theta -= dx * 0.006;
+  // Festinstallation hängt an der Hallenwand: nicht hinter die Wand drehen
+  if (IS_FEST) orbit.theta = clamp(orbit.theta, -1.2, 1.2);
   orbit.phi = Math.min(Math.max(orbit.phi - dy * 0.006, 0.4), 1.5);
 });
 canvas.addEventListener('wheel', (e) => {
@@ -746,6 +1078,58 @@ const motifs = {
     for (let x = off; x < W; x += mw) ctx.fillText(msg, x, H - bandH / 2);
   },
 
+  // Spielstand wie auf einer Hallen-Anzeigetafel: Teams, Ergebnis, Zeit, Zeitstrafen
+  score(ctx, W, H, t) {
+    ctx.fillStyle = '#0b0b0d';
+    ctx.fillRect(0, 0, W, H);
+    const u = Math.min(W / 16, H / 9);           // Raster passend zum Seitenverhältnis
+    const cx = W / 2, cy = H / 2;
+    ctx.textBaseline = 'middle';
+    // Teamnamen mit farbigem Strich
+    ctx.font = `800 ${u * 0.95}px Inter, Arial, sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#ff2b2b';
+    ctx.fillText('HEIM', cx - u * 7.2, cy - u * 3.4);
+    ctx.fillRect(cx - u * 7.2, cy - u * 2.65, u * 6, u * 0.14);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#a9d3ff';
+    ctx.fillText('GAST', cx + u * 7.2, cy - u * 3.4);
+    ctx.fillRect(cx + u * 1.2, cy - u * 2.65, u * 6, u * 0.14);
+    // Ergebnis zählt langsam hoch
+    const goals = Math.floor(t / 7);
+    const home = 5 + Math.floor((goals + 1) / 2) % 30, away = 2 + Math.floor(goals / 2) % 30;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#e8f3ff';
+    ctx.font = `800 ${u * 3}px Inter, Arial, sans-serif`;
+    ctx.fillText(String(home), cx - u * 2.6, cy - u * 0.2);
+    ctx.fillText(String(away), cx + u * 2.6, cy - u * 0.2);
+    ctx.fillStyle = '#a9d3ff';
+    ctx.fillText(':', cx, cy - u * 0.35);
+    // Spielzeit (gelb) und Halbzeit
+    const secs = Math.floor(119 + t);
+    const time = `${String(Math.floor(secs / 60) % 30).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`;
+    ctx.fillStyle = '#ffc928';
+    ctx.font = `800 ${u * 2}px Inter, Arial, sans-serif`;
+    ctx.fillText(time, cx, cy + u * 2.9);
+    ctx.fillStyle = '#a9d3ff';
+    ctx.textAlign = 'left';
+    ctx.font = `700 ${u * 0.55}px Inter, Arial, sans-serif`;
+    ctx.fillText('1.', cx - u * 7.2, cy + u * 2.55);
+    ctx.fillText('HALBZEIT', cx - u * 7.2, cy + u * 3.2);
+    // Zeitstrafen als rote Kästchen
+    const pen = (x, y, nr, tm) => {
+      ctx.fillStyle = '#e0141e';
+      ctx.fillRect(x, y - u * 0.3, u * 1.9, u * 0.6);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x + u * 0.06, y - u * 0.24, u * 0.48, u * 0.48);
+      ctx.fillStyle = '#0b0b0d'; ctx.textAlign = 'center'; ctx.font = `700 ${u * 0.38}px Inter, Arial, sans-serif`;
+      ctx.fillText(nr, x + u * 0.3, y);
+      ctx.fillStyle = '#ffffff'; ctx.fillText(tm, x + u * 1.22, y);
+    };
+    [['2', '0:01'], ['8', '0:42'], ['6', '1:04']].forEach(([nr, tm], i) => pen(cx - u * 7.2, cy - u * 1.7 + i * u * 0.75, nr, tm));
+    pen(cx + u * 5.3, cy - u * 1.7, '21', '0:21');
+  },
+
   custom(ctx, W, H, t) {
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, W, H);
@@ -987,6 +1371,8 @@ function buildWallMeshes() {
   }
 
   buildBackside(L, thickness);
+  // Festinstallation: Ansicht „Gestell“ blendet die Module aus
+  if (IS_FEST && state.frameView) wallGroup.children.forEach((c) => { c.visible = false; });
 
   return { totalWidth, totalHeight, gridPoints, thickness };
 }
@@ -1010,6 +1396,7 @@ function makeCableGeometry(len, sag) {
 function buildBackside(L, thickness) {
   const group = new THREE.Group();
   backLeds.sets = [];
+  if (IS_FEST) { backLeds.group = null; return; } // Rückseite liegt an der Hallenwand
   const y0 = -L.totalHeight / 2;
   if (L.bigRows) buildBacksideBand(group, L.totalWidth, L.cols, L.bigRows, 1, y0, thickness);
   if (L.smallRows) buildBacksideBand(group, L.totalWidth, L.cols, L.smallRows, 0.5, y0 + L.bigRows, thickness);
@@ -1257,6 +1644,11 @@ function buildSupport(dims) {
         supportGroup.add(plate);
       }
     });
+  }
+
+  if (state.mount === 'fixed') {
+    wallGroup.position.y = FEST_WALL_BOTTOM(totalHeight) + totalHeight / 2;
+    if (state.bracket) buildWallBracket(totalWidth, totalHeight, wallGroup.position.y);
   }
 
   if (state.mount === 'floor') {
@@ -1528,7 +1920,7 @@ function buildDummyFigure() {
 function viewingDistanceForPitch(pitchMm) {
   // Vom Kunden vorgegebene Richtwerte für den empfohlenen Mindestabstand.
   // 1,5 / 2 / 3,9 / 4,8 sind daraus abgeleitet (ca. 1,2–1,3 m pro mm Pitch).
-  const table = { 1.5: 2, 2: 2.5, 2.6: 3, 2.9: 3.5, 3.9: 5, 4.8: 6 };
+  const table = { 1.5: 2, 2: 2.5, 2.5: 3, 2.6: 3, 2.9: 3.5, 3.9: 5, 4.8: 6 };
   return table[pitchMm] ?? pitchMm;
 }
 
@@ -1583,12 +1975,13 @@ function updateHUD(dims) {
   const resY = Math.round((dims.totalHeight * 1000) / pitchMm);
   const totalWeight = Math.round(L.weight);
 
-  document.getElementById('hudSize').textContent = `${fmtM(dims.totalWidth)}m × ${fmtM(dims.totalHeight)}m`;
+  const fmtSize = IS_FEST ? (v) => v.toFixed(2).replace('.', ',') : fmtM;
+  document.getElementById('hudSize').textContent = `${fmtSize(dims.totalWidth)}m × ${fmtSize(dims.totalHeight)}m`;
   document.getElementById('hudPanels').textContent = `${L.total} (${panelMixText(L)})`;
   document.getElementById('hudPitch').textContent = `P${pitchMm}`;
   document.getElementById('hudRes').textContent = `${resX} × ${resY} px`;
   document.getElementById('hudWeight').textContent = `${totalWeight} kg`;
-  document.getElementById('hudSummary').textContent = `${fmtM(dims.totalWidth)}m × ${fmtM(dims.totalHeight)}m · P${pitchMm} · ${totalWeight} kg`;
+  document.getElementById('hudSummary').textContent = `${fmtSize(dims.totalWidth)}m × ${fmtSize(dims.totalHeight)}m · P${pitchMm} · ${totalWeight} kg`;
   document.getElementById('hudDistance').textContent = `${fmtM(viewingDistanceForPitch(pitchMm))}m (Richtwert)`;
 }
 
@@ -1599,7 +1992,8 @@ function rebuild() {
   const dims = buildWallMeshes();
   buildSupport(dims);
   buildDistanceIndicator(dims);
-  orbit.target.set(0, dims.totalHeight / 2 + (state.mount === 'floor' ? 0.3 : 1.2), 0);
+  if (IS_FEST) orbit.target.set(0, Math.max(2.2, wallGroup.position.y - 0.6), 0);
+  else orbit.target.set(0, dims.totalHeight / 2 + (state.mount === 'floor' ? 0.3 : 1.2), 0);
   updateHUD(dims);
   updateConfigPreview();
   updateSizeDisplay();
@@ -1703,7 +2097,9 @@ document.getElementById('dummyToggle').addEventListener('change', (e) => {
 });
 
 // Verfügbare Pixel Pitches je Einsatzort
-const PITCHES = {
+const PITCHES = IS_FEST ? {
+  indoor: [2.5]                 // 960 × 960 mm; P1.86 folgt mit 640 × 480 mm
+} : {
   indoor: [1.5, 2, 2.6, 2.9, 3.9],
   outdoor: [2.6, 2.9, 3.9, 4.8]
 };
@@ -1774,7 +2170,7 @@ document.getElementById('distRange').addEventListener('input', (e) => {
   updateDistDisplay();
   rebuild();
 });
-document.getElementById('segMount').addEventListener('click', (e) => {
+document.getElementById('segMount')?.addEventListener('click', (e) => {
   const btn = e.target.closest('.seg-btn'); if (!btn) return;
   state.mount = btn.getAttribute('data-val');
   setActive(document.getElementById('segMount'), state.mount);
@@ -1787,8 +2183,8 @@ function fmtM(v) { return v.toFixed(1).replace('.', ','); }
 // Maximal 30 × 30 m Wandfläche
 const MAX_WALL_M = 30;
 const LIMITS = {
-  get cols() { return [2, Math.round(MAX_WALL_M / getPanelDims().panelW)]; },
-  get rows() { return [2, Math.round(MAX_WALL_M / getPanelDims().panelH)]; } // in 0,5-m-Schritten
+  get cols() { return [IS_FEST ? 1 : 2, Math.floor(MAX_WALL_M / getPanelDims().panelW + 1e-9)]; },
+  get rows() { return [IS_FEST ? 1 : 2, Math.floor(MAX_WALL_M / getPanelDims().panelH + 1e-9)]; } // in Panel-Schritten
 };
 
 function updateSizeDisplay() {
@@ -1796,8 +2192,9 @@ function updateSizeDisplay() {
   const colsInput = document.getElementById('colsVal');
   const rowsInput = document.getElementById('rowsVal');
   // Während der Eingabe nicht überschreiben
-  if (document.activeElement !== colsInput) colsInput.value = fmtM(state.cols * panelW);
-  if (document.activeElement !== rowsInput) rowsInput.value = fmtM(state.rows * panelH);
+  const fmtSize = IS_FEST ? (v) => v.toFixed(2).replace('.', ',') : fmtM;
+  if (document.activeElement !== colsInput) colsInput.value = fmtSize(state.cols * panelW);
+  if (document.activeElement !== rowsInput) rowsInput.value = fmtSize(state.rows * panelH);
   const L = getLayout();
   const rowsCount = [L.bigRows, L.smallRows].filter(Boolean).join(' + ');
   document.getElementById('colsPanelsLabel').innerHTML = `${state.cols} Panel${state.cols === 1 ? '' : 's'}<br>nebeneinander`;
@@ -1856,6 +2253,25 @@ document.getElementById('gobToggle').addEventListener('change', (e) => {
   state.gob = e.target.checked;
   rebuild();
 });
+// Festinstallation: Wandhalterung inklusive / Gestell ansehen
+function updateFrameBtn() {
+  const btn = document.getElementById('frameBtn');
+  if (!btn) return;
+  btn.style.display = state.bracket ? '' : 'none';
+  btn.classList.toggle('active', state.frameView);
+  btn.querySelector('span').textContent = state.frameView ? 'Module zeigen' : 'Gestell ansehen';
+}
+document.getElementById('bracketToggle')?.addEventListener('change', (e) => {
+  state.bracket = e.target.checked;
+  if (!state.bracket) state.frameView = false;
+  updateFrameBtn();
+  rebuild();
+});
+document.getElementById('frameBtn')?.addEventListener('click', () => {
+  state.frameView = !state.frameView;
+  updateFrameBtn();
+  rebuild();
+});
 
 /* ------------------------------ CONFIG TEXT -------------------------------- */
 
@@ -1864,7 +2280,22 @@ function buildConfigText() {
   const totalWidth = L.totalWidth.toFixed(1);
   const totalHeight = L.totalHeight.toFixed(1);
   const totalWeight = Math.round(L.weight);
-  const mountLabel = { truss: 'Hängend an Traverse (Hanging Bars)', wall: 'Feststehend / schwebend an der Wand', floor: 'Auf dem Boden (Ground Beam + Stacking Structures)' }[state.mount];
+  const mountLabel = { truss: 'Hängend an Traverse (Hanging Bars)', wall: 'Feststehend / schwebend an der Wand', floor: 'Auf dem Boden (Ground Beam + Stacking Structures)',
+    fixed: `Wandmontage, Front-Service, ${state.bracket ? 'mit Wandhalterung (inklusive)' : 'ohne Wandhalterung (eigene Unterkonstruktion)'}` }[state.mount];
+  if (IS_FEST) {
+    return [
+      'Bereich: Festinstallation',
+      `Einsatzort: ${state.location === 'indoor' ? 'Indoor' : 'Outdoor'}`,
+      `Wandgröße: ${L.totalWidth.toFixed(2)} × ${L.totalHeight.toFixed(2)} m`,
+      `Panels: ${L.total} × 960 × 960 mm (${L.cols} × ${state.rows})`,
+      `Pixel Pitch: P${state.pitch}`,
+      `Auflösung ca.: ${Math.round((L.totalWidth * 1000) / state.pitch)} × ${Math.round((L.totalHeight * 1000) / state.pitch)} px`,
+      `Empf. Betrachtungsabstand ca.: ${viewingDistanceForPitch(state.pitch).toFixed(1)} m`,
+      `Montage: ${mountLabel}`,
+      `GOB-Beschichtung: ${state.gob ? 'Ja' : 'Nein'}`,
+      `Gewicht ca.: ${totalWeight} kg (ca. ${CONFIG.fest.weightPerM2} kg/m²)`
+    ].join('\n');
+  }
 
   const lines = [
     `Bereich: ${document.body.dataset.track === 'fest' ? 'Festinstallation' : 'Mobil (Events / Vermietung)'}`,
@@ -2023,6 +2454,7 @@ function configToHash() {
     ort: state.location, aufbau: state.mount,
     b: state.cols, hm: state.rows, pitch: state.pitch,
     gob: state.gob ? 1 : 0, abstand: state.personDist,
+    ...(IS_FEST ? { halter: state.bracket ? 1 : 0 } : {}),
     inhalt: state.content === 'custom' ? 'logo' : state.content
   });
   return '#' + q.toString();
@@ -2032,9 +2464,12 @@ function applyHash() {
   if (!q.has('ort')) return false;
   const pick = (v, allowed, def) => (allowed.includes(v) ? v : def);
   state.location = pick(q.get('ort'), ['indoor', 'outdoor'], state.location);
-  state.mount = pick(q.get('aufbau'), ['truss', 'wall', 'floor'], state.mount);
+  if (IS_FEST) state.location = 'indoor'; // Festinstallation Outdoor folgt
+  state.mount = pick(q.get('aufbau'), ['truss', 'wall', 'floor', 'fixed'], state.mount);
   // Aufbauart, die es in diesem Konfigurator nicht gibt (z. B. Wand bei Mobil), auf Standard zurücksetzen
-  if (!document.querySelector(`#segMount [data-val="${state.mount}"]`)) state.mount = 'truss';
+  if (IS_FEST) state.mount = 'fixed';
+  else if (!document.querySelector(`#segMount [data-val="${state.mount}"]`)) state.mount = 'truss';
+  if (IS_FEST) state.bracket = q.get('halter') !== '0';
   const num = (k, def) => { const n = parseFloat(q.get(k)); return isNaN(n) ? def : n; };
   state.cols = clamp(Math.round(num('b', state.cols)), LIMITS.cols[0], LIMITS.cols[1]);
   // alte Links: h = Panelreihen des gewählten Typs (0,5 × 1 m zählte doppelt)
@@ -2044,11 +2479,12 @@ function applyHash() {
   state.pitch = pitchesFor(state.location).includes(pitch) ? pitch : state.pitch;
   state.gob = q.get('gob') === '1' && state.location === 'indoor';
   state.personDist = clamp(num('abstand', viewingDistanceForPitch(state.pitch)), 1, 15);
-  state.content = pick(q.get('inhalt'), ['logo', 'pink', 'promo'], state.content);
+  state.content = pick(q.get('inhalt'), ['logo', 'pink', 'promo', 'score'], state.content);
   // Oberfläche nachziehen
   setActive(document.getElementById('segLocation'), state.location);
-  setActive(document.getElementById('segMount'), state.mount);
+  if (document.getElementById('segMount')) setActive(document.getElementById('segMount'), state.mount);
   setActive(document.getElementById('segContent'), state.content);
+  if (document.getElementById('bracketToggle')) document.getElementById('bracketToggle').checked = state.bracket;
   document.getElementById('pitchSelect').value = String(state.pitch);
   document.getElementById('gobToggle').checked = state.gob;
   return true;
@@ -2140,6 +2576,7 @@ syncPitchOptions();
 applyEnvironment();
 updateGobVisibility();
 updateDistDisplay();
+updateFrameBtn();
 // Auf dem Desktop ist die Infobox immer offen
 if (!window.matchMedia('(max-width: 860px)').matches) document.getElementById('hud').classList.remove('collapsed');
 rebuild();
