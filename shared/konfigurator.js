@@ -501,8 +501,8 @@ function buildShowroomDecor(wallW) {
 
 
 /* ------------------------ TURNHALLE (FESTINSTALLATION) --------------------- */
-// Nachgebaut nach den Fotos aus der Sporthalle: blauer Hallenboden mit Spielfeldlinien,
-// braun-beige Prallwand, dunkles Band unter der Decke, Banner, Anzeigetafel, Spielfeld mit Mittellinie.
+// Handballhalle nach den Fotos: blauer Hallenboden mit Spielfeldern, braun-beige Prallwand,
+// Tore an beiden Stirnseiten, gegenüber Spielerbänke, Kampfgericht und Tribüne.
 
 const FEST_WALL_BOTTOM = () => 2.4;          // Unterkante der LED-Wand über dem Hallenboden
 const FEST_BRACKET_DEPTH = 0.06;             // Wandhalterung zwischen Modulen und Hallenwand
@@ -546,31 +546,74 @@ function makeGymWallTexture(w, h) {
   });
 }
 
-// Spielfeldlinien: Die LED-Wand hängt an der Längsseite der Halle, mittig
-// über der Mittellinie (Handball weiß, dazu Linien anderer Sportarten)
-function makeCourtTexture(cw, cd, sideZ) {
-  const ppm = 40;
-  return canvasTexture(cw * ppm, cd * ppm, (ctx, W, H) => {
-    ctx.clearRect(0, 0, W, H);
-    const X = (m) => (m + cw / 2) * ppm, Z = (m) => m * ppm;
-    const line = (color, w, pts) => {
-      ctx.strokeStyle = color; ctx.lineWidth = w * ppm; ctx.setLineDash([]);
-      ctx.beginPath(); pts.forEach(([x, z], i) => (i ? ctx.lineTo(X(x), Z(z)) : ctx.moveTo(X(x), Z(z)))); ctx.stroke();
+// Hallenboden mit Spielfeldern: Handball 40 × 20 m (weiß), Basketball (gelb), Volleyball (grün).
+// Die LED-Wand hängt an der Längsseite auf Höhe der Mittellinie. Koordinaten in Metern:
+// x quer zur Halle (0 = Mittellinie), z von der LED-Wand weg (zc = Spielfeldmitte).
+const GYM = { courtL: 40, courtW: 20, sideZ: 1.6 };
+function makeCourtTexture(hallW, hallD, wallZ) {
+  const ppm = Math.min(40, 2048 / hallW);
+  const zc = GYM.sideZ + GYM.courtW / 2, hl = GYM.courtL / 2, hw = GYM.courtW / 2;
+  return canvasTexture(Math.round(hallW * ppm), Math.round(hallD * ppm), (ctx, W, H) => {
+    const X = (m) => (m + hallW / 2) * ppm, Z = (m) => (m - wallZ) * ppm;
+    // Hallenboden hellblau, Spielfeld dunkler
+    ctx.fillStyle = '#5c9bd6'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#2f6db4'; ctx.fillRect(X(-hl), Z(zc - hw), GYM.courtL * ppm, GYM.courtW * ppm);
+    // leichter Glanz in Bahnen (Parkett unter der Beschichtung)
+    for (let x = 0; x < W; x += ppm * 0.6) { ctx.fillStyle = `rgba(255,255,255,${0.015 + (Math.floor(x / ppm) % 3) * 0.008})`; ctx.fillRect(x, 0, ppm * 0.3, H); }
+    const stroke = (color, dash) => {
+      ctx.strokeStyle = color; ctx.lineWidth = 0.05 * ppm; ctx.setLineDash(dash ? dash.map((d) => d * ppm) : []);
     };
-    const half = cw / 2;
-    // Seitenlinie entlang der Wand und Mittellinie quer durchs Feld
-    line('#f4f4f2', 0.05, [[-half, sideZ], [half, sideZ]]);
-    line('#f4f4f2', 0.05, [[0, sideZ], [0, cd]]);
-    // Wechselraum-Markierungen 4,5 m links und rechts der Mittellinie
-    [-4.5, 4.5].forEach((x) => line('#f4f4f2', 0.05, [[x, sideZ - 0.15], [x, sideZ + 0.15]]));
-    // Basketball: gelbe Seitenlinie und Mittelkreis
-    line('#f2c21b', 0.05, [[-half, sideZ + 1.0], [half, sideZ + 1.0]]);
-    line('#f2c21b', 0.05, [[0, sideZ + 1.0], [0, cd]]);
-    ctx.strokeStyle = '#f2c21b'; ctx.lineWidth = 0.05 * ppm;
-    ctx.beginPath(); ctx.arc(X(0), Z(sideZ + 1.0 + 7.5), 1.8 * ppm, 0, Math.PI * 2); ctx.stroke();
-    // Volleyball: grüne Seitenlinie und Angriffslinien 3 m neben der Mitte
-    line('#2f9d55', 0.05, [[-9, sideZ + 2.2], [9, sideZ + 2.2]]);
-    [-3, 3].forEach((x) => line('#2f9d55', 0.05, [[x, sideZ + 2.2], [x, cd]]));
+    const line = (color, pts, dash) => {
+      stroke(color, dash); ctx.beginPath();
+      pts.forEach(([x, z], i) => (i ? ctx.lineTo(X(x), Z(z)) : ctx.moveTo(X(x), Z(z)))); ctx.stroke();
+    };
+    const rect = (color, x0, z0, x1, z1) => line(color, [[x0, z0], [x1, z0], [x1, z1], [x0, z1], [x0, z0]]);
+    const clipTo = (x0, z0, x1, z1, fn) => {
+      ctx.save(); ctx.beginPath(); ctx.rect(X(x0), Z(z0), (x1 - x0) * ppm, (z1 - z0) * ppm); ctx.clip(); fn(); ctx.restore();
+    };
+    // Volleyball (grün): 18 × 9 m, Angriffslinien 3 m neben der Mitte
+    rect('#36a35c', -9, zc - 4.5, 9, zc + 4.5);
+    [-3, 3].forEach((x) => line('#36a35c', [[x, zc - 4.5], [x, zc + 4.5]]));
+    // Basketball (gelb): 28 × 15 m, Mittelkreis, Zone, Dreierlinie
+    const by = '#f2c21b';
+    rect(by, -14, zc - 7.5, 14, zc + 7.5);
+    line(by, [[0, zc - 7.5], [0, zc + 7.5]]);
+    stroke(by); ctx.beginPath(); ctx.arc(X(0), Z(zc), 1.8 * ppm, 0, Math.PI * 2); ctx.stroke();
+    [-1, 1].forEach((s) => {
+      const end = s * 14, ft = s * (14 - 5.8);
+      rect(by, Math.min(end, ft), zc - 2.45, Math.max(end, ft), zc + 2.45);
+      stroke(by); ctx.beginPath(); ctx.arc(X(ft), Z(zc), 1.8 * ppm, 0, Math.PI * 2); ctx.stroke();
+      clipTo(-14, zc - 6.6, 14, zc + 6.6, () => {
+        stroke(by); ctx.beginPath(); ctx.arc(X(s * (14 - 1.575)), Z(zc), 6.75 * ppm, 0, Math.PI * 2); ctx.stroke();
+      });
+      line(by, [[end, zc - 6.6], [s * (14 - 2.99), zc - 6.6]]);
+      line(by, [[end, zc + 6.6], [s * (14 - 2.99), zc + 6.6]]);
+    });
+    // Handball (weiß): Spielfeld, Mittellinie, 6-m-Raum, 9-m-Linie, 7-m- und 4-m-Strich, Wechselraum
+    const wh = '#f6f6f3';
+    rect(wh, -hl, zc - hw, hl, zc + hw);
+    line(wh, [[0, zc - hw], [0, zc + hw]]);
+    const area = (s, r, dash) => {
+      const x0 = s * hl;
+      stroke(wh, dash); ctx.beginPath();
+      if (s < 0) {
+        ctx.arc(X(x0), Z(zc - 1.5), r * ppm, -Math.PI / 2, 0, false);
+        ctx.lineTo(X(x0 + r), Z(zc + 1.5));
+        ctx.arc(X(x0), Z(zc + 1.5), r * ppm, 0, Math.PI / 2, false);
+      } else {
+        ctx.arc(X(x0), Z(zc - 1.5), r * ppm, -Math.PI / 2, -Math.PI, true);
+        ctx.lineTo(X(x0 - r), Z(zc + 1.5));
+        ctx.arc(X(x0), Z(zc + 1.5), r * ppm, Math.PI, Math.PI / 2, true);
+      }
+      ctx.stroke();
+    };
+    clipTo(-hl, zc - hw, hl, zc + hw, () => [-1, 1].forEach((s) => { area(s, 6); area(s, 9, [0.15, 0.15]); }));
+    [-1, 1].forEach((s) => {
+      line(wh, [[s * (hl - 7), zc - 0.5], [s * (hl - 7), zc + 0.5]]);
+      line(wh, [[s * (hl - 4), zc - 0.075], [s * (hl - 4), zc + 0.075]]);
+      // Wechsellinien auf der Seite der Spielerbänke (gegenüber der LED-Wand)
+      line(wh, [[s * 4.5, zc + hw - 0.15], [s * 4.5, zc + hw + 0.15]]);
+    });
   });
 }
 
@@ -636,18 +679,83 @@ function buildScoreboard(x, y, z) {
   return g;
 }
 
+function buildHandballGoal(z) {
+  const g = new THREE.Group();
+  const w = 3, h = 2, d = 1, s = 0.08;
+  // rot-weiß gestreifte Pfosten und Latte
+  const stripes = canvasTexture(16, 128, (ctx, W, H) => {
+    for (let i = 0; i < 8; i++) { ctx.fillStyle = i % 2 ? '#ffffff' : '#d81e2a'; ctx.fillRect(0, (i * H) / 8, W, H / 8); }
+  });
+  const postMat = new THREE.MeshStandardMaterial({ map: stripes, roughness: 0.5 });
+  [-w / 2 - s / 2, w / 2 + s / 2].forEach((x) => {
+    const p = new THREE.Mesh(new THREE.BoxGeometry(s, h + s, s), postMat);
+    p.position.set(x, (h + s) / 2, 0);
+    g.add(p);
+  });
+  const barTex = stripes.clone(); barTex.needsUpdate = true;
+  barTex.wrapS = barTex.wrapT = THREE.RepeatWrapping;
+  barTex.repeat.set(1, 1.6);
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(s, w + 2 * s, s), new THREE.MeshStandardMaterial({ map: barTex, roughness: 0.5 }));
+  bar.rotation.z = Math.PI / 2;
+  bar.position.set(0, h + s / 2, 0);
+  g.add(bar);
+  // Netzbügel hinten und Netz (halbtransparentes Gitter)
+  const tubeMat = darkMetalMat();
+  const back = new THREE.Mesh(new THREE.BoxGeometry(w + 2 * s, 0.03, 0.03), tubeMat);
+  back.position.set(0, 0.015, -d);
+  g.add(back);
+  [-w / 2, w / 2].forEach((x) => {
+    const side = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, d), tubeMat);
+    side.position.set(x, 0.015, -d / 2);
+    g.add(side);
+  });
+  const netTex = canvasTexture(256, 256, (ctx, W, H) => {
+    ctx.clearRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(245,245,245,0.85)'; ctx.lineWidth = 2;
+    for (let i = 0; i <= 16; i++) {
+      ctx.beginPath(); ctx.moveTo((i * W) / 16, 0); ctx.lineTo((i * W) / 16, H); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, (i * H) / 16); ctx.lineTo(W, (i * H) / 16); ctx.stroke();
+    }
+  });
+  netTex.wrapS = netTex.wrapT = THREE.RepeatWrapping;
+  const netMat = (rx, ry) => {
+    const t = netTex.clone(); t.needsUpdate = true; t.repeat.set(rx, ry);
+    return new THREE.MeshBasicMaterial({ map: t, transparent: true, side: THREE.DoubleSide, depthWrite: false });
+  };
+  // Rückwand des Netzes schräg vom Querbalken zum Bodenbügel, dazu Seitennetze
+  const slant = Math.hypot(h, d);
+  const backNet = new THREE.Mesh(new THREE.PlaneGeometry(w, slant), netMat(w * 2.5, slant * 2.5));
+  backNet.position.set(0, h / 2, -d / 2);
+  backNet.rotation.x = Math.atan2(d, h);
+  g.add(backNet);
+  [-w / 2, w / 2].forEach((x) => {
+    const shape = new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(-d, 0), new THREE.Vector2(0, h)]);
+    const geo = new THREE.ShapeGeometry(shape);
+    const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 2.5, uv.getY(i) * 2.5);
+    const m = new THREE.Mesh(geo, netMat(1, 1));
+    m.rotation.y = Math.PI / 2;
+    m.position.set(x, 0, 0);
+    g.add(m);
+  });
+  g.position.set(0, 0, z);
+  return g;
+}
+
 function buildGym(wallW, wallH) {
   const bottom = FEST_WALL_BOTTOM();
-  const hallH = Math.max(7, bottom + wallH + 1.8);
-  const hallW = Math.max(26, wallW + 14);
+  const hallH = Math.max(7.5, bottom + wallH + 1.8);
+  const hallW = Math.max(48, GYM.courtL + 8, wallW + 14);
   const wallZ = festHallWallZ();
-  const depth = 30;
+  const farSide = GYM.sideZ + GYM.courtW;     // Seitenlinie gegenüber der LED-Wand
+  const farWall = farSide + 9.5;               // Platz für Bänke, Kampfgericht und Tribüne
+  const depth = farWall - wallZ, midZ = (wallZ + farWall) / 2;
+  const zc = GYM.sideZ + GYM.courtW / 2;
 
   scene.background = new THREE.Color(0xd8d3cb);
-  scene.fog = new THREE.Fog(0xd8d3cb, 28, 70);
-  Object.assign(fogBase, { near: 28, far: 70 });
-  floorMat.color.set(0x3f86c8);   // blauer Hallenboden
-  floorMat.roughness = 0.35;
+  scene.fog = new THREE.Fog(0xd8d3cb, 34, 90);
+  Object.assign(fogBase, { near: 34, far: 90 });
+  floorMat.color.set(0x6f7177);   // außerhalb der Halle neutral
+  floorMat.roughness = 0.9;
   rimBase = 0.25;
   ambientLight.intensity = 0.35;
   hemiLight.color.set(0xffffff);
@@ -657,51 +765,243 @@ function buildGym(wallW, wallH) {
   fillLight.intensity = 0.25;
   keyLight.position.set(5, 14, 10);
 
-  // Hallenwand hinter der LED-Wand
-  const back = new THREE.Mesh(new THREE.PlaneGeometry(hallW, hallH),
-    new THREE.MeshStandardMaterial({ map: makeGymWallTexture(hallW, hallH), roughness: 0.9 }));
-  back.position.set(0, hallH / 2, wallZ);
-  envGroup.add(back);
-  // Seitenwände: links Holzwand, rechts Prallschutz-Matten
-  const sideTex = makeGymWallTexture(depth, hallH);
-  const left = new THREE.Mesh(new THREE.PlaneGeometry(depth, hallH), new THREE.MeshStandardMaterial({ map: sideTex, roughness: 0.9 }));
-  left.position.set(-hallW / 2, hallH / 2, wallZ + depth / 2);
-  left.rotation.y = Math.PI / 2;
-  envGroup.add(left);
-  const padTex = canvasTexture(1024, 256, (ctx, W, H) => {
-    ctx.fillStyle = '#e6dcc4'; ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = 'rgba(120,100,70,0.35)'; ctx.lineWidth = 3;
-    for (let x = 0; x < W; x += W / 24) { ctx.beginPath(); ctx.moveTo(x, H * 0.25); ctx.lineTo(x, H); ctx.stroke(); }
-    ctx.fillStyle = '#3b2a20'; ctx.fillRect(0, 0, W, H * 0.12);
-  });
-  const right = new THREE.Mesh(new THREE.PlaneGeometry(depth, hallH), new THREE.MeshStandardMaterial({ map: padTex, roughness: 0.95 }));
-  right.position.set(hallW / 2, hallH / 2, wallZ + depth / 2);
-  right.rotation.y = -Math.PI / 2;
-  envGroup.add(right);
+  // Hallenboden mit Spielfeldlinien
+  const hallFloor = new THREE.Mesh(new THREE.PlaneGeometry(hallW, depth),
+    new THREE.MeshStandardMaterial({ map: makeCourtTexture(hallW, depth, wallZ), roughness: 0.35, metalness: 0.05 }));
+  hallFloor.rotation.x = -Math.PI / 2;
+  hallFloor.position.set(0, 0.002, midZ);
+  envGroup.add(hallFloor);
 
-  // Spielfeldlinien auf dem Boden
-  const sideZ = 1.2;
-  const courtD = 20, courtW = hallW;
-  const court = new THREE.Mesh(new THREE.PlaneGeometry(courtW, courtD),
-    new THREE.MeshBasicMaterial({ map: makeCourtTexture(courtW, courtD, sideZ), transparent: true, depthWrite: false }));
-  court.rotation.x = -Math.PI / 2;
-  court.position.set(0, 0.003, courtD / 2);
-  envGroup.add(court);
+  // Wände zeigen nur nach innen: Dreht man die Kamera nach draußen, wird die Wand
+  // dazwischen unsichtbar (Puppenhaus-Ansicht), so kann man einmal komplett herum.
+  const wallMesh = (w, h, map, x, z, ry) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map, roughness: 0.9 }));
+    m.position.set(x, h / 2, z);
+    m.rotation.y = ry;
+    envGroup.add(m);
+    return m;
+  };
+  wallMesh(hallW, hallH, makeGymWallTexture(hallW, hallH), 0, wallZ, 0);
+  const endTex = makeGymWallTexture(depth, hallH);
+  wallMesh(depth, hallH, endTex, -hallW / 2, midZ, Math.PI / 2);
+  wallMesh(depth, hallH, endTex, hallW / 2, midZ, -Math.PI / 2);
+  wallMesh(hallW, hallH, makeFarWallTexture(hallW, hallH), 0, farWall, Math.PI);
+  // Decke (nur von unten sichtbar) mit Lichtfeldern
+  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(hallW, depth), new THREE.MeshStandardMaterial({ color: 0xe8e4dc, roughness: 0.95 }));
+  ceiling.rotation.x = Math.PI / 2;
+  ceiling.position.set(0, hallH, midZ);
+  envGroup.add(ceiling);
+  const lampMat = new THREE.MeshBasicMaterial({ color: 0xfffdf4 });
+  const lampGeo = new THREE.PlaneGeometry(1.4, 0.5);
+  const lamps = new THREE.InstancedMesh(lampGeo, lampMat, 24);
+  let li = 0;
+  for (let i = 0; i < 6; i++) for (let j = 0; j < 4; j++) {
+    _m4.makeRotationX(Math.PI / 2).setPosition(-17.5 + i * 7, hallH - 0.02, GYM.sideZ + 2 + j * 5.4);
+    lamps.setMatrixAt(li++, _m4);
+  }
+  envGroup.add(lamps);
+
+  // Tore an beiden Stirnseiten des Spielfelds
+  [-1, 1].forEach((s) => {
+    const goal = buildHandballGoal(0);
+    goal.position.set(s * GYM.courtL / 2, 0, zc);
+    goal.rotation.y = -s * Math.PI / 2;
+    envGroup.add(goal);
+  });
+
+  // Gegenüber: Spielerbänke, Kampfgericht, Ballwagen, Tribüne
+  envGroup.add(buildTeamBench(-6.5, farSide + 1.4, 0xc81e2a));
+  envGroup.add(buildTeamBench(6.5, farSide + 1.4, 0x1f4fa0));
+  envGroup.add(buildTimekeeperTable(0, farSide + 1.3));
+  envGroup.add(buildBallCart(-11, farSide + 1.5));
+  envGroup.add(buildTribune(farSide + 3.4, farWall, 36));
+  // ein paar Bälle auf dem Feld
+  [[-14.5, zc + 3.2], [-15.2, zc - 2.1], [13.8, zc + 1.4], [3.5, farSide + 0.9]].forEach(([x, z]) => {
+    const b = buildHandball();
+    b.position.set(x, 0.095, z);
+    envGroup.add(b);
+  });
 
   // Anzeigetafel rechts neben der LED-Wand
   envGroup.add(buildScoreboard(wallW / 2 + 3.0, bottom + Math.min(wallH, 2.4) * 0.4, wallZ));
 
-  // Banner: links neben der LED-Wand in Wandhöhe und unten an der Prallwand
-  const banner = (kind, w, h, x, y) => {
+  // Banner unten an der Prallwand: innen links Bemotion 360, außen rechts New Chapter
+  const banner = (kind, w, h, x, y, z = wallZ + 0.01, ry = 0) => {
     const map = kind.endsWith('.png') ? logoBannerTexture(kind) : makeBannerTexture(kind);
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map, roughness: 0.85 }));
-    m.position.set(x, y, wallZ + 0.01);
+    m.position.set(x, y, z);
+    m.rotation.y = ry;
     envGroup.add(m);
   };
-  // Banner unten an der Prallwand: innen links Bemotion 360, außen rechts New Chapter
   const lowY = 1.0, lowH = 1.3;
   [[-1, '../assets/bemotion360-logo.png'], [1, 'black']].forEach(([side, kind]) => banner(kind, 3.0, lowH, side * (Math.max(3.4, wallW / 2) + 0.4), lowY));
   [[-1, 'blue'], [1, '../assets/newchapter-logo.png']].forEach(([side, kind]) => banner(kind, 3.0, lowH, side * (Math.max(3.4, wallW / 2) + 3.8), lowY));
+  // Banner an den Stirnwänden hinter den Toren
+  [[-1, 'white'], [1, 'blue']].forEach(([s, kind]) => banner(kind, 4, 1.4, s * (hallW / 2 - 0.01), 3.2, zc, s * -Math.PI / 2));
+}
+
+// Gegenüberliegende Hallenwand: hell verputzt, oben ein Fensterband
+function makeFarWallTexture(w, h) {
+  const ppm = Math.min(40, 2048 / w);
+  return canvasTexture(Math.round(w * ppm), Math.round(h * ppm), (ctx, W, H) => {
+    ctx.fillStyle = '#d9d4ca'; ctx.fillRect(0, 0, W, H);
+    const y = (m) => H - m * ppm;
+    ctx.fillStyle = '#b48d5e'; ctx.fillRect(0, y(2.6), W, 2.6 * ppm);     // Prallwand unten (hinter der Tribüne)
+    ctx.fillStyle = '#3b2a20'; ctx.fillRect(0, 0, W, ppm * 0.6);
+    // Fensterband
+    for (let x = 1; x < w - 2; x += 3.2) {
+      const g = ctx.createLinearGradient(0, y(h - 0.8), 0, y(h - 2.4));
+      g.addColorStop(0, '#cfe6f7'); g.addColorStop(1, '#9cc6e6');
+      ctx.fillStyle = g; ctx.fillRect(x * ppm, y(h - 0.8), 2.8 * ppm, 1.6 * ppm);
+      ctx.strokeStyle = '#6d7277'; ctx.lineWidth = Math.max(2, ppm * 0.06);
+      ctx.strokeRect(x * ppm, y(h - 0.8), 2.8 * ppm, 1.6 * ppm);
+      ctx.beginPath(); ctx.moveTo((x + 1.4) * ppm, y(h - 0.8)); ctx.lineTo((x + 1.4) * ppm, y(h - 2.4)); ctx.stroke();
+    }
+  });
+}
+
+// Spielerbank: Metallgestell mit sieben Schalensitzen in Teamfarbe, Blick zum Spielfeld (−z)
+function buildTeamBench(x, z, color) {
+  const g = new THREE.Group();
+  const metal = darkMetalMat();
+  const seatMat = new THREE.MeshStandardMaterial({ color, roughness: 0.45 });
+  const n = 7, len = n * 0.55;
+  const rail = new THREE.Mesh(new THREE.BoxGeometry(len + 0.1, 0.05, 0.05), metal);
+  rail.position.set(0, 0.38, 0.05);
+  g.add(rail);
+  [-len / 2, 0, len / 2].forEach((px) => {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.4, 0.4), metal);
+    leg.position.set(px, 0.2, 0.05);
+    g.add(leg);
+  });
+  for (let i = 0; i < n; i++) {
+    const sx = -len / 2 + 0.275 + i * 0.55;
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.06, 0.42), seatMat);
+    seat.position.set(sx, 0.44, 0);
+    g.add(seat);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.42, 0.05), seatMat);
+    back.position.set(sx, 0.68, 0.22);
+    back.rotation.x = -0.12;
+    g.add(back);
+  }
+  // Trinkflaschen und Handtuch
+  const bottle = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.3 });
+  [-0.8, -0.65, 1.1].forEach((bx) => {
+    const b = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.22, 10), bottle);
+    b.position.set(bx, 0.11, -0.4);
+    g.add(b);
+  });
+  g.position.set(x, 0, z);
+  return g;
+}
+
+// Kampfgericht: Tisch mit Sponsorblende, zwei Stühle, Laptop
+function buildTimekeeperTable(x, z) {
+  const g = new THREE.Group();
+  const front = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.75, 0.7), [
+    darkMetalMat(), darkMetalMat(), new THREE.MeshStandardMaterial({ color: 0xf2f0ea }), darkMetalMat(), darkMetalMat(),
+    new THREE.MeshStandardMaterial({ map: makeBannerTexture('white'), roughness: 0.8 })]);
+  front.position.set(0, 0.375, 0);
+  g.add(front);
+  const chairMat = new THREE.MeshStandardMaterial({ color: 0x2b2d30, roughness: 0.6 });
+  [-0.7, 0.7].forEach((cx) => {
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.06, 0.45), chairMat);
+    seat.position.set(cx, 0.46, 0.65);
+    g.add(seat);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.45, 0.05), chairMat);
+    back.position.set(cx, 0.72, 0.88);
+    g.add(back);
+  });
+  const laptop = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.22, 0.02), new THREE.MeshStandardMaterial({ color: 0x9a9da3, metalness: 0.6, roughness: 0.3 }));
+  laptop.position.set(-0.7, 0.86, 0.15);
+  laptop.rotation.x = 0.25;
+  g.add(laptop);
+  g.position.set(x, 0, z);
+  return g;
+}
+
+// Handball: gelbe Kugel mit blauen und roten Bögen
+let handballTex = null;
+function buildHandball() {
+  handballTex = handballTex || canvasTexture(256, 128, (ctx, W, H) => {
+    ctx.fillStyle = '#f4d31d'; ctx.fillRect(0, 0, W, H);
+    ctx.lineWidth = 14;
+    [['#1f4fa0', 0], ['#d81e2a', W / 2]].forEach(([c, off]) => {
+      ctx.strokeStyle = c; ctx.beginPath();
+      ctx.moveTo(off, H * 0.2); ctx.bezierCurveTo(off + W * 0.15, H * 0.9, off + W * 0.35, H * 0.1, off + W * 0.5, H * 0.8); ctx.stroke();
+    });
+  });
+  return new THREE.Mesh(new THREE.SphereGeometry(0.095, 20, 14), new THREE.MeshStandardMaterial({ map: handballTex, roughness: 0.55 }));
+}
+
+// Ballwagen: Gitterkorb auf Rollen mit Handbällen
+function buildBallCart(x, z) {
+  const g = new THREE.Group();
+  const metal = new THREE.MeshStandardMaterial({ color: 0xb9bcc2, metalness: 0.7, roughness: 0.35 });
+  const w = 0.9, d = 0.6, h = 0.9, y0 = 0.12;
+  const bar = (sx, sy, sz, px, py, pz) => { const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), metal); m.position.set(px, py, pz); g.add(m); };
+  [-w / 2, w / 2].forEach((px) => [-d / 2, d / 2].forEach((pz) => bar(0.02, h, 0.02, px, y0 + h / 2, pz)));
+  [y0, y0 + h * 0.5, y0 + h].forEach((py) => {
+    [-d / 2, d / 2].forEach((pz) => bar(w, 0.02, 0.02, 0, py, pz));
+    [-w / 2, w / 2].forEach((px) => bar(0.02, 0.02, d, px, py, 0));
+  });
+  for (let i = -3; i <= 3; i++) { bar(0.01, h, 0.01, i * w / 8, y0 + h / 2, d / 2); bar(0.01, h, 0.01, i * w / 8, y0 + h / 2, -d / 2); }
+  const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1c, roughness: 0.8 });
+  [-w / 2, w / 2].forEach((px) => [-d / 2, d / 2].forEach((pz) => {
+    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.03, 12), wheelMat);
+    wheel.rotation.z = Math.PI / 2; wheel.position.set(px, 0.05, pz); g.add(wheel);
+  }));
+  for (let i = 0; i < 12; i++) {
+    const b = buildHandball();
+    b.position.set(-0.3 + (i % 4) * 0.2, y0 + 0.11 + Math.floor(i / 4) * 0.19, -0.12 + ((i * 7) % 3) * 0.12);
+    b.rotation.set(i, i * 2, 0);
+    g.add(b);
+  }
+  g.position.set(x, 0, z);
+  g.rotation.y = 0.3;
+  return g;
+}
+
+// Tribüne: fünf Stufen mit blauen Sitzen, vorne ein Geländer mit Sponsorbannern
+function buildTribune(z0, z1, length) {
+  const g = new THREE.Group();
+  const rows = 5, step = (z1 - z0 - 0.4) / rows, rise = 0.42;
+  const concrete = new THREE.MeshStandardMaterial({ color: 0x9a9893, roughness: 0.95 });
+  for (let r = 0; r < rows; r++) {
+    const h = rise * (r + 1);
+    const blk = new THREE.Mesh(new THREE.BoxGeometry(length, h, step), concrete);
+    blk.position.set(0, h / 2, z0 + step * (r + 0.5));
+    g.add(blk);
+  }
+  const back = new THREE.Mesh(new THREE.BoxGeometry(length, rise * rows, z1 - z0 - rows * step), concrete);
+  back.position.set(0, rise * rows / 2, z1 - (z1 - z0 - rows * step) / 2);
+  g.add(back);
+  // Sitze als Instanzen
+  const per = Math.floor(length / 0.5), n = per * rows;
+  const seatMat = new THREE.MeshStandardMaterial({ color: 0x1f4fa0, roughness: 0.5 });
+  const seats = new THREE.InstancedMesh(new THREE.BoxGeometry(0.42, 0.07, 0.38), seatMat, n);
+  const backs = new THREE.InstancedMesh(new THREE.BoxGeometry(0.42, 0.34, 0.05), seatMat, n);
+  let k = 0;
+  for (let r = 0; r < rows; r++) for (let i = 0; i < per; i++) {
+    const x = -length / 2 + 0.25 + i * 0.5, y = rise * (r + 1), z = z0 + step * r + step * 0.45;
+    _m4.makeTranslation(x, y + 0.42, z); seats.setMatrixAt(k, _m4);
+    _m4.makeTranslation(x, y + 0.62, z + 0.2); backs.setMatrixAt(k, _m4);
+    k++;
+  }
+  g.add(seats, backs);
+  // Geländer vorne mit Bannern
+  const metal = darkMetalMat();
+  const rail = new THREE.Mesh(new THREE.BoxGeometry(length, 0.05, 0.05), metal);
+  rail.position.set(0, 1.0, z0 - 0.05);
+  g.add(rail);
+  ['white', 'blue', 'black', 'white', 'blue', 'black'].forEach((kind, i) => {
+    const w = length / 6 - 0.3;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, 0.8), new THREE.MeshStandardMaterial({ map: makeBannerTexture(kind), roughness: 0.85 }));
+    m.position.set(-length / 2 + (i + 0.5) * (length / 6), 0.55, z0 - 0.08);
+    m.rotation.y = Math.PI;
+    g.add(m);
+  });
+  return g;
 }
 
 /* -------------------------- WANDHALTERUNG (FESTINSTALLATION) --------------- */
@@ -836,7 +1136,6 @@ window.addEventListener('pointermove', (e) => {
   lastX = e.clientX; lastY = e.clientY;
   orbit.theta -= dx * 0.006;
   // Festinstallation hängt an der Hallenwand: nicht hinter die Wand drehen
-  if (IS_FEST) orbit.theta = clamp(orbit.theta, -1.2, 1.2);
   orbit.phi = Math.min(Math.max(orbit.phi - dy * 0.006, 0.4), 1.5);
 });
 canvas.addEventListener('wheel', (e) => {
@@ -1081,56 +1380,76 @@ const motifs = {
     for (let x = off; x < W; x += mw) ctx.fillText(msg, x, H - bandH / 2);
   },
 
-  // Spielstand wie auf einer Hallen-Anzeigetafel: Teams, Ergebnis, Zeit, Zeitstrafen
+  // Spielstand wie auf einer modernen Hallen-Videowand: Teams mit Wappen, Ergebnis,
+  // Spielzeit, Halbzeit, Zeitstrafen, Auszeiten und Sponsorenlaufband
   score(ctx, W, H, t) {
-    ctx.fillStyle = '#0b0b0d';
-    ctx.fillRect(0, 0, W, H);
-    const u = Math.min(W / 16, H / 9);           // Raster passend zum Seitenverhältnis
-    const cx = W / 2, cy = H / 2;
-    ctx.textBaseline = 'middle';
-    // Teamnamen mit farbigem Strich
-    ctx.font = `800 ${u * 0.95}px Inter, Arial, sans-serif`;
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#ff2b2b';
-    ctx.fillText('HEIM', cx - u * 7.2, cy - u * 3.4);
-    ctx.fillRect(cx - u * 7.2, cy - u * 2.65, u * 6, u * 0.14);
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#a9d3ff';
-    ctx.fillText('GAST', cx + u * 7.2, cy - u * 3.4);
-    ctx.fillRect(cx + u * 1.2, cy - u * 2.65, u * 6, u * 0.14);
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, '#0a1024'); bg.addColorStop(0.5, '#121c3a'); bg.addColorStop(1, '#0a1024');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    // feine Diagonalen im Hintergrund
+    ctx.strokeStyle = 'rgba(255,255,255,0.035)'; ctx.lineWidth = Math.max(1, W / 400);
+    for (let x = -H; x < W; x += W / 24) { ctx.beginPath(); ctx.moveTo(x, H); ctx.lineTo(x + H, 0); ctx.stroke(); }
+    const bandH = Math.max(H * 0.12, 18);
+    const u = Math.min(W / 16, (H - bandH) / 9);
+    const cx = W / 2, cy = (H - bandH) / 2;
+    const font = (w, s) => `${w} ${s}px Inter, Arial, sans-serif`;
+    const pill = (x, y, w, h, r, fill) => {
+      ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
+    };
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    // Kopfzeile
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.font = font(700, u * 0.42);
+    ctx.fillText('HANDBALL  ·  HEIMSPIEL', cx, cy - u * 4.0);
     // Ergebnis zählt langsam hoch
     const goals = Math.floor(t / 7);
-    const home = 5 + Math.floor((goals + 1) / 2) % 30, away = 2 + Math.floor(goals / 2) % 30;
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#e8f3ff';
-    ctx.font = `800 ${u * 3}px Inter, Arial, sans-serif`;
-    ctx.fillText(String(home), cx - u * 2.6, cy - u * 0.2);
-    ctx.fillText(String(away), cx + u * 2.6, cy - u * 0.2);
-    ctx.fillStyle = '#a9d3ff';
-    ctx.fillText(':', cx, cy - u * 0.35);
-    // Spielzeit (gelb) und Halbzeit
-    const secs = Math.floor(119 + t);
-    const time = `${String(Math.floor(secs / 60) % 30).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`;
-    ctx.fillStyle = '#ffc928';
-    ctx.font = `800 ${u * 2}px Inter, Arial, sans-serif`;
-    ctx.fillText(time, cx, cy + u * 2.9);
-    ctx.fillStyle = '#a9d3ff';
-    ctx.textAlign = 'left';
-    ctx.font = `700 ${u * 0.55}px Inter, Arial, sans-serif`;
-    ctx.fillText('1.', cx - u * 7.2, cy + u * 2.55);
-    ctx.fillText('HALBZEIT', cx - u * 7.2, cy + u * 3.2);
-    // Zeitstrafen als rote Kästchen
-    const pen = (x, y, nr, tm) => {
-      ctx.fillStyle = '#e0141e';
-      ctx.fillRect(x, y - u * 0.3, u * 1.9, u * 0.6);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(x + u * 0.06, y - u * 0.24, u * 0.48, u * 0.48);
-      ctx.fillStyle = '#0b0b0d'; ctx.textAlign = 'center'; ctx.font = `700 ${u * 0.38}px Inter, Arial, sans-serif`;
-      ctx.fillText(nr, x + u * 0.3, y);
-      ctx.fillStyle = '#ffffff'; ctx.fillText(tm, x + u * 1.22, y);
-    };
-    [['2', '0:01'], ['8', '0:42'], ['6', '1:04']].forEach(([nr, tm], i) => pen(cx - u * 7.2, cy - u * 1.7 + i * u * 0.75, nr, tm));
-    pen(cx + u * 5.3, cy - u * 1.7, '21', '0:21');
+    const score = [14 + Math.floor((goals + 1) / 2) % 20, 12 + Math.floor(goals / 2) % 20];
+    const teams = [['HEIM', 'TSV', '#d81e2a'], ['GAST', 'HSG', '#1f6fe0']];
+    teams.forEach(([name, short, col], i) => {
+      const s = i ? 1 : -1, tx = cx + s * u * 5.8;
+      // Wappen
+      ctx.save();
+      ctx.shadowColor = col; ctx.shadowBlur = u * 0.6;
+      ctx.beginPath(); ctx.arc(tx, cy - u * 1.9, u * 1.05, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+      ctx.restore();
+      ctx.lineWidth = u * 0.1; ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.font = font(800, u * 0.62); ctx.fillText(short, tx, cy - u * 1.9);
+      ctx.font = font(800, u * 0.7); ctx.fillText(name, tx, cy - u * 0.25);
+      // Tore
+      pill(cx + s * u * 2.55 - u * 1.75, cy - u * 3.2, u * 3.5, u * 3.3, u * 0.35, 'rgba(255,255,255,0.07)');
+      ctx.save(); ctx.shadowColor = 'rgba(255,255,255,0.5)'; ctx.shadowBlur = u * 0.4;
+      ctx.fillStyle = '#ffffff'; ctx.font = font(800, u * 2.6);
+      ctx.fillText(String(score[i]), cx + s * u * 2.55, cy - u * 1.5);
+      ctx.restore();
+      // Auszeiten (Punkte) und Zeitstrafen
+      for (let k = 0; k < 3; k++) {
+        ctx.beginPath(); ctx.arc(tx - u * 0.6 + k * u * 0.6, cy + u * 0.55, u * 0.16, 0, Math.PI * 2);
+        ctx.fillStyle = k < 1 + i ? '#ffc928' : 'rgba(255,255,255,0.18)'; ctx.fill();
+      }
+      const pens = i ? [['21', 21 - (t % 21)]] : [['8', 42 - (t % 42)], ['6', 64 - (t % 64)]];
+      pens.forEach(([nr, sec], k) => {
+        const py = cy + u * 1.45 + k * u * 0.78, px = tx - u * 1.5;
+        pill(px, py - u * 0.3, u * 3, u * 0.6, u * 0.12, 'rgba(224,20,30,0.85)');
+        ctx.fillStyle = '#fff'; ctx.font = font(700, u * 0.38);
+        ctx.fillText(`#${nr}`, px + u * 0.5, py);
+        ctx.fillText(`2'  ${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`, px + u * 1.9, py);
+      });
+    });
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = font(800, u * 1.6); ctx.fillText(':', cx, cy - u * 1.65);
+    // Spielzeit und Halbzeit
+    const secs = Math.floor(1563 + t);
+    const time = `${String(Math.floor(secs / 60) % 60).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`;
+    pill(cx - u * 2.3, cy + u * 1.0, u * 4.6, u * 1.7, u * 0.85, 'rgba(0,0,0,0.55)');
+    ctx.fillStyle = '#ffc928'; ctx.font = font(800, u * 1.15); ctx.fillText(time, cx, cy + u * 1.88);
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = font(700, u * 0.42); ctx.fillText('2. HALBZEIT', cx, cy + u * 3.25);
+    // Sponsorenlaufband
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, H - bandH, W, bandH);
+    ctx.fillStyle = '#e7007f'; ctx.fillRect(0, H - bandH, W, Math.max(2, bandH * 0.08));
+    ctx.fillStyle = '#16181d'; ctx.font = font(800, bandH * 0.45); ctx.textAlign = 'left';
+    const msg = 'LEDWALL 360   ·   BEMOTION 360°   ·   NEW CHAPTER   ·   DEINE WERBUNG HIER   ·   ';
+    const mw = ctx.measureText(msg).width;
+    const off = -((t * 60) % mw);
+    for (let x = off; x < W; x += mw) ctx.fillText(msg, x, H - bandH / 2 + bandH * 0.04);
   },
 
   custom(ctx, W, H, t) {
