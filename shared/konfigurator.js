@@ -31,10 +31,10 @@ const CONFIG = {
 const state = {
   location: 'indoor',   // 'indoor' | 'outdoor'
   mount: IS_FEST ? 'fixed' : 'truss', // 'truss' | 'wall' | 'floor' | 'fixed' (Festinstallation an der Hallenwand)
-  cols: IS_FEST ? 7 : 10,  // mobil: 10 × 0,5 m = 5 m; fest: 7 × 0,64 m = 4,48 m
-  rows: IS_FEST ? 6 : 6,   // mobil: 6 × 0,5 m = 3 m; fest: 6 × 0,48 m = 2,88 m
+  cols: IS_FEST ? 15 : 10, // mobil: 10 × 0,5 m = 5 m; fest: 15 × 0,32 m = 4,80 m (5 × 960)
+  rows: IS_FEST ? 3 : 6,   // mobil: 6 × 0,5 m = 3 m; fest: 3 × 0,96 m = 2,88 m
   pitch: IS_FEST ? 2.5 : 2.9,
-  panelType: 'p640',    // Festinstallation: Raster 640 × 480 mm ('p960' | 'mix' aktuell nicht in der Auswahl)
+  panelType: 'mix',     // Festinstallation: Indoor 960 × 960 mit 640 × 480 am Rand ('mix'), Outdoor nur 960 ('p960')
   bracket: true,        // Festinstallation: Wandhalterung (Gestell) immer inklusive
   frameView: false,     // Festinstallation: Module ausblenden, nur das Gestell zeigen
   gob: false,
@@ -788,20 +788,7 @@ function buildGym(wallW, wallH) {
   wallMesh(depth, hallH, endTex, -hallW / 2, midZ, Math.PI / 2);
   wallMesh(depth, hallH, endTex, hallW / 2, midZ, -Math.PI / 2);
   wallMesh(hallW, hallH, makeFarWallTexture(hallW, hallH), 0, farWall, Math.PI);
-  // Decke (nur von unten sichtbar) mit Lichtfeldern
-  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(hallW, depth), new THREE.MeshStandardMaterial({ color: 0xe8e4dc, roughness: 0.95 }));
-  ceiling.rotation.x = Math.PI / 2;
-  ceiling.position.set(0, hallH, midZ);
-  envGroup.add(ceiling);
-  const lampMat = new THREE.MeshBasicMaterial({ color: 0xfffdf4 });
-  const lampGeo = new THREE.PlaneGeometry(1.4, 0.5);
-  const lamps = new THREE.InstancedMesh(lampGeo, lampMat, 24);
-  let li = 0;
-  for (let i = 0; i < 6; i++) for (let j = 0; j < 4; j++) {
-    _m4.makeRotationX(Math.PI / 2).setPosition(-17.5 + i * 7, hallH - 0.02, GYM.sideZ + 2 + j * 5.4);
-    lamps.setMatrixAt(li++, _m4);
-  }
-  envGroup.add(lamps);
+  // Ohne Decke: von oben offen, damit man frei in die Halle schauen kann
 
   // Tore an beiden Stirnseiten des Spielfelds
   [-1, 1].forEach((s) => {
@@ -2726,8 +2713,8 @@ document.getElementById('segLocation').addEventListener('click', (e) => {
   state.location = btn.getAttribute('data-val');
   setActive(document.getElementById('segLocation'), state.location);
   if (IS_FEST) {
-    // Indoor 640 × 480, Outdoor 960 × 960: Wandmaße möglichst beibehalten
-    state.panelType = state.location === 'outdoor' ? 'p960' : 'p640';
+    // Indoor 960 + 640 kombiniert, Outdoor nur 960 × 960: Wandmaße möglichst beibehalten
+    state.panelType = state.location === 'outdoor' ? 'p960' : 'mix';
     const { panelW, panelH } = getPanelDims();
     state.cols = clamp(Math.round(before.totalWidth / panelW), ...LIMITS.cols);
     state.rows = clamp(Math.round(before.totalHeight / panelH), ...LIMITS.rows);
@@ -2859,7 +2846,9 @@ function updateSizeDisplay() {
     : `${IS_FEST ? nRows : rowsCount} Panel${nRows === 1 ? '' : 's'}<br>übereinander`;
   document.getElementById('panelTotal').innerHTML = `<b>Gesamt: ${L.total} Panels</b><br>${panelMixText(L)}`;
   const note = document.getElementById('sizeNote');
-  if (note) note.textContent = `Die Wand besteht aus Panels mit ${state.location === 'outdoor' ? '960 × 960' : '640 × 480'} mm. Deine Eingabe wird auf die nächste passende Größe gerundet. Die Wandhalterung ist immer inklusive.`;
+  if (note) note.textContent = state.location === 'outdoor'
+    ? 'Die Wand besteht aus Panels mit 960 × 960 mm. Deine Eingabe wird auf die nächste passende Größe gerundet. Die Wandhalterung ist immer inklusive.'
+    : 'Die Wand besteht aus Panels mit 960 × 960 mm, bei Zwischengrößen kommen am Rand Panels mit 640 × 480 mm dazu. Deine Eingabe wird auf die nächste passende Größe gerundet. Die Wandhalterung ist immer inklusive.';
 }
 
 // Eingetippte Meter auf 50 cm runden (Komma oder Punkt erlaubt).
@@ -3118,7 +3107,7 @@ function applyHash() {
   if (!q.has('ort')) return false;
   const pick = (v, allowed, def) => (allowed.includes(v) ? v : def);
   state.location = pick(q.get('ort'), ['indoor', 'outdoor'], state.location);
-  if (IS_FEST) state.panelType = state.location === 'outdoor' ? 'p960' : 'p640';
+  if (IS_FEST) state.panelType = state.location === 'outdoor' ? 'p960' : 'mix';
   state.mount = pick(q.get('aufbau'), ['truss', 'wall', 'floor', 'fixed'], state.mount);
   // Aufbauart, die es in diesem Konfigurator nicht gibt (z. B. Wand bei Mobil), auf Standard zurücksetzen
   if (IS_FEST) state.mount = 'fixed';
