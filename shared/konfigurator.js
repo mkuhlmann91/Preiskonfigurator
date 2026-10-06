@@ -34,7 +34,7 @@ const state = {
   cols: IS_FEST ? 15 : 10, // mobil: 10 × 0,5 m = 5 m; fest: 15 × 0,32 m = 4,80 m (5 × 960)
   rows: IS_FEST ? 3 : 6,   // mobil: 6 × 0,5 m = 3 m; fest: 3 × 0,96 m = 2,88 m
   pitch: IS_FEST ? 2.5 : 2.9,
-  panelType: 'mix',     // Festinstallation: Indoor 960 × 960 mit 640 × 480 am Rand ('mix'), Outdoor nur 960 ('p960')
+  panelType: 'mix',     // Festinstallation: 960 × 960 mit 640 × 480 am Rand (Indoor und Outdoor)
   bracket: true,        // Festinstallation: Wandhalterung (Gestell) immer inklusive
   gob: false,
   showEdges: true,
@@ -192,6 +192,7 @@ function buildTree(x, z, h) {
 const fogBase = { near: 16, far: 36 };
 function applyEnvironment() {
   envGroup.clear();
+  envGroup.position.x = 0;
   envAnimators.length = 0;
   const { panelW, panelH } = getPanelDims();
   const wallW = state.cols * panelW, wallH = state.rows * panelH;
@@ -1021,7 +1022,7 @@ function makeHouseFacadeTexture(w, h, ledX0, ledX1, ledY0, ledY1) {
     // Obergeschosse: Fenster dort, wo keine LED-Wand ist
     for (let y = 4.6; y < h - 2; y += 3) {
       for (let x = -w / 2 + 1; x < w / 2 - 1.4; x += 2.4) {
-        if (x + 1.3 > ledX0 - 0.6 && x < ledX1 + 0.6 && y + 1.5 > ledY0 - 0.6 && y < ledY1 + 0.6) continue;
+        if (x < ledX1 + 0.6 && y + 1.5 > ledY0 - 0.6) continue;   // links neben und über der LED-Wand frei
         ctx.fillStyle = '#7f98a8'; ctx.fillRect(X(x), Y(y + 1.5), 1.3 * ppm, 1.5 * ppm);
         ctx.strokeStyle = '#f7f6f2'; ctx.lineWidth = 0.1 * ppm; ctx.strokeRect(X(x), Y(y + 1.5), 1.3 * ppm, 1.5 * ppm);
         ctx.fillStyle = '#c9c6bf'; ctx.fillRect(X(x - 0.08), Y(y - 0.02), 1.46 * ppm, 0.1 * ppm);
@@ -1047,7 +1048,7 @@ function makeWindowFacade(color, w, h) {
 }
 
 // Haus als Block mit Satteldach (Giebel zeigt nach vorne)
-function buildHouse(w, h, d, frontMat, sideColor, roofColor = 0x4a4d52) {
+function buildHouse(w, h, d, frontMat, sideColor, roofColor = 0x4a4d52, roofMat = null) {
   const g = new THREE.Group();
   const side = new THREE.MeshStandardMaterial({ map: makeWindowFacade(sideColor, d, h), roughness: 0.9 });
   const plain = new THREE.MeshStandardMaterial({ color: new THREE.Color(sideColor), roughness: 0.9 });
@@ -1057,7 +1058,7 @@ function buildHouse(w, h, d, frontMat, sideColor, roofColor = 0x4a4d52) {
   const rh = Math.min(4, w * 0.35);
   const shape = new THREE.Shape([new THREE.Vector2(-w / 2 - 0.3, 0), new THREE.Vector2(w / 2 + 0.3, 0), new THREE.Vector2(0, rh)]);
   const roof = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: d + 0.4, bevelEnabled: false }),
-    new THREE.MeshStandardMaterial({ color: roofColor, roughness: 0.8 }));
+    roofMat || new THREE.MeshStandardMaterial({ color: roofColor, roughness: 0.8 }));
   roof.position.set(0, h, -d - 0.2);
   g.add(roof);
   // Giebelfläche vorne in Fassadenfarbe
@@ -1095,11 +1096,97 @@ function buildCar(color) {
   return g;
 }
 
+// Rote Dachziegel (UV in Metern, 1 Kachel = 2 × 2 m)
+let roofTileTex = null;
+function makeRoofTileTexture() {
+  if (roofTileTex) return roofTileTex;
+  roofTileTex = canvasTexture(256, 256, (ctx, W, H) => {
+    ctx.fillStyle = '#8e2b1d'; ctx.fillRect(0, 0, W, H);
+    const rowH = H / 8, tileW = W / 6;
+    for (let r = 0; r < 8; r++) for (let c = -1; c < 7; c++) {
+      const x = c * tileW + (r % 2 ? tileW / 2 : 0), y = r * rowH;
+      const g = ctx.createLinearGradient(0, y, 0, y + rowH);
+      const tint = 150 + Math.floor(Math.random() * 30);
+      g.addColorStop(0, `rgb(${tint + 30},${60 + Math.random() * 12},${40})`); g.addColorStop(1, `rgb(${tint - 30},38,26)`);
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.moveTo(x + 2, y); ctx.lineTo(x + tileW - 2, y); ctx.lineTo(x + tileW - 2, y + rowH - 6);
+      ctx.quadraticCurveTo(x + tileW / 2, y + rowH + 2, x + 2, y + rowH - 6); ctx.closePath(); ctx.fill();
+    }
+  });
+  roofTileTex.wrapS = roofTileTex.wrapT = THREE.RepeatWrapping;
+  roofTileTex.repeat.set(0.5, 0.5);
+  return roofTileTex;
+}
+
+// Möwe, sitzend (ca. 0,6 m lang), Blick nach +z
+function buildSeagull() {
+  const g = new THREE.Group();
+  const white = new THREE.MeshStandardMaterial({ color: 0xf4f4f2, roughness: 0.8 });
+  const grey = new THREE.MeshStandardMaterial({ color: 0x8d949c, roughness: 0.8 });
+  const yellow = new THREE.MeshStandardMaterial({ color: 0xf2c230, roughness: 0.6 });
+  const black = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.6 });
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.16, 14, 10), white);
+  body.scale.set(1, 0.9, 1.8); body.position.set(0, 0.2, 0); g.add(body);
+  [-1, 1].forEach((sx) => {
+    const wing = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 8), grey);
+    wing.scale.set(0.35, 0.6, 1.9); wing.position.set(sx * 0.12, 0.25, -0.06); g.add(wing);
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.1, 6), new THREE.MeshStandardMaterial({ color: 0xe08a3a }));
+    leg.position.set(sx * 0.05, 0.05, 0.02); g.add(leg);
+  });
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.03, 0.14), black);
+  tail.position.set(0, 0.24, -0.3); tail.rotation.x = -0.3; g.add(tail);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 10), white);
+  head.position.set(0, 0.42, 0.2); g.add(head);
+  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.12, 8), yellow);
+  beak.rotation.x = Math.PI / 2; beak.position.set(0, 0.41, 0.33); g.add(beak);
+  [-1, 1].forEach((sx) => {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.014, 6, 6), black);
+    eye.position.set(sx * 0.07, 0.45, 0.25); g.add(eye);
+  });
+  return g;
+}
+
+// Plakat Holstein Kiel (selbst gezeichnet, ohne Vereinswappen)
+function makeKielPosterTexture() {
+  return canvasTexture(900, 600, (ctx, W, H) => {
+    ctx.fillStyle = '#0a3d8f'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, H * 0.72, W, H * 0.09);
+    ctx.fillStyle = '#d4202a'; ctx.fillRect(0, H * 0.81, W, H * 0.09);
+    ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center';
+    ctx.font = '700 46px Inter, Arial, sans-serif';
+    ctx.fillText('DIE STÖRCHE', W / 2, H * 0.2);
+    ctx.font = '800 132px Inter, Arial, sans-serif';
+    ctx.fillText('HOLSTEIN', W / 2, H * 0.43);
+    ctx.fillText('KIEL', W / 2, H * 0.64);
+    ctx.fillStyle = '#0a3d8f'; ctx.font = '700 34px Inter, Arial, sans-serif';
+    ctx.fillText('HEIMSPIEL IM HOLSTEIN-STADION', W / 2, H * 0.785);
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 10; ctx.strokeRect(5, 5, W - 10, H - 10);
+  });
+}
+
+// Flagge aus dem Fenster gegenüber, leicht gewellt
+function buildHangingFlag(src, w, h) {
+  const geo = new THREE.PlaneGeometry(w, h, 24, 12);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i);
+    pos.setZ(i, Math.sin(x * 3.1) * 0.06 * (0.5 + (h / 2 - y) / h));
+  }
+  geo.computeVertexNormals();
+  const tex = new THREE.TextureLoader().load(src);
+  tex.encoding = THREE.sRGBEncoding;
+  return new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, side: THREE.DoubleSide }));
+}
+
 function buildStreet(wallW, wallH) {
   const bottom = FEST_WALL_BOTTOM();
-  const houseW = Math.max(12, wallW + 6), houseH = Math.max(11, bottom + wallH + 2.5), houseD = 12;
+  // Haus bleibt gleich groß (wächst nur, wenn die Wand sonst nicht passt); die LED-Wand
+  // beginnt links an der Fassade. Dafür wird die ganze Umgebung seitlich verschoben.
+  const houseW = Math.max(20, wallW + 3), houseH = Math.max(14, bottom + wallH + 1.5), houseD = 12;
   const front = festHallWallZ();
   const roadX = -(houseW / 2 + 3.5 + 3.5), roadW = 7;
+  const ledLeft = -houseW / 2 + 1.5;                       // linke Kante der LED-Wand im Haus
+  envGroup.position.x = -wallW / 2 - ledLeft;
 
   scene.background = skyTexture;
   scene.fog = new THREE.Fog(0xdbe8f2, 60, 160);
@@ -1117,10 +1204,22 @@ function buildStreet(wallW, wallH) {
 
   // Haus mit LED-Wand an der Stirnseite
   const facade = new THREE.MeshStandardMaterial({
-    map: makeHouseFacadeTexture(houseW, houseH, -wallW / 2, wallW / 2, bottom, bottom + wallH), roughness: 0.9 });
-  const house = buildHouse(houseW, houseH, houseD, facade, '#e8e5de');
+    map: makeHouseFacadeTexture(houseW, houseH, ledLeft, ledLeft + wallW, bottom, bottom + wallH), roughness: 0.9 });
+  const tiles = new THREE.MeshStandardMaterial({ map: makeRoofTileTexture(), roughness: 0.75 });
+  const house = buildHouse(houseW, houseH, houseD, facade, '#e8e5de', 0x9a3324, tiles);
   house.position.z = front;
   envGroup.add(house);
+  // Möwe auf dem Dachfirst, vorne
+  const gull = buildSeagull();
+  gull.scale.setScalar(1.6);
+  gull.position.set(0, houseH + Math.min(4, houseW * 0.35) - 0.05, front - 1.2);
+  gull.rotation.y = -0.6;
+  envGroup.add(gull);
+  // Plakat Holstein Kiel an der linken Hauswand (zur Straße)
+  const poster = new THREE.Mesh(new THREE.PlaneGeometry(6, 4), new THREE.MeshStandardMaterial({ map: makeKielPosterTexture(), roughness: 0.8 }));
+  poster.rotation.y = -Math.PI / 2;
+  poster.position.set(-houseW / 2 - 0.03, 7, front - houseD / 2);
+  envGroup.add(poster);
 
   // Flächen: Straße, Gehwege, Vorplatz
   const flat = (w, d, x, z, color, y = 0.01) => {
@@ -1182,6 +1281,11 @@ function buildStreet(wallW, wallH) {
   const oppX = roadX - roadW / 2 - 7.5;
   [[-30, 12, 11, '#efe6d4'], [-15, 10, 13, '#dfe4ea'], [0, 11, 12, '#eadbd0'], [16, 9, 12, '#e6e1d6'], [32, 12, 11, '#d9dfd8']]
     .forEach(([z, w, h, c]) => neighbour(oppX, z, w, h, 10, c, Math.PI / 2));
+  // Gegenüber: Tomorrowland-Flagge hängt aus einem Fenster (Haus bei z = 0, 1. OG)
+  const flag = buildHangingFlag('../assets/tomorrowland-flagge.jpg', 2.8, 2.1);
+  flag.rotation.y = Math.PI / 2;
+  flag.position.set(oppX + 0.08, 4.2 - 1.1, -0.9);
+  envGroup.add(flag);
 
   // Autos: geparkt am Rand gegenüber, zwei fahren vorbei
   const lane = roadW / 4;
@@ -2710,8 +2814,8 @@ document.getElementById('segLocation').addEventListener('click', (e) => {
   state.location = btn.getAttribute('data-val');
   setActive(document.getElementById('segLocation'), state.location);
   if (IS_FEST) {
-    // Indoor 960 + 640 kombiniert, Outdoor nur 960 × 960: Wandmaße möglichst beibehalten
-    state.panelType = state.location === 'outdoor' ? 'p960' : 'mix';
+    // Indoor und Outdoor: 960 + 640 kombiniert, Wandmaße möglichst beibehalten
+    state.panelType = 'mix';
     const { panelW, panelH } = getPanelDims();
     state.cols = clamp(Math.round(before.totalWidth / panelW), ...LIMITS.cols);
     state.rows = clamp(Math.round(before.totalHeight / panelH), ...LIMITS.rows);
@@ -2753,8 +2857,14 @@ function recommendedPitchForDistance(d) {
   const fitting = PITCHES.filter((p) => viewingDistanceForPitch(p) <= d + 1e-9);
   return fitting.length ? fitting[fitting.length - 1] : PITCHES[0];
 }
+const maxDist = () => (state.location === 'outdoor' ? 30 : 20);   // Figur: Halle/Indoor 20 m, Outdoor 30 m
 function updateDistDisplay() {
-  document.getElementById('distRange').value = state.personDist;
+  const range = document.getElementById('distRange');
+  range.max = maxDist();
+  state.personDist = Math.min(state.personDist, maxDist());
+  const lbl = range.parentElement.querySelector('.range-labels span:last-child');
+  if (lbl) lbl.textContent = `${maxDist()}m`;
+  range.value = state.personDist;
   document.getElementById('distVal').textContent = `${fmtM(state.personDist)}m`;
   const reco = recommendedPitchForDistance(state.personDist);
   document.getElementById('pitchRecoText').textContent = reco === state.pitch
@@ -2838,9 +2948,7 @@ function updateSizeDisplay() {
     : `${IS_FEST ? nRows : rowsCount} Panel${nRows === 1 ? '' : 's'}<br>übereinander`;
   document.getElementById('panelTotal').innerHTML = `<b>Gesamt: ${L.total} Panels</b><br>${panelMixText(L)}`;
   const note = document.getElementById('sizeNote');
-  if (note) note.textContent = state.location === 'outdoor'
-    ? 'Die Wand besteht aus Panels mit 960 × 960 mm.'
-    : 'Die Wand besteht aus Panels mit 960 × 960 mm, bei Zwischengrößen kommen am Rand Panels mit 640 × 480 mm dazu.';
+  if (note) note.textContent = 'Die Wand besteht aus Panels mit 960 × 960 mm, bei Zwischengrößen kommen am Rand Panels mit 640 × 480 mm dazu.';
 }
 
 // Eingetippte Meter auf 50 cm runden (Komma oder Punkt erlaubt).
@@ -3086,7 +3194,7 @@ function applyHash() {
   if (!q.has('ort')) return false;
   const pick = (v, allowed, def) => (allowed.includes(v) ? v : def);
   state.location = pick(q.get('ort'), ['indoor', 'outdoor'], state.location);
-  if (IS_FEST) state.panelType = state.location === 'outdoor' ? 'p960' : 'mix';
+  if (IS_FEST) state.panelType = 'mix';
   state.mount = pick(q.get('aufbau'), ['truss', 'wall', 'floor', 'fixed'], state.mount);
   // Aufbauart, die es in diesem Konfigurator nicht gibt (z. B. Wand bei Mobil), auf Standard zurücksetzen
   if (IS_FEST) state.mount = 'fixed';
@@ -3100,7 +3208,7 @@ function applyHash() {
   const pitch = num('pitch', state.pitch);
   state.pitch = pitchesFor(state.location).includes(pitch) ? pitch : state.pitch;
   state.gob = q.get('gob') === '1' && state.location === 'indoor';
-  state.personDist = clamp(num('abstand', viewingDistanceForPitch(state.pitch)), 1, 20);
+  state.personDist = clamp(num('abstand', viewingDistanceForPitch(state.pitch)), 1, state.location === 'outdoor' ? 30 : 20);
   state.content = pick(q.get('inhalt'), IS_FEST ? ['logo', 'promo', 'score'] : ['logo', 'pink', 'promo', 'score'], state.content);
   // Oberfläche nachziehen
   setActive(document.getElementById('segLocation'), state.location);
