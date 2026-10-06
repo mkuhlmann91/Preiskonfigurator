@@ -24,18 +24,18 @@ const CONFIG = {
   },
   // Strom- + Datenkabel (je ca. 60 cm, von Panel zu Panel), pro Panel in kg
   cableWeightPerPanel: 0.5,
-  // Festinstallation: Kabinette 960 × 960 mm und 640 × 480 mm, Alu-Druckguss ca. 26 kg/m²
-  fest: { cabinet: 0.96, small: { w: 0.64, h: 0.48 }, weightPerM2: 26 }
+  // Festinstallation: Panels 640 × 480 mm, ca. 35 kg/m² inkl. Wandhalterung
+  fest: { cabinet: 0.96, small: { w: 0.64, h: 0.48 }, weightPerM2: 35 }
 };
 
 const state = {
   location: 'indoor',   // 'indoor' | 'outdoor'
   mount: IS_FEST ? 'fixed' : 'truss', // 'truss' | 'wall' | 'floor' | 'fixed' (Festinstallation an der Hallenwand)
-  cols: IS_FEST ? 5 : 10,  // mobil: 10 × 0,5 m = 5 m; fest: 5 × 0,96 m = 4,8 m
-  rows: IS_FEST ? 3 : 6,   // mobil: 6 × 0,5 m = 3 m; fest: 3 × 0,96 m = 2,88 m
+  cols: IS_FEST ? 7 : 10,  // mobil: 10 × 0,5 m = 5 m; fest: 7 × 0,64 m = 4,48 m
+  rows: IS_FEST ? 6 : 6,   // mobil: 6 × 0,5 m = 3 m; fest: 6 × 0,48 m = 2,88 m
   pitch: IS_FEST ? 2.5 : 2.9,
-  panelType: 'p960',    // Festinstallation: 'p960' | 'p640' | 'mix' (960er + 640×480 kombiniert)
-  bracket: true,        // Festinstallation: Wandhalterung (Gestell) inklusive
+  panelType: 'p640',    // Festinstallation: Raster 640 × 480 mm ('p960' | 'mix' aktuell nicht in der Auswahl)
+  bracket: true,        // Festinstallation: Wandhalterung (Gestell) immer inklusive
   frameView: false,     // Festinstallation: Module ausblenden, nur das Gestell zeigen
   gob: false,
   showEdges: true,
@@ -574,13 +574,32 @@ function makeCourtTexture(cw, cd, sideZ) {
   });
 }
 
+// Banner mit Partner-Logo auf weißem Grund (Textur wird einmal geladen und wiederverwendet)
+const logoBannerCache = {};
+function logoBannerTexture(src) {
+  if (logoBannerCache[src]) return logoBannerCache[src];
+  const tex = canvasTexture(640, 320, (ctx, W, H) => {
+    ctx.fillStyle = '#f7f6f2'; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 6; ctx.strokeRect(3, 3, W - 6, H - 6);
+  });
+  const img = new Image();
+  img.onload = () => {
+    const ctx = tex.image.getContext('2d'), W = tex.image.width, H = tex.image.height;
+    const s = Math.min((W * 0.84) / img.width, (H * 0.7) / img.height);
+    const w = img.width * s, h = img.height * s;
+    ctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+    tex.needsUpdate = true;
+  };
+  img.src = src;
+  return (logoBannerCache[src] = tex);
+}
+
 function makeBannerTexture(kind) {
   return canvasTexture(640, 320, (ctx, W, H) => {
     const designs = {
       white: ['#f3f1ec', '#1d3f8f', 'SPONSOR', 'Deine Werbung hier'],
       blue: ['#1f3f86', '#ffffff', 'BAUSTOFFE', 'Partner des Sports'],
-      black: ['#17181b', '#ffffff', 'AUTOHAUS', 'Mobilitätspartner'],
-      grey: ['#4a4f57', '#7fd0ff', 'KÄLTETECHNIK', 'Service · Montage']
+      black: ['#17181b', '#ffffff', 'AUTOHAUS', 'Mobilitätspartner']
     };
     const [bg, fg, title, sub] = designs[kind];
     ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
@@ -670,21 +689,19 @@ function buildGym(wallW, wallH) {
   envGroup.add(court);
 
   // Anzeigetafel rechts neben der LED-Wand
-  envGroup.add(buildScoreboard(wallW / 2 + 1.0, bottom + Math.min(wallH, 2.4) * 0.4, wallZ));
+  envGroup.add(buildScoreboard(wallW / 2 + 3.0, bottom + Math.min(wallH, 2.4) * 0.4, wallZ));
 
   // Banner: links neben der LED-Wand in Wandhöhe und unten an der Prallwand
   const banner = (kind, w, h, x, y) => {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: makeBannerTexture(kind), roughness: 0.85 }));
+    const map = kind.endsWith('.png') ? logoBannerTexture(kind) : makeBannerTexture(kind);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map, roughness: 0.85 }));
     m.position.set(x, y, wallZ + 0.01);
     envGroup.add(m);
   };
-  const leftEdge = -wallW / 2 - 0.35;
-  banner('white', 1.9, 1.0, leftEdge - 0.95, bottom + 1.55);
-  banner('blue', 1.9, 1.0, leftEdge - 0.95, bottom + 0.35);
-  banner('grey', 1.1, 0.75, wallW / 2 + 2.3, bottom + 1.9);
+  // Banner unten an der Prallwand: innen links Bemotion 360, außen rechts New Chapter
   const lowY = 1.0, lowH = 1.3;
-  [[-1, 'white'], [1, 'black']].forEach(([side, kind]) => banner(kind, 3.0, lowH, side * (Math.max(3.4, wallW / 2) + 0.4), lowY));
-  [[-1, 'blue'], [1, 'white']].forEach(([side, kind]) => banner(kind, 3.0, lowH, side * (Math.max(3.4, wallW / 2) + 3.8), lowY));
+  [[-1, '../assets/bemotion360-logo.png'], [1, 'black']].forEach(([side, kind]) => banner(kind, 3.0, lowH, side * (Math.max(3.4, wallW / 2) + 0.4), lowY));
+  [[-1, 'blue'], [1, '../assets/newchapter-logo.png']].forEach(([side, kind]) => banner(kind, 3.0, lowH, side * (Math.max(3.4, wallW / 2) + 3.8), lowY));
 }
 
 /* -------------------------- WANDHALTERUNG (FESTINSTALLATION) --------------- */
@@ -775,7 +792,7 @@ const orbit = { theta: 0.25, phi: 1.15, radius: 13, target: new THREE.Vector3(0,
 // Je größer die Wand, desto weiter darf man zurückgehen
 function maxOrbitRadius() {
   const { panelW, panelH } = getPanelDims();
-  return Math.max(24, Math.max(state.cols * panelW, state.rows * panelH) * 2.2);
+  return Math.max(24, state.personDist + 12, Math.max(state.cols * panelW, state.rows * panelH) * 2.2);
 }
 let isDragging = false, lastX = 0, lastY = 0;
 const activePointers = new Map();
@@ -1912,7 +1929,7 @@ function buildDummyFigure() {
 function viewingDistanceForPitch(pitchMm) {
   // Vom Kunden vorgegebene Richtwerte für den empfohlenen Mindestabstand.
   // 1,5 / 2 / 3,9 / 4,8 sind daraus abgeleitet (ca. 1,2–1,3 m pro mm Pitch).
-  const table = { 1.5: 2, 1.86: 2.3, 2: 2.5, 2.5: 3, 2.6: 3, 2.9: 3.5, 3.9: 5, 4.8: 6 };
+  const table = { 1.25: 1.5, 1.5: 2, 1.53: 2, 1.86: 2.3, 2: 2.5, 2.5: 3, 3.076: 4, 4: 5, 5: 6, 6: 7, 8: 10, 10: 12, 2.6: 3, 2.9: 3.5, 3.9: 5, 4.8: 6 };
   return table[pitchMm] ?? pitchMm;
 }
 
@@ -1984,8 +2001,10 @@ function rebuild() {
   const dims = buildWallMeshes();
   buildSupport(dims);
   buildDistanceIndicator(dims);
-  if (IS_FEST) orbit.target.set(0, Math.max(2.2, wallGroup.position.y - 0.6), 0);
-  else orbit.target.set(0, dims.totalHeight / 2 + (state.mount === 'floor' ? 0.3 : 1.2), 0);
+  // Steht die Figur weit weg, rückt der Blickpunkt Richtung Figur, damit Wand und Figur im Bild bleiben
+  const tz = state.showDummy ? Math.max(0, (state.personDist - 2) * 0.8) : 0;
+  if (IS_FEST) orbit.target.set(0, Math.max(2.2, wallGroup.position.y - 0.6), tz);
+  else orbit.target.set(0, dims.totalHeight / 2 + (state.mount === 'floor' ? 0.3 : 1.2), tz);
   updateHUD(dims);
   updateConfigPreview();
   updateSizeDisplay();
@@ -2090,12 +2109,12 @@ document.getElementById('dummyToggle').addEventListener('change', (e) => {
 
 // Verfügbare Pixel Pitches je Einsatzort
 const PITCHES = IS_FEST ? {
-  indoor: [2.5]                 // 960 × 960 mm und kombiniert; P1.86 nur bei reinen 640 × 480 mm
+  indoor: [1.25, 1.53, 1.86, 2, 2.5, 3.076, 4]   // Panels 640 × 480 mm
 } : {
   indoor: [1.5, 2, 2.6, 2.9, 3.9],
   outdoor: [2.6, 2.9, 3.9, 4.8]
 };
-const pitchesFor = (loc) => (IS_FEST && state.panelType === 'p640' ? [1.86, 2.5] : PITCHES[loc] || PITCHES.indoor);
+const pitchesFor = (loc) => PITCHES[loc] || PITCHES.indoor;
 // Auswahlliste an den Einsatzort anpassen. Gibt es den gewählten Pitch dort nicht,
 // wird der nächstliegende genommen und die Figur auf dessen Richtwert gesetzt.
 function syncPitchOptions() {
@@ -2159,6 +2178,8 @@ document.getElementById('contentFile').addEventListener('change', (e) => {
 
 document.getElementById('distRange').addEventListener('input', (e) => {
   state.personDist = parseFloat(e.target.value);
+  // Kamera geht mit, damit die Figur im Bild bleibt
+  orbit.radius = Math.min(Math.max(orbit.radius, state.personDist * 0.5 + 10), maxOrbitRadius());
   updateDistDisplay();
   rebuild();
 });
@@ -2238,21 +2259,6 @@ document.getElementById('rowsPlus').addEventListener('click', () => {
   rebuild();
 });
 
-// Festinstallation: Panelgröße wählen, die Wandmaße bleiben möglichst erhalten
-document.getElementById('segPanel')?.addEventListener('click', (e) => {
-  const btn = e.target.closest('.seg-btn'); if (!btn) return;
-  const L = getLayout();
-  state.panelType = btn.getAttribute('data-val');
-  setActive(document.getElementById('segPanel'), state.panelType);
-  const { panelW, panelH } = getPanelDims();
-  state.cols = clamp(Math.round(L.totalWidth / panelW), ...LIMITS.cols);
-  state.rows = clamp(Math.round(L.totalHeight / panelH), ...LIMITS.rows);
-  syncPitchOptions();
-  updateDistDisplay();
-  updateSizeDisplay();
-  rebuild();
-});
-
 document.getElementById('pitchSelect').addEventListener('change', (e) => {
   state.pitch = parseFloat(e.target.value);
   // Figur springt auf den neuen empfohlenen Abstand; danach frei verstellbar.
@@ -2264,7 +2270,7 @@ document.getElementById('gobToggle').addEventListener('change', (e) => {
   state.gob = e.target.checked;
   rebuild();
 });
-// Festinstallation: Wandhalterung inklusive / Gestell ansehen
+// Festinstallation: Wandhalterung (immer inklusive) / Gestell ansehen
 function updateFrameBtn() {
   const btn = document.getElementById('frameBtn');
   if (!btn) return;
@@ -2272,12 +2278,6 @@ function updateFrameBtn() {
   btn.classList.toggle('active', state.frameView);
   btn.querySelector('span').textContent = state.frameView ? 'Module zeigen' : 'Gestell ansehen';
 }
-document.getElementById('bracketToggle')?.addEventListener('change', (e) => {
-  state.bracket = e.target.checked;
-  if (!state.bracket) state.frameView = false;
-  updateFrameBtn();
-  rebuild();
-});
 document.getElementById('frameBtn')?.addEventListener('click', () => {
   state.frameView = !state.frameView;
   updateFrameBtn();
@@ -2292,7 +2292,7 @@ function buildConfigText() {
   const totalHeight = L.totalHeight.toFixed(1);
   const totalWeight = Math.round(L.weight);
   const mountLabel = { truss: 'Hängend an Traverse (Hanging Bars)', wall: 'Feststehend / schwebend an der Wand', floor: 'Auf dem Boden (Ground Beam + Stacking Structures)',
-    fixed: `Wandmontage, Front-Service, ${state.bracket ? 'mit Wandhalterung (inklusive)' : 'ohne Wandhalterung (eigene Unterkonstruktion)'}` }[state.mount];
+    fixed: 'Wandmontage, Front-Service, inkl. Wandhalterung' }[state.mount];
   if (IS_FEST) {
     return [
       'Bereich: Festinstallation',
@@ -2465,7 +2465,7 @@ function configToHash() {
     ort: state.location, aufbau: state.mount,
     b: state.cols, hm: state.rows, pitch: state.pitch,
     gob: state.gob ? 1 : 0, abstand: state.personDist,
-    ...(IS_FEST ? { halter: state.bracket ? 1 : 0, panel: state.panelType } : {}),
+
     inhalt: state.content === 'custom' ? 'logo' : state.content
   });
   return '#' + q.toString();
@@ -2480,8 +2480,7 @@ function applyHash() {
   // Aufbauart, die es in diesem Konfigurator nicht gibt (z. B. Wand bei Mobil), auf Standard zurücksetzen
   if (IS_FEST) state.mount = 'fixed';
   else if (!document.querySelector(`#segMount [data-val="${state.mount}"]`)) state.mount = 'truss';
-  if (IS_FEST) state.bracket = q.get('halter') !== '0';
-  if (IS_FEST) state.panelType = pick(q.get('panel'), ['p960', 'p640', 'mix'], 'p960');
+
   const num = (k, def) => { const n = parseFloat(q.get(k)); return isNaN(n) ? def : n; };
   state.cols = clamp(Math.round(num('b', state.cols)), LIMITS.cols[0], LIMITS.cols[1]);
   // alte Links: h = Panelreihen des gewählten Typs (0,5 × 1 m zählte doppelt)
@@ -2491,13 +2490,11 @@ function applyHash() {
   state.pitch = pitchesFor(state.location).includes(pitch) ? pitch : state.pitch;
   state.gob = q.get('gob') === '1' && state.location === 'indoor';
   state.personDist = clamp(num('abstand', viewingDistanceForPitch(state.pitch)), 1, 15);
-  state.content = pick(q.get('inhalt'), ['logo', 'pink', 'promo', 'score'], state.content);
+  state.content = pick(q.get('inhalt'), IS_FEST ? ['logo', 'promo', 'score'] : ['logo', 'pink', 'promo', 'score'], state.content);
   // Oberfläche nachziehen
   setActive(document.getElementById('segLocation'), state.location);
   if (document.getElementById('segMount')) setActive(document.getElementById('segMount'), state.mount);
   setActive(document.getElementById('segContent'), state.content);
-  if (document.getElementById('bracketToggle')) document.getElementById('bracketToggle').checked = state.bracket;
-  if (document.getElementById('segPanel')) setActive(document.getElementById('segPanel'), state.panelType);
   document.getElementById('pitchSelect').value = String(state.pitch);
   document.getElementById('gobToggle').checked = state.gob;
   return true;
