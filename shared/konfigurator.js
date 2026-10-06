@@ -510,6 +510,28 @@ const FEST_WALL_BOTTOM = () => (state.location === 'outdoor' ? 5 : 2.4);   // Un
 const FEST_BRACKET_DEPTH = 0.09;             // Wandhalterung zwischen Modulen und Hallenwand
 const festHallWallZ = () => -0.09 - FEST_BRACKET_DEPTH;
 
+// Gezeichnete Texturen merken: Beim Klick auf +/− wird die Umgebung neu aufgebaut,
+// die Texturen (und Bilder) sollen dabei nicht jedes Mal neu entstehen und kurz aufblitzen.
+function memoTexture(fn, max = 16) {
+  const cache = new Map();
+  return (...args) => {
+    const key = JSON.stringify(args);
+    if (cache.has(key)) {
+      const t = cache.get(key);
+      cache.delete(key); cache.set(key, t);
+      return t;
+    }
+    const t = fn(...args);
+    cache.set(key, t);
+    if (cache.size > max) {
+      const [oldKey, old] = cache.entries().next().value;
+      cache.delete(oldKey);
+      old.dispose();
+    }
+    return t;
+  };
+}
+
 function canvasTexture(w, h, draw) {
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
@@ -521,7 +543,7 @@ function canvasTexture(w, h, draw) {
 }
 
 // Hallenwand: Holzfaserplatten mit Fugen, Stoßkante unten, dunkles Band oben
-function makeGymWallTexture(w, h) {
+const makeGymWallTexture = memoTexture(function makeGymWallTexture(w, h) {
   const ppm = Math.min(48, 2048 / Math.max(w, h));
   return canvasTexture(Math.round(w * ppm), Math.round(h * ppm), (ctx, W, H) => {
     ctx.fillStyle = '#b48d5e';
@@ -546,13 +568,13 @@ function makeGymWallTexture(w, h) {
     ctx.fillStyle = '#3b2a20';
     ctx.fillRect(0, 0, W, ppm * 1.0);
   });
-}
+});
 
 // Hallenboden mit Spielfeldern: Handball 40 × 20 m (weiß), Basketball (gelb), Volleyball (grün).
 // Die LED-Wand hängt an der Längsseite auf Höhe der Mittellinie. Koordinaten in Metern:
 // x quer zur Halle (0 = Mittellinie), z von der LED-Wand weg (zc = Spielfeldmitte).
 const GYM = { courtL: 40, courtW: 20, sideZ: 1.6 };
-function makeCourtTexture(hallW, hallD, wallZ) {
+const makeCourtTexture = memoTexture(function makeCourtTexture(hallW, hallD, wallZ) {
   const ppm = Math.min(40, 2048 / hallW);
   const zc = GYM.sideZ + GYM.courtW / 2, hl = GYM.courtL / 2, hw = GYM.courtW / 2;
   return canvasTexture(Math.round(hallW * ppm), Math.round(hallD * ppm), (ctx, W, H) => {
@@ -617,7 +639,7 @@ function makeCourtTexture(hallW, hallD, wallZ) {
       line(wh, [[s * 4.5, zc + hw - 0.15], [s * 4.5, zc + hw + 0.15]]);
     });
   });
-}
+});
 
 // Banner mit Partner-Logo auf weißem Grund (Textur wird einmal geladen und wiederverwendet)
 const logoBannerCache = {};
@@ -639,7 +661,7 @@ function logoBannerTexture(src) {
   return (logoBannerCache[src] = tex);
 }
 
-function makeBannerTexture(kind) {
+const makeBannerTexture = memoTexture(function makeBannerTexture(kind) {
   return canvasTexture(640, 320, (ctx, W, H) => {
     const designs = {
       white: ['#f3f1ec', '#1d3f8f', 'SPONSOR', 'Deine Werbung hier'],
@@ -655,7 +677,7 @@ function makeBannerTexture(kind) {
     ctx.font = '500 36px Inter, Arial, sans-serif';
     ctx.fillText(sub, W / 2, H * 0.7);
   });
-}
+});
 
 function buildScoreboard(x, y, z) {
   const g = new THREE.Group();
@@ -830,7 +852,7 @@ function buildGym(wallW, wallH) {
 }
 
 // Gegenüberliegende Hallenwand: hell verputzt, oben ein Fensterband
-function makeFarWallTexture(w, h) {
+const makeFarWallTexture = memoTexture(function makeFarWallTexture(w, h) {
   const ppm = Math.min(40, 2048 / w);
   return canvasTexture(Math.round(w * ppm), Math.round(h * ppm), (ctx, W, H) => {
     ctx.fillStyle = '#d9d4ca'; ctx.fillRect(0, 0, W, H);
@@ -847,7 +869,7 @@ function makeFarWallTexture(w, h) {
       ctx.beginPath(); ctx.moveTo((x + 1.4) * ppm, y(h - 0.8)); ctx.lineTo((x + 1.4) * ppm, y(h - 2.4)); ctx.stroke();
     }
   });
-}
+});
 
 // Spielerbank: Metallgestell mit sieben Schalensitzen in Teamfarbe, Blick zum Spielfeld (−z)
 function buildTeamBench(x, z, color) {
@@ -999,9 +1021,15 @@ function buildTribune(z0, z1, length) {
 // Sonniger Tag, Bäume, Gehweg mit Bank und Laternen, geparkte und fahrende Autos.
 
 const envAnimators = [];   // pro Bild aufgerufen (dt), z. B. für fahrende Autos
+const carPositions = [];   // fahrende Autos behalten ihre Position, wenn die Umgebung neu aufgebaut wird
+const loadImageTexture = memoTexture((src) => {
+  const tex = new THREE.TextureLoader().load(src);
+  tex.encoding = THREE.sRGBEncoding;
+  return tex;
+});
 
 // Hausfassade: weißer Putz, unten Schaufenster, Fenster nur neben der LED-Fläche
-function makeHouseFacadeTexture(w, h, ledX0, ledX1, ledY0, ledY1) {
+const makeHouseFacadeTexture = memoTexture(function makeHouseFacadeTexture(w, h, ledX0, ledX1, ledY0, ledY1) {
   const ppm = Math.min(48, 2048 / Math.max(w, h));
   return canvasTexture(Math.round(w * ppm), Math.round(h * ppm), (ctx, W, H) => {
     const X = (m) => (m + w / 2) * ppm, Y = (m) => H - m * ppm;
@@ -1029,7 +1057,7 @@ function makeHouseFacadeTexture(w, h, ledX0, ledX1, ledY0, ledY1) {
       }
     }
   });
-}
+});
 
 // Einfache Hausfassade mit Fensterraster (Seitenwände, Nachbarhäuser)
 const facadeCache = {};
@@ -1049,7 +1077,7 @@ function makeWindowFacade(color, w, h) {
 
 // Linke Seitenwand des LED-Hauses: Erdgeschoss mit Fenstern, oben nur je ein Fenster
 // vorne und hinten, die Mitte bleibt frei für das Plakat
-function makePosterSideFacade(color, w, h) {
+const makePosterSideFacade = memoTexture(function makePosterSideFacade(color, w, h) {
   const ppm = Math.min(24, 1024 / Math.max(w, h));
   return canvasTexture(Math.round(w * ppm), Math.round(h * ppm), (ctx, W, H) => {
     ctx.fillStyle = color; ctx.fillRect(0, 0, W, H);
@@ -1061,7 +1089,7 @@ function makePosterSideFacade(color, w, h) {
     for (let x = 1; x < w - 1.2; x += 2.4) win(x, 1.2);
     for (let y = 4.2; y < h - 1.5; y += 3) { win(1, y); win(w - 2.2, y); }
   });
-}
+});
 
 // Haus als Block mit Satteldach (Giebel zeigt nach vorne)
 function buildHouse(w, h, d, frontMat, sideColor, roofColor = 0x4a4d52, roofMat = null, leftMat = null) {
@@ -1163,7 +1191,7 @@ function buildSeagull() {
 }
 
 // Plakat Holstein Kiel (selbst gezeichnet, ohne Vereinswappen)
-function makeKielPosterTexture() {
+const makeKielPosterTexture = memoTexture(function makeKielPosterTexture() {
   return canvasTexture(900, 600, (ctx, W, H) => {
     ctx.fillStyle = '#0a3d8f'; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = '#ffffff'; ctx.fillRect(0, H * 0.72, W, H * 0.09);
@@ -1178,7 +1206,7 @@ function makeKielPosterTexture() {
     ctx.fillText('HEIMSPIEL IM HOLSTEIN-STADION', W / 2, H * 0.785);
     ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 10; ctx.strokeRect(5, 5, W - 10, H - 10);
   });
-}
+});
 
 // Flagge aus dem Fenster gegenüber, leicht gewellt
 function buildHangingFlag(src, w, h) {
@@ -1189,8 +1217,7 @@ function buildHangingFlag(src, w, h) {
     pos.setZ(i, Math.sin(x * 3.1) * 0.06 * (0.5 + (h / 2 - y) / h));
   }
   geo.computeVertexNormals();
-  const tex = new THREE.TextureLoader().load(src);
-  tex.encoding = THREE.sRGBEncoding;
+  const tex = loadImageTexture(src);
   return new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, side: THREE.DoubleSide }));
 }
 
@@ -1233,9 +1260,9 @@ function buildStreet(wallW, wallH) {
   gull.rotation.y = -0.6;
   envGroup.add(gull);
   // Plakat Holstein Kiel an der linken Hauswand (zur Straße)
-  const poster = new THREE.Mesh(new THREE.PlaneGeometry(6, 4), new THREE.MeshStandardMaterial({ map: makeKielPosterTexture(), roughness: 0.8 }));
+  const poster = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 3), new THREE.MeshStandardMaterial({ map: makeKielPosterTexture(), roughness: 0.8 }));
   poster.rotation.y = -Math.PI / 2;
-  poster.position.set(-houseW / 2 - 0.03, 7, front - houseD / 2);
+  poster.position.set(-houseW / 2 - 0.03, 4.7, front - houseD / 2);   // tiefer als die LED-Wand (Unterkante 5 m)
   envGroup.add(poster);
 
   // Flächen: Straße, Gehwege, Vorplatz
@@ -1308,15 +1335,17 @@ function buildStreet(wallW, wallH) {
   const lane = roadW / 4;
   [[8, 0x8a8f96], [16, 0x1d2a44], [-8, 0xb8bcc2]]
     .forEach(([z, c]) => { const car = buildCar(c); car.position.set(roadX - roadW / 2 - 1.2, 0, z); envGroup.add(car); });
-  [[roadX + lane, -1, 0x1a1c20, 9, 0], [roadX - lane, 1, 0xc81e2a, 11, 45], [roadX + lane, -1, 0xeeeeee, 8, 70]].forEach(([x, dir, c, v, z0]) => {
+  [[roadX + lane, -1, 0x1a1c20, 9, 0], [roadX - lane, 1, 0xc81e2a, 11, 45], [roadX + lane, -1, 0xeeeeee, 8, 70]].forEach(([x, dir, c, v, z0], i) => {
     const car = buildCar(c);
     car.rotation.y = dir < 0 ? Math.PI : 0;
-    car.position.set(x, 0, 60 - z0);
+    if (carPositions[i] === undefined) carPositions[i] = 60 - z0;
+    car.position.set(x, 0, carPositions[i]);
     envGroup.add(car);
     envAnimators.push((dt) => {
       car.position.z += dir * v * dt;
       if (car.position.z < -90) car.position.z = 60;
       if (car.position.z > 60) car.position.z = -90;
+      carPositions[i] = car.position.z;
     });
   });
 }

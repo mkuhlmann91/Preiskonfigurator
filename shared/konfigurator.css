@@ -224,6 +224,10 @@
     .hud:not(.collapsed) .hud-chevron{transform:rotate(180deg);}
     .hud:not(.collapsed) .eyebrow{position:absolute;top:7px;right:9px;width:auto;margin:0;}
     .hint{display:none;}
+    /* Link teilen / PDF am Handy kleiner */
+    .view-actions{right:8px;bottom:8px;gap:4px;}
+    .view-btn{padding:4px 9px;gap:4px;font-size:10.5px;}
+    .view-btn svg{width:12px;height:12px;}
 
     /* Größere Touch-Ziele */
     .seg-btn{padding:12px 8px;font-size:12.5px;min-height:44px;}
