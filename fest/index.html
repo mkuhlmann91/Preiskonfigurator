@@ -68,26 +68,13 @@
 
       <div class="field">
         <div class="title-row">
-          <span class="title-text">Panelgröße</span>
-          <span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">960 × 960 mm für große Flächen. 640 × 480 mm gibt es auch mit P1.86 für kurze Abstände. Kombiniert füllt die Breite mit 640er-Panels auf, so gehen auch Maße wie 3,52 m.</span></span>
-        </div>
-        <div class="segmented seg-4" id="segPanel">
-          <div class="seg-btn active" data-val="p960">960×960</div>
-          <div class="seg-btn" data-val="p640">640×480</div>
-          <div class="seg-btn" data-val="mix">Kombiniert</div>
-        </div>
-      </div>
-
-      <div class="field">
-        <div class="title-row">
           <span class="title-text">Größe der Wand</span>
-          <span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Mit + / – oder direkt eintippen. Die Schritte richten sich nach der Panelgröße: 960er in 0,96 m, 640×480 in 0,64 × 0,48 m, kombiniert Breite in 0,32 m und Höhe in 0,96 m.</span></span>
         </div>
         <div class="stepper-row" style="margin-bottom:10px;">
           <div class="stepper-label" style="width:48px;">Breite</div>
           <div class="stepper">
             <button id="colsMinus">–</button>
-            <input class="val" id="colsVal" type="text" inputmode="decimal" aria-label="Breite in Metern" value="4,80"><span class="unit">m</span>
+            <input class="val" id="colsVal" type="text" inputmode="decimal" aria-label="Breite in Metern" value="4,48"><span class="unit">m</span>
             <button id="colsPlus">+</button>
           </div>
           <div class="stepper-label" id="colsPanelsLabel">10 Panels<br>nebeneinander</div>
@@ -99,19 +86,10 @@
             <input class="val" id="rowsVal" type="text" inputmode="decimal" aria-label="Höhe in Metern" value="2,88"><span class="unit">m</span>
             <button id="rowsPlus">+</button>
           </div>
-          <div class="stepper-label" id="rowsPanelsLabel">3 Panels<br>übereinander</div>
+          <div class="stepper-label" id="rowsPanelsLabel">6 Panels<br>übereinander</div>
         </div>
-        <div class="panel-total" id="panelTotal"><b>Gesamt: 15 Panels</b><br>15× 960×960mm</div>
-      </div>
-
-      <div class="field">
-        <div class="switch-row">
-          <div class="txt">Wandhalterung inklusive<span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Stahlgestell, das direkt an der Wand verschraubt wird und auf dem die LED-Module sitzen. Spart viel Montagezeit vor Ort. Abwählen, wenn bereits eine eigene Unterkonstruktion vorhanden ist. Mit „Gestell ansehen“ blendest du die Module aus.</span></span><small>Montage direkt an der Wand, Wartung von vorne</small></div>
-          <label class="switch">
-            <input type="checkbox" id="bracketToggle" checked>
-            <span class="slider-toggle"></span>
-          </label>
-        </div>
+        <div class="panel-total" id="panelTotal"><b>Gesamt: 42 Panels</b><br>42× 640×480mm</div>
+        <div class="size-note">Die Wand besteht aus Panels mit 640 × 480 mm. Deine Eingabe wird auf die nächste passende Größe gerundet. Die Wandhalterung ist immer inklusive.</div>
       </div>
 
       <div class="field">
@@ -142,7 +120,6 @@
         </div>
         <div class="segmented seg-4" id="segContent">
           <div class="seg-btn active" data-val="logo">Logo</div>
-          <div class="seg-btn" data-val="pink">Pink</div>
           <div class="seg-btn" data-val="promo">Werbung</div>
           <div class="seg-btn" data-val="score">Spielstand</div>
         </div>
