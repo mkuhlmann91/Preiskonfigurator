@@ -2265,7 +2265,7 @@ function buildSupport(dims) {
     // 4-Punkt-Traverse (Box-Truss, ca. 29 × 29 cm): vier Gurtrohre, die Diagonalen
     // laufen auf allen vier Seiten im Zickzack und treffen sich genau in den Gurtrohren.
     const trussHalf = 0.145;
-    const trussY = wallBottomY + totalHeight + 0.35 + trussHalf; // Mitte der Traverse
+    const trussY = wallBottomY + totalHeight + 0.08 + 0.2 + trussHalf; // Hanging Bar (8 cm) + ca. 20 cm bis zur Traverse
     const trussLen = totalWidth + 0.8;
     const trussGroup = new THREE.Group();
     const chordR = 0.024, braceR = 0.009;
@@ -2309,25 +2309,53 @@ function buildSupport(dims) {
     supportGroup.add(trussGroup);
     const trussBottom = trussY - h;
 
-    // Hanging bars + cables down to wall
-    const barCount = Math.min(Math.max(Math.round(totalWidth / 1.2), 2), 10);
-    for (let i = 0; i < barCount; i++) {
-      const x = -totalWidth / 2 + (i + 0.5) * (totalWidth / barCount);
-      const cableGeo = new THREE.CylinderGeometry(0.008, 0.008, trussBottom - (wallBottomY + totalHeight), 6);
-      const cable = new THREE.Mesh(cableGeo, darkMat);
-      cable.position.set(x, (trussBottom + (wallBottomY + totalHeight)) / 2, 0);
-      supportGroup.add(cable);
-
-      // Querstange zwischen den unteren Gurtrohren, an der das Seil hängt
-      const clamp = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 2 * trussHalf, 8), darkMat);
-      clamp.rotation.x = Math.PI / 2;
-      clamp.position.set(x, trussBottom, 0);
-      supportGroup.add(clamp);
-
-      const bar = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.2), metalMat);
-      bar.position.set(x, wallBottomY + totalHeight + 0.03, 0);
-      supportGroup.add(bar);
-    }
+    // Hanging Bars (schwarzes U-Profil, direkt auf den Panels, je 1 m bzw. 0,5 m am Rand)
+    // mit Ringschraube + Schäkel, daran eine schwarze Rundschlinge um die Traverse.
+    const wallTop = wallBottomY + totalHeight;
+    const barH = 0.08, barD = 0.09;
+    const barMat = new THREE.MeshStandardMaterial({ color: 0x111113, roughness: 0.55, metalness: 0.4 });
+    const steelMat = new THREE.MeshStandardMaterial({ color: 0xb8bcc2, roughness: 0.3, metalness: 0.9 });
+    const slingMat = new THREE.MeshStandardMaterial({ color: 0x0b0b0c, roughness: 0.95 });
+    const bars = [];
+    for (let x = -totalWidth / 2; x < totalWidth / 2 - 0.01; x += 1) bars.push([x, Math.min(1, totalWidth / 2 - x)]);
+    bars.forEach(([x0, len]) => {
+      const cx = x0 + len / 2;
+      const g = new THREE.Group();
+      g.position.set(cx, wallTop, 0);
+      // U-Profil: Boden + zwei Seitenwangen + Stirnseiten
+      const L = len - 0.02;
+      const part = (w, h, d, x, y, z) => {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), barMat);
+        m.position.set(x, y, z); g.add(m);
+      };
+      part(L, 0.006, barD, 0, 0.003, 0);
+      [-1, 1].forEach((sz) => part(L, barH, 0.006, 0, barH / 2, sz * (barD / 2 - 0.003)));
+      [-1, 1].forEach((sx) => part(0.006, barH, barD, sx * (L / 2 - 0.003), barH / 2, 0));
+      // Mittelblock mit Ringschraube
+      part(0.14, barH, barD - 0.012, 0, barH / 2, 0);
+      const eye = new THREE.Mesh(new THREE.TorusGeometry(0.022, 0.007, 8, 18), steelMat);
+      eye.position.set(0, barH + 0.03, 0); g.add(eye);
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.012, 8), steelMat);
+      stem.position.set(0, barH + 0.006, 0); g.add(stem);
+      // Schäkel quer durch das Auge
+      const shackle = new THREE.Mesh(new THREE.TorusGeometry(0.02, 0.005, 8, 16, Math.PI), steelMat);
+      shackle.rotation.y = Math.PI / 2;
+      shackle.position.set(0, barH + 0.055, 0); g.add(shackle);
+      const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.05, 6), steelMat);
+      pin.rotation.x = Math.PI / 2;
+      pin.position.set(0, barH + 0.055, 0); g.add(pin);
+      // Rundschlinge: vom Schäkel hoch, einmal um die Traverse herum
+      const sy = barH + 0.075, hb = trussBottom - wallTop, ht = trussY + h - wallTop, zr = h + 0.03;
+      const pts = [
+        [0, sy, 0], [0, hb - 0.02, zr], [0, hb + h, zr + 0.01], [0, ht + 0.025, zr - 0.02],
+        [0, ht + 0.03, 0], [0, ht + 0.025, -zr + 0.02], [0, hb + h, -zr - 0.01], [0, hb - 0.02, -zr]
+      ].map(([a, b, c]) => new THREE.Vector3(a, b, c));
+      const curve = new THREE.CatmullRomCurve3(pts, true, 'catmullrom', 0.3);
+      const sling = new THREE.Mesh(new THREE.TubeGeometry(curve, 48, 0.011, 6, true), slingMat);
+      sling.scale.x = 2.2; // flache Schlinge, ca. 5 cm breit
+      g.add(sling);
+      supportGroup.add(g);
+    });
   }
 
   if (state.mount === 'wall') {

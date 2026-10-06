@@ -31,84 +31,120 @@
 <style>
   :root{
     --black:#0a0a0b;
-    --panel-bg:#141416;
-    --line:#2a2a2e;
+    --card:#131315;
+    --line:#26262a;
     --white:#f5f5f7;
     --muted:#8d8d94;
     --accent:#e7007f;
+    --gap:24px;
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;background:var(--black);color:var(--white);font-family:'Inter',sans-serif;}
-  .wrap{max-width:1080px;margin:0 auto;padding:48px 20px 40px;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;}
-  .brand{display:flex;align-items:center;gap:10px;margin-bottom:36px;}
-  .brand img{width:34px;height:34px;border-radius:8px;}
+  html,body{margin:0;padding:0;background:var(--black);color:var(--white);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
+  a{color:inherit;}
+  .wrap{max-width:1120px;margin:0 auto;padding:24px 24px 32px;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;gap:var(--gap);}
+  .top{display:flex;align-items:center;justify-content:space-between;}
+  .brand{display:flex;align-items:center;gap:10px;text-decoration:none;}
+  .brand img{width:32px;height:32px;border-radius:8px;}
   .brand span{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;letter-spacing:.5px;}
-  h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(28px,5vw,44px);line-height:1.1;margin:0 0 12px;letter-spacing:-.5px;}
+  .top-link{font-size:13px;color:var(--muted);text-decoration:none;}
+  .top-link:hover{color:var(--white);}
+
+  .hero{position:relative;border-radius:20px;overflow:hidden;border:1px solid var(--line);aspect-ratio:24/9;min-height:300px;}
+  .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 45%;}
+  .hero::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(10,10,11,.94) 0%,rgba(10,10,11,.78) 28%,rgba(10,10,11,0) 52%);}
+  .hero-text{position:absolute;left:0;top:0;bottom:0;z-index:1;width:52%;padding:40px;display:flex;flex-direction:column;justify-content:center;}
+  .eyebrow{display:inline-block;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:10px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(30px,4.6vw,52px);line-height:1.05;margin:0 0 10px;letter-spacing:-.8px;}
   h1 em{font-style:normal;color:var(--accent);}
-  .lead{color:var(--muted);font-size:16px;line-height:1.55;margin:0 0 36px;max-width:620px;}
-  .tiles{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
-  .tile{display:flex;flex-direction:column;background:var(--panel-bg);border:1px solid var(--line);border-radius:16px;overflow:hidden;color:inherit;text-decoration:none;transition:border-color .2s,transform .2s;}
-  a.tile:hover{border-color:var(--accent);transform:translateY(-2px);}
-  .tile img{display:block;width:100%;aspect-ratio:3/2;object-fit:cover;background:#1b1b1e;}
-  .tile-body{padding:20px 22px 22px;display:flex;flex-direction:column;flex:1;}
-  .tag{align-self:flex-start;font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--accent);border:1px solid rgba(231,0,127,.4);border-radius:999px;padding:4px 10px;margin-bottom:12px;}
-  .tile h2{font-family:'Space Grotesk',sans-serif;font-size:22px;margin:0 0 8px;}
-  .tile p{color:#c9c9cd;font-size:14px;line-height:1.55;margin:0 0 14px;}
-  .tile ul{margin:0 0 18px;padding:0;list-style:none;font-size:13.5px;color:var(--muted);line-height:1.8;}
-  .tile li::before{content:'✓';color:var(--accent);font-weight:700;margin-right:8px;}
-  .cta{margin-top:auto;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);color:#fff;border-radius:10px;padding:13px 18px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;text-decoration:none;}
-  .cta.secondary{background:transparent;border:1px solid var(--line);color:var(--white);}
-  .cta.secondary:hover{border-color:var(--accent);}
-  .tile .soon{font-size:12.5px;color:var(--muted);margin:10px 0 0;text-align:center;}
-  footer{margin-top:auto;padding-top:40px;font-size:12px;color:var(--muted);}
-  footer a{color:var(--muted);}
+  .lead{color:#d2d2d6;font-size:16px;line-height:1.5;margin:0;}
+
+  .section-title{font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin:8px 0 0;}
+  .tiles{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);}
+  .tile{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden;text-decoration:none;transition:border-color .2s,transform .2s;}
+  .tile:hover{border-color:var(--accent);transform:translateY(-3px);}
+  .tile:hover .cta{background:#ff1a94;}
+  .tile .img{position:relative;aspect-ratio:3/2;background:#1b1b1e;}
+  .tile .img img{display:block;width:100%;height:100%;object-fit:cover;}
+  .tag{position:absolute;left:16px;top:16px;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#fff;background:rgba(10,10,11,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-radius:999px;padding:6px 12px;}
+  .tile-body{padding:24px;display:flex;flex-direction:column;gap:16px;flex:1;}
+  .tile h2{font-family:'Space Grotesk',sans-serif;font-size:24px;line-height:1.15;margin:0;}
+  .tile p{color:#c4c4c9;font-size:15px;line-height:1.5;margin:0;}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none;}
+  .chips li{font-size:12.5px;color:#d6d6da;border:1px solid var(--line);border-radius:999px;padding:5px 11px;}
+  .cta{margin-top:auto;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);color:#fff;border-radius:12px;padding:14px 18px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;transition:background .2s;}
+
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap);margin:0;padding:0;list-style:none;}
+  .steps li{display:flex;align-items:center;gap:12px;font-size:14px;color:#c4c4c9;}
+  .steps b{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;border:1px solid rgba(231,0,127,.5);color:var(--accent);font-family:'Space Grotesk',sans-serif;font-size:14px;}
+
+  footer{margin-top:auto;padding-top:8px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);padding-top:20px;}
+  footer a{color:var(--muted);text-decoration:none;}
+  footer a:hover{color:var(--white);}
+  footer nav{display:flex;gap:16px;}
+
   @media (max-width:760px){
-    .wrap{padding:28px 16px 32px;}
-    .brand{margin-bottom:24px;}
-    .lead{font-size:15px;margin-bottom:24px;}
-    .tiles{grid-template-columns:1fr;gap:16px;}
+    :root{--gap:16px;}
+    .wrap{padding:16px 16px 24px;}
+    .hero{aspect-ratio:1/1;min-height:0;max-height:58vh;border-radius:16px;}
+    .hero img{object-position:56% 30%;}
+    .hero::after{background:linear-gradient(180deg,rgba(10,10,11,0) 35%,rgba(10,10,11,.6) 62%,rgba(10,10,11,.94) 100%);}
+    .hero-text{top:auto;width:auto;right:0;padding:20px;}
+    .lead{font-size:15px;}
+    .tiles{grid-template-columns:1fr;}
+    .tile{border-radius:16px;}
+    .tile-body{padding:20px;}
+    .steps{grid-template-columns:1fr;gap:12px;}
   }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="brand"><img src="/assets/pixli-icon.png" alt=""><span>LEDWALL 360</span></div>
-  <h1>Deine LED-Wand, <em>live in 3D</em> konfiguriert.</h1>
-  <p class="lead">Wähle, wofür deine LED-Wand gedacht ist. Danach stellst du Größe, Pixel Pitch und Inhalt ein und fragst direkt ein unverbindliches Angebot an.</p>
+  <header class="top">
+    <a class="brand" href="https://ledwall-360.de"><img src="/assets/pixli-icon.png" alt=""><span>LEDWALL 360</span></a>
+    <a class="top-link" href="https://ledwall-360.de">ledwall-360.de</a>
+  </header>
 
+  <section class="hero">
+    <img src="/assets/hero.jpg" alt="LED-Wand an einer Traverse, live im 3D-Konfigurator">
+    <div class="hero-text">
+      <span class="eyebrow">LED-Wand Konfigurator</span>
+      <h1>Deine LED-Wand,<br><em>live in 3D.</em></h1>
+      <p class="lead">Größe einstellen, ansehen, Angebot anfragen.</p>
+    </div>
+  </section>
+
+  <h2 class="section-title">Wofür brauchst du die Wand?</h2>
   <div class="tiles">
     <a class="tile" href="/mobil/">
-      <img src="/assets/tile-mobil.jpg" alt="Mobile LED-Wand hängend an einer Traverse">
+      <div class="img"><img src="/assets/tile-mobil.jpg" alt="Mobile LED-Wand hängend an einer Traverse" loading="lazy"><span class="tag">Mobil</span></div>
       <div class="tile-body">
-        <span class="tag">Mobil</span>
-        <h2>Für Events &amp; Vermietung</h2>
-        <p>Leichte Panels mit Schnellverschluss für häufigen Auf- und Abbau, zum Beispiel bei Messen, Konzerten und Firmenevents.</p>
-        <ul>
-          <li>Hängend an der Traverse</li>
-          <li>Auf dem Boden gestapelt</li>
-          <li>Indoor &amp; Outdoor</li>
-        </ul>
+        <h2>Für Events und Bühnen</h2>
+        <p>Leichte Panels, schnell auf- und abgebaut.</p>
+        <ul class="chips"><li>An der Traverse</li><li>Auf dem Boden</li><li>Indoor &amp; Outdoor</li></ul>
         <span class="cta">Mobil konfigurieren →</span>
       </div>
     </a>
-
     <a class="tile" href="/fest/">
-      <img src="/assets/tile-fest.jpg" alt="Fest installierte LED-Wand an einer Fassade">
+      <div class="img"><img src="/assets/tile-fest.jpg" alt="Fest installierte LED-Wand in einer Sporthalle" loading="lazy"><span class="tag">Festinstallation</span></div>
       <div class="tile-body">
-        <span class="tag">Festinstallation</span>
-        <h2>Für dauerhafte Installationen</h2>
-        <p>Fest verbaute LED-Wände für Geschäfte, Foyers, Sportstätten und Fassaden, flach an der Wand, im Rahmen oder am Mast.</p>
-        <ul>
-          <li>Direkt an der Wand</li>
-          <li>Stahlrahmen oder Mast</li>
-          <li>Wartung von vorne oder hinten</li>
-        </ul>
+        <h2>Für Hallen, Läden und Fassaden</h2>
+        <p>Fest an der Wand, dauerhaft im Einsatz.</p>
+        <ul class="chips"><li>Wandmontage</li><li>Halterung inklusive</li><li>Indoor &amp; Outdoor</li></ul>
         <span class="cta">Festinstallation konfigurieren →</span>
       </div>
     </a>
   </div>
 
-  <footer>© LEDWALL 360 · <a href="https://ledwall-360.de">ledwall-360.de</a> · <a href="https://ledwall-360.de/datenschutz">Datenschutz</a></footer>
+  <ol class="steps">
+    <li><b>1</b>Größe und Pixel Pitch wählen</li>
+    <li><b>2</b>Wand live in 3D ansehen</li>
+    <li><b>3</b>Unverbindliches Angebot anfragen</li>
+  </ol>
+
+  <footer>
+    <span>© LEDWALL 360</span>
+    <nav><a href="https://ledwall-360.de">ledwall-360.de</a><a href="https://ledwall-360.de/datenschutz">Datenschutz</a></nav>
+  </footer>
 </div>
 </body>
 </html>
