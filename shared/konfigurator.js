@@ -193,10 +193,12 @@ function buildTree(x, z, h) {
 const fogBase = { near: 16, far: 36 };
 function applyEnvironment() {
   envGroup.clear();
+  envAnimators.length = 0;
   const { panelW, panelH } = getPanelDims();
   const wallW = state.cols * panelW, wallH = state.rows * panelH;
   if (IS_FEST) {
-    buildGym(wallW, wallH);
+    if (state.location === 'outdoor') buildStreet(wallW, wallH);
+    else buildGym(wallW, wallH);
   } else if (state.location === 'outdoor') {
     scene.background = skyTexture;
     scene.fog = new THREE.Fog(0xdbe8f2, 30, 75);
@@ -504,8 +506,8 @@ function buildShowroomDecor(wallW) {
 // Handballhalle nach den Fotos: blauer Hallenboden mit Spielfeldern, braun-beige Prallwand,
 // Tore an beiden Stirnseiten, gegenüber Spielerbänke, Kampfgericht und Tribüne.
 
-const FEST_WALL_BOTTOM = () => 2.4;          // Unterkante der LED-Wand über dem Hallenboden
-const FEST_BRACKET_DEPTH = 0.06;             // Wandhalterung zwischen Modulen und Hallenwand
+const FEST_WALL_BOTTOM = () => (state.location === 'outdoor' ? 5 : 2.4);   // Unterkante: Halle 2,4 m, Hausfassade ca. 5 m
+const FEST_BRACKET_DEPTH = 0.09;             // Wandhalterung zwischen Modulen und Hallenwand
 const festHallWallZ = () => -0.09 - FEST_BRACKET_DEPTH;
 
 function canvasTexture(w, h, draw) {
@@ -1004,17 +1006,225 @@ function buildTribune(z0, z1, length) {
   return g;
 }
 
+/* ------------------------ STRASSE (FESTINSTALLATION OUTDOOR) --------------- */
+// Die LED-Wand hängt auf ca. 5 m Höhe an der Stirnseite eines Hauses. Die Straße läuft
+// links am Haus vorbei, wer auf das Haus zufährt, schaut direkt auf die Wand.
+// Sonniger Tag, Bäume, Gehweg mit Bank und Laternen, geparkte und fahrende Autos.
+
+const envAnimators = [];   // pro Bild aufgerufen (dt), z. B. für fahrende Autos
+
+// Hausfassade: weißer Putz, unten Schaufenster, Fenster nur neben der LED-Fläche
+function makeHouseFacadeTexture(w, h, ledX0, ledX1, ledY0, ledY1) {
+  const ppm = Math.min(48, 2048 / Math.max(w, h));
+  return canvasTexture(Math.round(w * ppm), Math.round(h * ppm), (ctx, W, H) => {
+    const X = (m) => (m + w / 2) * ppm, Y = (m) => H - m * ppm;
+    ctx.fillStyle = '#eceae4'; ctx.fillRect(0, 0, W, H);
+    for (let i = 0; i < W * H / 500; i++) {
+      ctx.fillStyle = `rgba(0,0,0,${Math.random() * 0.03})`; ctx.fillRect(Math.random() * W, Math.random() * H, 2, 2);
+    }
+    // Sockel und Erdgeschoss mit Schaufenstern
+    ctx.fillStyle = '#5c5f63'; ctx.fillRect(0, Y(0.45), W, 0.45 * ppm);
+    ctx.fillStyle = '#d9d6cf'; ctx.fillRect(0, Y(3.9), W, 0.25 * ppm);
+    for (let x = -w / 2 + 0.8; x < w / 2 - 1.5; x += 3.1) {
+      const g = ctx.createLinearGradient(0, Y(3.4), 0, Y(0.6));
+      g.addColorStop(0, '#9fb6c4'); g.addColorStop(1, '#556b78');
+      ctx.fillStyle = g; ctx.fillRect(X(x), Y(3.4), 2.6 * ppm, 2.8 * ppm);
+      ctx.strokeStyle = '#2b2d30'; ctx.lineWidth = 0.08 * ppm; ctx.strokeRect(X(x), Y(3.4), 2.6 * ppm, 2.8 * ppm);
+      ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(X(x + 0.2), Y(3.3), 0.5 * ppm, 2.6 * ppm);
+    }
+    // Obergeschosse: Fenster dort, wo keine LED-Wand ist
+    for (let y = 4.6; y < h - 2; y += 3) {
+      for (let x = -w / 2 + 1; x < w / 2 - 1.4; x += 2.4) {
+        if (x + 1.3 > ledX0 - 0.6 && x < ledX1 + 0.6 && y + 1.5 > ledY0 - 0.6 && y < ledY1 + 0.6) continue;
+        ctx.fillStyle = '#7f98a8'; ctx.fillRect(X(x), Y(y + 1.5), 1.3 * ppm, 1.5 * ppm);
+        ctx.strokeStyle = '#f7f6f2'; ctx.lineWidth = 0.1 * ppm; ctx.strokeRect(X(x), Y(y + 1.5), 1.3 * ppm, 1.5 * ppm);
+        ctx.fillStyle = '#c9c6bf'; ctx.fillRect(X(x - 0.08), Y(y - 0.02), 1.46 * ppm, 0.1 * ppm);
+      }
+    }
+  });
+}
+
+// Einfache Hausfassade mit Fensterraster (Seitenwände, Nachbarhäuser)
+const facadeCache = {};
+function makeWindowFacade(color, w, h) {
+  const key = `${color}|${w}|${h}`;
+  if (facadeCache[key]) return facadeCache[key];
+  const ppm = Math.min(24, 1024 / Math.max(w, h));
+  return (facadeCache[key] = canvasTexture(Math.round(w * ppm), Math.round(h * ppm), (ctx, W, H) => {
+    ctx.fillStyle = color; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#5c5f63'; ctx.fillRect(0, H - 0.45 * ppm, W, 0.45 * ppm);
+    for (let y = 1.2; y < h - 1.5; y += 3) for (let x = 1; x < w - 1.2; x += 2.4) {
+      ctx.fillStyle = '#7d93a3'; ctx.fillRect(x * ppm, H - (y + 1.5) * ppm, 1.2 * ppm, 1.5 * ppm);
+      ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(x * ppm, H - (y + 1.5) * ppm, 1.2 * ppm, 0.08 * ppm);
+    }
+  }));
+}
+
+// Haus als Block mit Satteldach (Giebel zeigt nach vorne)
+function buildHouse(w, h, d, frontMat, sideColor, roofColor = 0x4a4d52) {
+  const g = new THREE.Group();
+  const side = new THREE.MeshStandardMaterial({ map: makeWindowFacade(sideColor, d, h), roughness: 0.9 });
+  const plain = new THREE.MeshStandardMaterial({ color: new THREE.Color(sideColor), roughness: 0.9 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [side, side, plain, plain, frontMat, plain]);
+  body.position.set(0, h / 2, -d / 2);
+  g.add(body);
+  const rh = Math.min(4, w * 0.35);
+  const shape = new THREE.Shape([new THREE.Vector2(-w / 2 - 0.3, 0), new THREE.Vector2(w / 2 + 0.3, 0), new THREE.Vector2(0, rh)]);
+  const roof = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: d + 0.4, bevelEnabled: false }),
+    new THREE.MeshStandardMaterial({ color: roofColor, roughness: 0.8 }));
+  roof.position.set(0, h, -d - 0.2);
+  g.add(roof);
+  // Giebelfläche vorne in Fassadenfarbe
+  const gable = new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape([new THREE.Vector2(-w / 2, 0), new THREE.Vector2(w / 2, 0), new THREE.Vector2(0, rh - 0.3)])),
+    new THREE.MeshStandardMaterial({ color: 0xe6e3dc, roughness: 0.9 }));
+  gable.position.set(0, h, 0.01);
+  g.add(gable);
+  return g;
+}
+
+// Auto: Karosserie, Kabine mit dunklen Scheiben, Räder, Lichter. Fährt entlang +z.
+function buildCar(color) {
+  const g = new THREE.Group();
+  const paint = new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.5 });
+  const glass = new THREE.MeshStandardMaterial({ color: 0x1d2630, roughness: 0.1, metalness: 0.6 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.7, 4.3), paint);
+  body.position.y = 0.6;
+  g.add(body);
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.6, 2.3), glass);
+  cabin.position.set(0, 1.22, -0.25);
+  g.add(cabin);
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.06, 1.9), paint);
+  roof.position.set(0, 1.54, -0.3);
+  g.add(roof);
+  const tire = new THREE.MeshStandardMaterial({ color: 0x151517, roughness: 0.9 });
+  [[-0.86, 1.35], [0.86, 1.35], [-0.86, -1.4], [0.86, -1.4]].forEach(([x, z]) => {
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.24, 16), tire);
+    w.rotation.z = Math.PI / 2; w.position.set(x, 0.34, z); g.add(w);
+  });
+  const head = new THREE.MeshBasicMaterial({ color: 0xfff6dc }), tail = new THREE.MeshBasicMaterial({ color: 0xd2141c });
+  [-0.6, 0.6].forEach((x) => {
+    const h = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.12, 0.04), head); h.position.set(x, 0.72, 2.16); g.add(h);
+    const t = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.12, 0.04), tail); t.position.set(x, 0.75, -2.16); g.add(t);
+  });
+  return g;
+}
+
+function buildStreet(wallW, wallH) {
+  const bottom = FEST_WALL_BOTTOM();
+  const houseW = Math.max(12, wallW + 6), houseH = Math.max(11, bottom + wallH + 2.5), houseD = 12;
+  const front = festHallWallZ();
+  const roadX = -(houseW / 2 + 3.5 + 3.5), roadW = 7;
+
+  scene.background = skyTexture;
+  scene.fog = new THREE.Fog(0xdbe8f2, 60, 160);
+  Object.assign(fogBase, { near: 60, far: 160 });
+  floorMat.color.set(0x4f7d3a);   // Rasen
+  floorMat.roughness = 1;
+  rimBase = 0;
+  ambientLight.intensity = 0.15;
+  hemiLight.color.set(0xcfe6ff);
+  hemiLight.groundColor.set(0x5a6b45);
+  hemiLight.intensity = 0.55;
+  keyLight.intensity = 0.85;
+  fillLight.intensity = 0.3;
+  keyLight.position.set(18, 26, 22);
+
+  // Haus mit LED-Wand an der Stirnseite
+  const facade = new THREE.MeshStandardMaterial({
+    map: makeHouseFacadeTexture(houseW, houseH, -wallW / 2, wallW / 2, bottom, bottom + wallH), roughness: 0.9 });
+  const house = buildHouse(houseW, houseH, houseD, facade, '#e8e5de');
+  house.position.z = front;
+  envGroup.add(house);
+
+  // Flächen: Straße, Gehwege, Vorplatz
+  const flat = (w, d, x, z, color, y = 0.01) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ color, roughness: 0.95 }));
+    m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); envGroup.add(m); return m;
+  };
+  const roadTex = canvasTexture(64, 1024, (ctx, W, H) => {
+    ctx.fillStyle = '#3c3e42'; ctx.fillRect(0, 0, W, H);
+    for (let i = 0; i < 3000; i++) { ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.05})`; ctx.fillRect(Math.random() * W, Math.random() * H, 1, 1); }
+    ctx.fillStyle = '#f2f2ee';
+    for (let y = 0; y < H; y += 64) ctx.fillRect(W / 2 - 1, y, 2, 32);     // Mittellinie gestrichelt
+    ctx.fillRect(2, 0, 2, H); ctx.fillRect(W - 4, 0, 2, H);                   // Randlinien
+  });
+  roadTex.wrapT = THREE.RepeatWrapping; roadTex.repeat.set(1, 8);
+  const road = new THREE.Mesh(new THREE.PlaneGeometry(roadW, 200), new THREE.MeshStandardMaterial({ map: roadTex, roughness: 0.9 }));
+  road.rotation.x = -Math.PI / 2; road.position.set(roadX, 0.012, -20); envGroup.add(road);
+  flat(3.5, 200, roadX + roadW / 2 + 1.75, -20, 0x7f7b75, 0.03);    // Gehweg Hausseite
+  flat(2.4, 200, roadX - roadW / 2 - 1.2, -20, 0x45474b, 0.02);     // Parkstreifen gegenüber
+  flat(4.5, 200, roadX - roadW / 2 - 2.4 - 2.25, -20, 0x7f7b75, 0.03);  // Gehweg gegenüber
+  flat(houseW, 6, 0, front + 3, 0x88847c, 0.02);                     // Vorplatz
+  [roadX + roadW / 2 + 0.1, roadX - roadW / 2 - 2.5].forEach((x) => {   // Bordsteine
+    const curb = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.12, 200), new THREE.MeshStandardMaterial({ color: 0x9a978f }));
+    curb.position.set(x, 0.06, -20); envGroup.add(curb);
+  });
+
+  // Zaun mit Hecke vor dem Haus (lässt die Mitte frei)
+  const fenceMat = darkMetalMat(), hedgeMat = new THREE.MeshStandardMaterial({ color: 0x35612b, roughness: 1 });
+  [-1, 1].forEach((s) => {
+    const len = houseW / 2 - 2.2, cx = s * (2.2 + len / 2);
+    const hedge = new THREE.Mesh(new THREE.BoxGeometry(len, 0.9, 0.7), hedgeMat);
+    hedge.position.set(cx, 0.45, front + 5.4); envGroup.add(hedge);
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(len, 0.05, 0.05), fenceMat);
+    rail.position.set(cx, 1.1, front + 5.9); envGroup.add(rail);
+    for (let x = cx - len / 2; x <= cx + len / 2 + 0.01; x += 0.25) {
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(0.03, 1.1, 0.03), fenceMat);
+      bar.position.set(x, 0.55, front + 5.9); envGroup.add(bar);
+    }
+  });
+
+  // Gehweg: Bank, Mülleimer, Laternen, Bäume
+  const walkX = roadX + roadW / 2 + 2.0;
+  envGroup.add(buildBench(walkX + 0.9, front + 8, -Math.PI / 2));
+  envGroup.add(buildBin(walkX + 0.9, front + 10));
+  [-30, -10, 12, 32, 52].forEach((z) => envGroup.add(buildStreetLamp(roadX + roadW / 2 + 0.6, z, 6)));
+  [[walkX + 0.8, 40, 7], [walkX + 0.8, 54, 6.5], [walkX + 0.8, -18, 7], [roadX - roadW / 2 - 5, 4, 7.5], [roadX - roadW / 2 - 5, 22, 6.5],
+   [roadX - roadW / 2 - 5, -14, 7], [houseW / 2 + 3, front + 1, 7.5], [houseW / 2 + 5.5, front + 9, 6]]
+    .forEach(([x, z, h]) => envGroup.add(buildTree(x, z, h)));
+  envGroup.add(buildPlanter(-houseW / 2 + 1.2, front + 3.5));
+  envGroup.add(buildPlanter(houseW / 2 - 1.2, front + 3.5));
+
+  // Nachbarhäuser: weiter hinten auf dieser Seite und gegenüber
+  const neighbour = (x, z, w, h, d, color, rot) => {
+    const plainFront = new THREE.MeshStandardMaterial({ map: makeWindowFacade(color, w, h), roughness: 0.9 });
+    const hs = buildHouse(w, h, d, plainFront, color, 0x6b4a3a);
+    hs.position.set(x, 0, z); hs.rotation.y = rot; envGroup.add(hs);
+  };
+  neighbour(0, front - houseD - 6, houseW, 10, 10, '#e2d6c2', 0);
+  neighbour(1, front - houseD - 22, houseW + 2, 12, 12, '#d8dde2', 0);
+  const oppX = roadX - roadW / 2 - 7.5;
+  [[-30, 12, 11, '#efe6d4'], [-15, 10, 13, '#dfe4ea'], [0, 11, 12, '#eadbd0'], [16, 9, 12, '#e6e1d6'], [32, 12, 11, '#d9dfd8']]
+    .forEach(([z, w, h, c]) => neighbour(oppX, z, w, h, 10, c, Math.PI / 2));
+
+  // Autos: geparkt am Rand gegenüber, zwei fahren vorbei
+  const lane = roadW / 4;
+  [[8, 0x8a8f96], [16, 0x1d2a44], [-8, 0xb8bcc2]]
+    .forEach(([z, c]) => { const car = buildCar(c); car.position.set(roadX - roadW / 2 - 1.2, 0, z); envGroup.add(car); });
+  [[roadX + lane, -1, 0x1a1c20, 9, 0], [roadX - lane, 1, 0xc81e2a, 11, 45], [roadX + lane, -1, 0xeeeeee, 8, 70]].forEach(([x, dir, c, v, z0]) => {
+    const car = buildCar(c);
+    car.rotation.y = dir < 0 ? Math.PI : 0;
+    car.position.set(x, 0, 60 - z0);
+    envGroup.add(car);
+    envAnimators.push((dt) => {
+      car.position.z += dir * v * dt;
+      if (car.position.z < -90) car.position.z = 60;
+      if (car.position.z > 60) car.position.z = -90;
+    });
+  });
+}
+
 /* -------------------------- WANDHALTERUNG (FESTINSTALLATION) --------------- */
 // Schwarzes Stahlgestell wie im Foto: Rahmen im 960-mm-Raster, waagerechte
 // Flachstähle, zwei senkrechte Streben je Feld mit Empfangskarte und Netzteilen.
 function buildWallBracket(totalWidth, totalHeight, centerY) {
   const L = getLayout();
   const g = new THREE.Group();
-  const steel = new THREE.MeshStandardMaterial({ color: 0x141416, roughness: 0.6, metalness: 0.2 });
+  const steel = new THREE.MeshStandardMaterial({ color: 0x0c0c0d, roughness: 0.7, metalness: 0.1 });
   const zBack = festHallWallZ(), zFront = -0.09;
   const zMid = (zBack + zFront) / 2, dz = zFront - zBack;
   const x0 = -totalWidth / 2, y0 = centerY - totalHeight / 2;
-  // Felder = einzelne Panels (960 × 960 oder 640 × 480)
+  // Felder = einzelne Kabinette (960 × 960 oder 640 × 480)
   const cells = [];
   let cx = x0;
   L.colWidths.forEach((w, i) => {
@@ -1022,31 +1232,25 @@ function buildWallBracket(totalWidth, totalHeight, centerY) {
     for (let j = 0; j < n; j++) cells.push({ x: cx + w / 2, y: y0 + (j + 0.5) * h, w, h });
     cx += w;
   });
-  // Rahmenprofile: senkrecht an jeder Spaltenkante, waagerecht an jeder Panelkante
-  cx = x0;
-  [0, ...L.colWidths].forEach((w) => {
-    cx += w;
-    const m = new THREE.Mesh(new THREE.BoxGeometry(0.04, totalHeight, dz), steel);
-    m.position.set(cx, centerY, zMid);
-    g.add(m);
-  });
-  const anchors = [];
+  // Kastenprofile: jedes Kabinett hat einen eigenen tiefen Rahmen (wie auf den Fotos)
+  const prof = 0.04;
   cells.forEach((c) => {
-    [c.y - c.h / 2, c.y + c.h / 2].forEach((y) => {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(c.w + 0.04, 0.04, dz), steel);
-      m.position.set(c.x, y, zMid);
+    [[c.w, prof, c.x, c.y - c.h / 2 + prof / 2], [c.w, prof, c.x, c.y + c.h / 2 - prof / 2],
+     [prof, c.h - 2 * prof, c.x - c.w / 2 + prof / 2, c.y], [prof, c.h - 2 * prof, c.x + c.w / 2 - prof / 2, c.y]].forEach(([w, h, x, y]) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w - 0.004, h - 0.004, dz), steel);
+      m.position.set(x, y, zMid);
       g.add(m);
-      anchors.push([c.x - c.w / 2, y], [c.x + c.w / 2, y]);
     });
   });
   // Bauteile je Feld, auf die Feldgröße skaliert (Maße bezogen auf 960 × 960)
-  const _s = new THREE.Vector3(), _p = new THREE.Vector3(), _q = new THREE.Quaternion();
+  const _s = new THREE.Vector3(), _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _e = new THREE.Euler();
   const inst = (geo, mat, perCell, place) => {
     const mesh = new THREE.InstancedMesh(geo, mat, Math.max(1, cells.length * perCell));
     let k = 0;
     cells.forEach((c) => {
       const kx = c.w / 0.96, ky = c.h / 0.96;
-      place((px, py, pz, sx = 1, sy = 1) => {
+      place((px, py, pz, sx = 1, sy = 1, rz = 0) => {
+        _q.setFromEuler(_e.set(0, 0, rz));
         _m4.compose(_p.set(c.x + px * kx, c.y + py * ky, pz), _q, _s.set(sx, sy, 1));
         mesh.setMatrixAt(k++, _m4);
       }, kx, ky, c);
@@ -1054,34 +1258,58 @@ function buildWallBracket(totalWidth, totalHeight, centerY) {
     mesh.count = k;
     g.add(mesh);
   };
-  // waagerechte Flachstähle (6 je 960er-Feld, 3 je 640×480) und zwei senkrechte Streben
-  inst(new THREE.BoxGeometry(0.92, 0.025, 0.012), steel, 6, (put, kx, ky, c) => {
+  // Flachstähle mit Lochreihen (Halter für die LED-Module) und zwei senkrechte U-Profile
+  const flatTex = canvasTexture(512, 16, (ctx, W, H) => {
+    ctx.fillStyle = '#121214'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#050506';
+    for (let x = 16; x < W; x += 42) { ctx.beginPath(); ctx.arc(x, H * 0.3, 2.2, 0, Math.PI * 2); ctx.arc(x, H * 0.72, 2.2, 0, Math.PI * 2); ctx.fill(); }
+  });
+  const flatMat = new THREE.MeshStandardMaterial({ map: flatTex, roughness: 0.55, metalness: 0.25 });
+  inst(new THREE.BoxGeometry(0.92, 0.03, 0.006), flatMat, 6, (put, kx, ky, c) => {
     const flats = c.h > 0.5 ? [-0.36, -0.22, -0.08, 0.08, 0.22, 0.36] : [-0.3, 0, 0.3];
-    flats.forEach((f) => put(0, f, zFront - 0.008, (c.w - 0.04) / 0.92, 1));
+    flats.forEach((f) => put(0, f, zFront - 0.004, (c.w - 0.06) / 0.92, 1));
   });
-  inst(new THREE.BoxGeometry(0.035, 0.92, 0.02), steel, 2,
-    (put, kx, ky, c) => [-0.2, 0.2].forEach((f) => put(f, 0, zFront - 0.012, 1, (c.h - 0.04) / 0.92)));
-  // Empfangskarte + Netzteile (hell) und Kabel (rot)
-  const boxMat = new THREE.MeshStandardMaterial({ color: 0xd9dbe0, roughness: 0.5, metalness: 0.4 });
-  inst(new THREE.BoxGeometry(0.07, 0.15, 0.03), boxMat, 4, (put, kx, ky, c) => [-0.2, 0.2].forEach((f) => {
-    if (c.h > 0.5) { put(f, 0.17, zFront + 0.012); put(f, -0.12, zFront + 0.012); }
-    else put(f, 0, zFront + 0.012, 1, 0.8);
+  inst(new THREE.BoxGeometry(0.045, 0.92, 0.05), steel, 2,
+    (put, kx, ky, c) => [-0.17, 0.17].forEach((f) => put(f, 0, zBack + 0.03, 1, (c.h - 0.06) / 0.92)));
+  // Netzteile: silbern mit Lüftungsschlitzen, zwei je U-Profil (beim 640er eins)
+  const psuTex = canvasTexture(64, 160, (ctx, W, H) => {
+    ctx.fillStyle = '#c9ccd1'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#5a5e64';
+    for (let y = 18; y < H - 30; y += 9) for (let x = 8; x < W - 8; x += 16) ctx.fillRect(x, y, 10, 4);
+    ctx.fillStyle = '#f2f2f2'; ctx.fillRect(10, H - 26, W - 20, 14);
+    ctx.fillStyle = '#2a6ad1'; ctx.fillRect(6, 4, W - 12, 6);
+  });
+  const psuMat = new THREE.MeshStandardMaterial({ map: psuTex, roughness: 0.4, metalness: 0.5 });
+  inst(new THREE.BoxGeometry(0.075, 0.19, 0.035), psuMat, 4, (put, kx, ky, c) => [-0.17, 0.17].forEach((f) => {
+    if (c.h > 0.5) { put(f, 0.2, zFront - 0.03); put(f, -0.14, zFront - 0.03); }
+    else put(f, 0.05, zFront - 0.03, 1, 0.75);
   }));
-  const cableMat = new THREE.MeshStandardMaterial({ color: 0xc8261e, roughness: 0.6 });
-  inst(new THREE.BoxGeometry(0.11, 0.008, 0.008), cableMat, 4,
-    (put) => [-0.2, 0.2].forEach((f) => { put(f - 0.08, 0.24, zFront + 0.004); put(f + 0.08, -0.2, zFront + 0.004); }));
-  // Wandanker an jedem Kreuzungspunkt
-  const seen = new Set();
-  const anchorMat = new THREE.MeshStandardMaterial({ color: 0x9a9aa2, roughness: 0.4, metalness: 0.8 });
-  anchors.forEach(([x, y]) => {
-    const key = `${x.toFixed(3)}|${y.toFixed(3)}`;
-    if (seen.has(key)) return;
-    seen.add(key);
-    const a = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.01, 10), anchorMat);
-    a.rotation.x = Math.PI / 2;
-    a.position.set(x, y, zFront + 0.004);
-    g.add(a);
+  // Empfangskarte (grüne Platine) am linken Profil
+  const pcbTex = canvasTexture(64, 96, (ctx, W, H) => {
+    ctx.fillStyle = '#1f6b3a'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#111'; ctx.fillRect(18, 30, 26, 22); ctx.fillRect(8, 64, 14, 10);
+    ctx.fillStyle = '#d9c46a'; for (let x = 4; x < W - 4; x += 6) ctx.fillRect(x, 4, 3, 8);
+    ctx.fillStyle = '#2a7be0'; ctx.fillRect(40, 70, 18, 14);
   });
+  inst(new THREE.BoxGeometry(0.1, 0.14, 0.01), new THREE.MeshStandardMaterial({ map: pcbTex, roughness: 0.6 }), 1,
+    (put, kx, ky, c) => put(-0.17, c.h > 0.5 ? -0.36 : -0.3, zFront - 0.025, 1, c.h > 0.5 ? 1 : 0.8));
+  // Flachbandkabel (grau) und Strombündel (rot/schwarz) mit weißen Steckern
+  inst(new THREE.BoxGeometry(0.03, 0.36, 0.003), new THREE.MeshStandardMaterial({ color: 0x8f9297, roughness: 0.8 }), 2, (put, kx, ky, c) => {
+    if (c.h > 0.5) { put(-0.03, -0.12, zFront - 0.012, 1, 1, -0.9); put(0.06, 0.1, zFront - 0.012, 1, 1, 0.7); }
+    else put(0, -0.05, zFront - 0.012, 0.8, 0.45, -1.1);
+  });
+  const red = new THREE.MeshStandardMaterial({ color: 0xc8261e, roughness: 0.6 }), black = new THREE.MeshStandardMaterial({ color: 0x0c0c0d, roughness: 0.6 });
+  [[red, 0], [black, 0.008]].forEach(([mat, off]) => inst(new THREE.BoxGeometry(0.3, 0.006, 0.006), mat, 2,
+    (put, kx, ky, c) => { put(-0.02, (c.h > 0.5 ? 0.31 : 0.2) + off, zFront - 0.015, 1, 1, 0.12); put(0.02, (c.h > 0.5 ? -0.27 : -0.18) + off, zFront - 0.015, 1, 1, -0.1); }));
+  inst(new THREE.BoxGeometry(0.02, 0.012, 0.012), new THREE.MeshStandardMaterial({ color: 0xf4f4f2, roughness: 0.5 }), 4,
+    (put, kx, ky, c) => [[-0.32, 0.28], [0.32, 0.33], [-0.3, -0.25], [0.3, -0.29]].forEach(([x, y]) => put(x, c.h > 0.5 ? y : y * 0.65, zFront - 0.012)));
+  // Eckbleche mit Wandschraube
+  const plateMat = new THREE.MeshStandardMaterial({ color: 0x1d1e20, roughness: 0.5, metalness: 0.3 });
+  const boltMat = new THREE.MeshStandardMaterial({ color: 0xb4b6bb, roughness: 0.3, metalness: 0.9 });
+  const corners = (put, kx, ky, c) => [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([sx, sy]) =>
+    put(sx * (c.w / 2 - 0.075) / kx, sy * (c.h / 2 - 0.075) / ky, zBack + 0.006, 1, 1, Math.PI / 4));
+  inst(new THREE.BoxGeometry(0.09, 0.09, 0.004), plateMat, 4, corners);
+  inst(new THREE.CylinderGeometry(0.014, 0.014, 0.02, 10).rotateX(Math.PI / 2), boltMat, 4, corners);
   supportGroup.add(g);
 }
 
@@ -1092,7 +1320,7 @@ const orbit = { theta: 0.25, phi: 1.15, radius: 13, target: new THREE.Vector3(0,
 // Je größer die Wand, desto weiter darf man zurückgehen
 function maxOrbitRadius() {
   const { panelW, panelH } = getPanelDims();
-  return Math.max(24, state.personDist + 12, Math.max(state.cols * panelW, state.rows * panelH) * 2.2);
+  return Math.max(IS_FEST && state.location === 'outdoor' ? 36 : 24, state.personDist + 12, Math.max(state.cols * panelW, state.rows * panelH) * 2.2);
 }
 let isDragging = false, lastX = 0, lastY = 0;
 const activePointers = new Map();
@@ -1452,6 +1680,75 @@ const motifs = {
     for (let x = off; x < W; x += mw) ctx.fillText(msg, x, H - bandH / 2 + bandH * 0.04);
   },
 
+  // Werbung Outdoor: Urlaubsmotiv mit Strand, Meer und Palme
+  travel(ctx, W, H, t) {
+    const horizon = H * 0.56;
+    const sky = ctx.createLinearGradient(0, 0, 0, horizon);
+    sky.addColorStop(0, '#1d8fe0'); sky.addColorStop(1, '#9fd8f7');
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, horizon);
+    // Sonne mit Schein
+    const sx = W * 0.78, sy = H * 0.2, sr = Math.min(W, H) * 0.09;
+    const glow = ctx.createRadialGradient(sx, sy, sr * 0.5, sx, sy, sr * 3.2);
+    glow.addColorStop(0, 'rgba(255,240,170,0.9)'); glow.addColorStop(1, 'rgba(255,240,170,0)');
+    ctx.fillStyle = glow; ctx.fillRect(0, 0, W, horizon);
+    ctx.fillStyle = '#fff6c4'; ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2); ctx.fill();
+    // Wolken
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    [[0.18, 0.16, 1], [0.45, 0.1, 0.8]].forEach(([cx, cy, k]) => {
+      const x = ((cx * W + t * W * 0.01 * k) % (W * 1.2)) - W * 0.1, y = cy * H, r = H * 0.045 * k;
+      [[0, 0, 1], [r * 1.1, -r * 0.4, 1.2], [r * 2.2, 0, 0.9]].forEach(([dx, dy, s]) => { ctx.beginPath(); ctx.arc(x + dx, y + dy, r * s, 0, Math.PI * 2); ctx.fill(); });
+    });
+    // Meer mit Wellen
+    const sea = ctx.createLinearGradient(0, horizon, 0, H * 0.78);
+    sea.addColorStop(0, '#0a7fb8'); sea.addColorStop(1, '#2cc3d6');
+    ctx.fillStyle = sea; ctx.fillRect(0, horizon, W, H * 0.22);
+    ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = Math.max(1, H * 0.004);
+    for (let i = 0; i < 7; i++) {
+      const y = horizon + H * 0.03 * (i + 1), off = Math.sin(t * 0.8 + i) * W * 0.02;
+      ctx.beginPath();
+      for (let x = -W * 0.1; x < W * 1.1; x += W * 0.12) { ctx.moveTo(x + off + i * 13, y); ctx.lineTo(x + off + i * 13 + W * 0.05, y); }
+      ctx.stroke();
+    }
+    // Strand
+    const sand = ctx.createLinearGradient(0, H * 0.76, 0, H);
+    sand.addColorStop(0, '#f2dcae'); sand.addColorStop(1, '#e6c48a');
+    ctx.fillStyle = sand;
+    ctx.beginPath(); ctx.moveTo(0, H * 0.8);
+    ctx.quadraticCurveTo(W * 0.5, H * (0.74 + 0.01 * Math.sin(t)), W, H * 0.79); ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.fill();
+    // Palme links
+    const px = W * 0.12, base = H * 0.95, top = H * 0.3;
+    ctx.strokeStyle = '#7a5530'; ctx.lineWidth = Math.max(4, W * 0.014); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(px, base); ctx.quadraticCurveTo(px + W * 0.05, H * 0.6, px + W * 0.03, top); ctx.stroke();
+    ctx.fillStyle = '#1f7a3a';
+    for (let i = 0; i < 6; i++) {
+      const a = -Math.PI * 0.95 + i * (Math.PI * 1.1 / 5) + Math.sin(t * 1.3 + i) * 0.04, len = W * 0.11;
+      const tx = px + W * 0.03, ty = top;
+      ctx.beginPath(); ctx.moveTo(tx, ty);
+      ctx.quadraticCurveTo(tx + Math.cos(a - 0.3) * len * 0.6, ty + Math.sin(a - 0.3) * len * 0.6 - H * 0.03, tx + Math.cos(a) * len, ty + Math.sin(a) * len + H * 0.06);
+      ctx.quadraticCurveTo(tx + Math.cos(a + 0.3) * len * 0.5, ty + Math.sin(a + 0.3) * len * 0.5, tx, ty);
+      ctx.fill();
+    }
+    // Text
+    const u = Math.min(W / 16, H / 9);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = 'rgba(0,40,80,0.45)'; ctx.shadowBlur = u * 0.3;
+    ctx.font = `800 ${u * 1.25}px Inter, Arial, sans-serif`;
+    ctx.fillText('SOMMER.', W * 0.3, H * 0.24);
+    ctx.fillText('SONNE. MEER.', W * 0.3, H * 0.24 + u * 1.3);
+    ctx.shadowBlur = 0;
+    ctx.font = `600 ${u * 0.55}px Inter, Arial, sans-serif`;
+    ctx.fillText('Last Minute in den Süden', W * 0.3, H * 0.24 + u * 2.2);
+    // Button
+    const bw = u * 3.6, bh = u * 0.85, bx = W * 0.3, by = H * 0.86 - bh;
+    ctx.fillStyle = '#e7007f';
+    ctx.beginPath(); ctx.moveTo(bx + bh / 2, by); ctx.arcTo(bx + bw, by, bx + bw, by + bh, bh / 2); ctx.arcTo(bx + bw, by + bh, bx, by + bh, bh / 2);
+    ctx.arcTo(bx, by + bh, bx, by, bh / 2); ctx.arcTo(bx, by, bx + bw, by, bh / 2); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `800 ${u * 0.42}px Inter, Arial, sans-serif`;
+    ctx.fillText('JETZT BUCHEN', bx + bw / 2, by + bh / 2);
+  },
+
   custom(ctx, W, H, t) {
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, W, H);
@@ -1462,7 +1759,9 @@ const motifs = {
 function drawContent(t) {
   const ctx = content.canvas.getContext('2d');
   const W = content.canvas.width, H = content.canvas.height;
-  (motifs[state.content] || motifs.logo)(ctx, W, H, t);
+  // Festinstallation Outdoor: „Werbung“ zeigt ein Urlaubsmotiv
+  const key = IS_FEST && state.location === 'outdoor' && state.content === 'promo' ? 'travel' : state.content;
+  (motifs[key] || motifs.logo)(ctx, W, H, t);
   content.texture.needsUpdate = true;
 }
 
@@ -2364,6 +2663,7 @@ function animate() {
   const t = clock.elapsedTime;
   updateCamera(dt);
   adaptQuality(dt);
+  envAnimators.forEach((f) => f(Math.min(dt, 0.1)));
   // Der Wandinhalt muss nicht 60-mal pro Sekunde neu auf die Grafikkarte:
   // 30 Bilder pro Sekunde reichen für die Animation und halbieren den Aufwand.
   if (t - lastContentT >= 1 / 30) {
@@ -2400,6 +2700,16 @@ function setActive(container, value, attr = 'data-val') {
   });
 }
 
+// Festinstallation: Spielstand gibt es nur in der Halle, Outdoor zeigt „Werbung“ mit Urlaubsmotiv
+function updateContentButtons() {
+  if (!IS_FEST) return;
+  const outdoor = state.location === 'outdoor';
+  const btn = document.querySelector('#segContent [data-val="score"]');
+  if (btn) btn.style.display = outdoor ? 'none' : '';
+  if (outdoor && state.content === 'score') state.content = 'promo';
+  setActive(document.getElementById('segContent'), state.content);
+}
+
 function updateGobVisibility() {
   const gobField = document.getElementById('gobField');
   const isIndoor = state.location === 'indoor';
@@ -2412,8 +2722,19 @@ function updateGobVisibility() {
 
 document.getElementById('segLocation').addEventListener('click', (e) => {
   const btn = e.target.closest('.seg-btn'); if (!btn) return;
+  const before = getLayout();
   state.location = btn.getAttribute('data-val');
   setActive(document.getElementById('segLocation'), state.location);
+  if (IS_FEST) {
+    // Indoor 640 × 480, Outdoor 960 × 960: Wandmaße möglichst beibehalten
+    state.panelType = state.location === 'outdoor' ? 'p960' : 'p640';
+    const { panelW, panelH } = getPanelDims();
+    state.cols = clamp(Math.round(before.totalWidth / panelW), ...LIMITS.cols);
+    state.rows = clamp(Math.round(before.totalHeight / panelH), ...LIMITS.rows);
+    Object.assign(orbit, state.location === 'outdoor' ? { theta: -0.35, phi: 1.48, radius: 28 } : { theta: 0.25, phi: 1.15, radius: 13 });
+    updateContentButtons();
+    updateSizeDisplay();
+  }
   updateGobVisibility();
   syncPitchOptions();
   updateDistDisplay();
@@ -2428,7 +2749,8 @@ document.getElementById('dummyToggle').addEventListener('change', (e) => {
 
 // Verfügbare Pixel Pitches je Einsatzort
 const PITCHES = IS_FEST ? {
-  indoor: [1.25, 1.53, 1.86, 2, 2.5, 3.076, 4]   // Panels 640 × 480 mm
+  indoor: [1.25, 1.53, 1.86, 2, 2.5, 3.076, 4],  // Panels 640 × 480 mm
+  outdoor: [2.5, 3.076, 4, 5, 6, 8, 10]           // Panels 960 × 960 mm
 } : {
   indoor: [1.5, 2, 2.6, 2.9, 3.9],
   outdoor: [2.6, 2.9, 3.9, 4.8]
@@ -2536,6 +2858,8 @@ function updateSizeDisplay() {
     ? `${nRows}× 960 / ${nRows * 2}× 480<br>übereinander`
     : `${IS_FEST ? nRows : rowsCount} Panel${nRows === 1 ? '' : 's'}<br>übereinander`;
   document.getElementById('panelTotal').innerHTML = `<b>Gesamt: ${L.total} Panels</b><br>${panelMixText(L)}`;
+  const note = document.getElementById('sizeNote');
+  if (note) note.textContent = `Die Wand besteht aus Panels mit ${state.location === 'outdoor' ? '960 × 960' : '640 × 480'} mm. Deine Eingabe wird auf die nächste passende Größe gerundet. Die Wandhalterung ist immer inklusive.`;
 }
 
 // Eingetippte Meter auf 50 cm runden (Komma oder Punkt erlaubt).
@@ -2794,7 +3118,7 @@ function applyHash() {
   if (!q.has('ort')) return false;
   const pick = (v, allowed, def) => (allowed.includes(v) ? v : def);
   state.location = pick(q.get('ort'), ['indoor', 'outdoor'], state.location);
-  if (IS_FEST) state.location = 'indoor'; // Festinstallation Outdoor folgt
+  if (IS_FEST) state.panelType = state.location === 'outdoor' ? 'p960' : 'p640';
   state.mount = pick(q.get('aufbau'), ['truss', 'wall', 'floor', 'fixed'], state.mount);
   // Aufbauart, die es in diesem Konfigurator nicht gibt (z. B. Wand bei Mobil), auf Standard zurücksetzen
   if (IS_FEST) state.mount = 'fixed';
@@ -2814,6 +3138,7 @@ function applyHash() {
   setActive(document.getElementById('segLocation'), state.location);
   if (document.getElementById('segMount')) setActive(document.getElementById('segMount'), state.mount);
   setActive(document.getElementById('segContent'), state.content);
+  updateContentButtons();
   document.getElementById('pitchSelect').value = String(state.pitch);
   document.getElementById('gobToggle').checked = state.gob;
   return true;
@@ -2901,6 +3226,7 @@ document.addEventListener('click', () => {
 resize();
 state.personDist = viewingDistanceForPitch(state.pitch);
 applyHash();
+if (IS_FEST && state.location === 'outdoor') Object.assign(orbit, { theta: -0.35, phi: 1.48, radius: 28 });
 syncPitchOptions();
 applyEnvironment();
 updateGobVisibility();
