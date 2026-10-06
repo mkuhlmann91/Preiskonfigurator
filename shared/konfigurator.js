@@ -36,7 +36,6 @@ const state = {
   pitch: IS_FEST ? 2.5 : 2.9,
   panelType: 'mix',     // Festinstallation: Indoor 960 × 960 mit 640 × 480 am Rand ('mix'), Outdoor nur 960 ('p960')
   bracket: true,        // Festinstallation: Wandhalterung (Gestell) immer inklusive
-  frameView: false,     // Festinstallation: Module ausblenden, nur das Gestell zeigen
   gob: false,
   showEdges: true,
   showDummy: true,     // Figur ist immer sichtbar (kein Schalter mehr)
@@ -1986,7 +1985,6 @@ function buildWallMeshes() {
 
   buildBackside(L, thickness);
   // Festinstallation: Ansicht „Gestell“ blendet die Module aus
-  if (IS_FEST && state.frameView) wallGroup.children.forEach((c) => { c.visible = false; });
 
   return { totalWidth, totalHeight, gridPoints, thickness };
 }
@@ -2896,19 +2894,6 @@ document.getElementById('gobToggle').addEventListener('change', (e) => {
   state.gob = e.target.checked;
   rebuild();
 });
-// Festinstallation: Wandhalterung (immer inklusive) / Gestell ansehen
-function updateFrameBtn() {
-  const btn = document.getElementById('frameBtn');
-  if (!btn) return;
-  btn.style.display = state.bracket ? '' : 'none';
-  btn.classList.toggle('active', state.frameView);
-  btn.querySelector('span').textContent = state.frameView ? 'Module zeigen' : 'Gestell ansehen';
-}
-document.getElementById('frameBtn')?.addEventListener('click', () => {
-  state.frameView = !state.frameView;
-  updateFrameBtn();
-  rebuild();
-});
 
 /* ------------------------------ CONFIG TEXT -------------------------------- */
 
@@ -3219,7 +3204,6 @@ syncPitchOptions();
 applyEnvironment();
 updateGobVisibility();
 updateDistDisplay();
-updateFrameBtn();
 // Auf dem Desktop startet die Infobox ausgeklappt, am Handy eingeklappt
 if (!window.matchMedia('(max-width: 860px)').matches) document.getElementById('hud').classList.remove('collapsed');
 rebuild();
