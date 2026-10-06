@@ -757,7 +757,7 @@ function buildGym(wallW, wallH) {
   Object.assign(fogBase, { near: 34, far: 90 });
   floorMat.color.set(0x6f7177);   // außerhalb der Halle neutral
   floorMat.roughness = 0.9;
-  rimBase = 0.25;
+  rimBase = 0;                    // kein pinker Lichtschein auf dem Hallenboden
   ambientLight.intensity = 0.35;
   hemiLight.color.set(0xffffff);
   hemiLight.groundColor.set(0x5b7fa6);
@@ -2839,8 +2839,8 @@ function updateSizeDisplay() {
   document.getElementById('panelTotal').innerHTML = `<b>Gesamt: ${L.total} Panels</b><br>${panelMixText(L)}`;
   const note = document.getElementById('sizeNote');
   if (note) note.textContent = state.location === 'outdoor'
-    ? 'Die Wand besteht aus Panels mit 960 × 960 mm. Deine Eingabe wird auf die nächste passende Größe gerundet. Die Wandhalterung ist immer inklusive.'
-    : 'Die Wand besteht aus Panels mit 960 × 960 mm, bei Zwischengrößen kommen am Rand Panels mit 640 × 480 mm dazu. Deine Eingabe wird auf die nächste passende Größe gerundet. Die Wandhalterung ist immer inklusive.';
+    ? 'Die Wand besteht aus Panels mit 960 × 960 mm.'
+    : 'Die Wand besteht aus Panels mit 960 × 960 mm, bei Zwischengrößen kommen am Rand Panels mit 640 × 480 mm dazu.';
 }
 
 // Eingetippte Meter auf 50 cm runden (Komma oder Punkt erlaubt).
