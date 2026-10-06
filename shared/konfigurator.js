@@ -36,10 +36,9 @@ const state = {
   pitch: IS_FEST ? 2.5 : 2.9,
   panelType: 'mix',     // Festinstallation: Indoor 960 × 960 mit 640 × 480 am Rand ('mix'), Outdoor nur 960 ('p960')
   bracket: true,        // Festinstallation: Wandhalterung (Gestell) immer inklusive
-  frameView: false,     // Festinstallation: Module ausblenden, nur das Gestell zeigen
   gob: false,
   showEdges: true,
-  showDummy: true,
+  showDummy: true,     // Figur ist immer sichtbar (kein Schalter mehr)
   content: 'logo',      // 'logo' | 'pink' | 'promo' | 'custom'
   personDist: 3.5       // Abstand Figur ↔ Wand in m (folgt dem Pitch-Richtwert, bis man ihn verstellt)
 };
@@ -1986,7 +1985,6 @@ function buildWallMeshes() {
 
   buildBackside(L, thickness);
   // Festinstallation: Ansicht „Gestell“ blendet die Module aus
-  if (IS_FEST && state.frameView) wallGroup.children.forEach((c) => { c.visible = false; });
 
   return { totalWidth, totalHeight, gridPoints, thickness };
 }
@@ -2673,9 +2671,8 @@ function animate() {
 
 /* ============================== UI WIRING ================================= */
 
-// Auf dem Handy klappt ein Tipp irgendwo auf den Kasten ihn auf oder zu
+// Ein Klick irgendwo auf den Kasten klappt ihn auf oder zu (Handy und Desktop)
 document.getElementById('hud').addEventListener('click', () => {
-  if (!window.matchMedia('(max-width: 860px)').matches) return;
   const hud = document.getElementById('hud');
   hud.classList.toggle('collapsed');
   document.getElementById('hudToggle').setAttribute('aria-expanded', String(!hud.classList.contains('collapsed')));
@@ -2726,11 +2723,6 @@ document.getElementById('segLocation').addEventListener('click', (e) => {
   syncPitchOptions();
   updateDistDisplay();
   applyEnvironment();
-  rebuild();
-});
-document.getElementById('dummyToggle').addEventListener('change', (e) => {
-  state.showDummy = e.target.checked;
-  document.getElementById('distField').style.display = state.showDummy ? 'block' : 'none';
   rebuild();
 });
 
@@ -2900,19 +2892,6 @@ document.getElementById('pitchSelect').addEventListener('change', (e) => {
 });
 document.getElementById('gobToggle').addEventListener('change', (e) => {
   state.gob = e.target.checked;
-  rebuild();
-});
-// Festinstallation: Wandhalterung (immer inklusive) / Gestell ansehen
-function updateFrameBtn() {
-  const btn = document.getElementById('frameBtn');
-  if (!btn) return;
-  btn.style.display = state.bracket ? '' : 'none';
-  btn.classList.toggle('active', state.frameView);
-  btn.querySelector('span').textContent = state.frameView ? 'Module zeigen' : 'Gestell ansehen';
-}
-document.getElementById('frameBtn')?.addEventListener('click', () => {
-  state.frameView = !state.frameView;
-  updateFrameBtn();
   rebuild();
 });
 
@@ -3121,7 +3100,7 @@ function applyHash() {
   const pitch = num('pitch', state.pitch);
   state.pitch = pitchesFor(state.location).includes(pitch) ? pitch : state.pitch;
   state.gob = q.get('gob') === '1' && state.location === 'indoor';
-  state.personDist = clamp(num('abstand', viewingDistanceForPitch(state.pitch)), 1, 15);
+  state.personDist = clamp(num('abstand', viewingDistanceForPitch(state.pitch)), 1, 20);
   state.content = pick(q.get('inhalt'), IS_FEST ? ['logo', 'promo', 'score'] : ['logo', 'pink', 'promo', 'score'], state.content);
   // Oberfläche nachziehen
   setActive(document.getElementById('segLocation'), state.location);
@@ -3203,6 +3182,11 @@ document.querySelectorAll('.info-btn').forEach((btn) => {
       const r = pop.getBoundingClientRect();
       const over = r.right - (window.innerWidth - 12);
       if (over > 0) pop.style.left = `${-Math.min(over, r.left - 12)}px`;
+      // unten verdeckt (z. B. vom Angebots-Button)? Dann nach oben öffnen
+      wrap.classList.remove('up');
+      const cta = document.querySelector('.cta-wrap');
+      const limit = Math.min(window.innerHeight, cta ? cta.getBoundingClientRect().top : Infinity) - 8;
+      if (pop.getBoundingClientRect().bottom > limit) wrap.classList.add('up');
     }
   });
 });
@@ -3220,8 +3204,7 @@ syncPitchOptions();
 applyEnvironment();
 updateGobVisibility();
 updateDistDisplay();
-updateFrameBtn();
-// Auf dem Desktop ist die Infobox immer offen
+// Auf dem Desktop startet die Infobox ausgeklappt, am Handy eingeklappt
 if (!window.matchMedia('(max-width: 860px)').matches) document.getElementById('hud').classList.remove('collapsed');
 rebuild();
 animate();

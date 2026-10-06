@@ -48,10 +48,6 @@
       </div>
       <div class="hint">Ziehen zum Drehen · Scrollen zum Zoomen</div>
       <div class="view-actions">
-        <button type="button" class="view-btn" id="frameBtn" title="Module ausblenden und die Wandhalterung zeigen">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 12h18M12 4v16"/></svg>
-          <span>Gestell ansehen</span>
-        </button>
         <button type="button" class="view-btn" id="shareLinkBtn" title="Link zu dieser Konfiguration teilen">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
           Link teilen
@@ -131,19 +127,15 @@
 
       <div class="field">
         <div class="switch-row">
-          <div class="txt">Figur anzeigen<span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Zeigt eine Person (ca. 1,78 m) zum Größenvergleich. Stell ein, wie weit deine Zuschauer von der Wand entfernt stehen – wir empfehlen dir dazu den passenden Pixel Pitch.</span></span></div>
-          <label class="switch">
-            <input type="checkbox" id="dummyToggle" checked>
-            <span class="slider-toggle"></span>
-          </label>
+          <div class="txt">Figur<span class="info-wrap"><button type="button" class="info-btn">i</button><span class="tooltip-pop">Zeigt eine Person (ca. 1,78 m) zum Größenvergleich. Stell ein, wie weit deine Zuschauer von der Wand entfernt stehen – wir empfehlen dir dazu den passenden Pixel Pitch.</span></span></div>
         </div>
         <div id="distField" style="margin-top:12px;">
           <div class="stepper-row" style="justify-content:space-between;margin-bottom:6px;">
             <div class="stepper-label">Abstand zur Wand</div>
             <div class="stepper-label" style="color:var(--white);" id="distVal">3,0m</div>
           </div>
-          <input type="range" id="distRange" min="1" max="15" step="0.5" value="3" aria-label="Abstand der Figur zur Wand">
-          <div class="range-labels"><span>1m</span><span>15m</span></div>
+          <input type="range" id="distRange" min="1" max="20" step="0.5" value="3" aria-label="Abstand der Figur zur Wand">
+          <div class="range-labels"><span>1m</span><span>20m</span></div>
           <div class="pitch-reco" id="pitchReco">
             <span id="pitchRecoText">Für 3,0m empfehlen wir P2.5</span>
             <button type="button" id="pitchRecoBtn">Übernehmen</button>
