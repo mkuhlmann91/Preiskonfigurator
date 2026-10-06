@@ -39,7 +39,7 @@ const state = {
   frameView: false,     // Festinstallation: Module ausblenden, nur das Gestell zeigen
   gob: false,
   showEdges: true,
-  showDummy: true,
+  showDummy: true,     // Figur ist immer sichtbar (kein Schalter mehr)
   content: 'logo',      // 'logo' | 'pink' | 'promo' | 'custom'
   personDist: 3.5       // Abstand Figur ↔ Wand in m (folgt dem Pitch-Richtwert, bis man ihn verstellt)
 };
@@ -2673,9 +2673,8 @@ function animate() {
 
 /* ============================== UI WIRING ================================= */
 
-// Auf dem Handy klappt ein Tipp irgendwo auf den Kasten ihn auf oder zu
+// Ein Klick irgendwo auf den Kasten klappt ihn auf oder zu (Handy und Desktop)
 document.getElementById('hud').addEventListener('click', () => {
-  if (!window.matchMedia('(max-width: 860px)').matches) return;
   const hud = document.getElementById('hud');
   hud.classList.toggle('collapsed');
   document.getElementById('hudToggle').setAttribute('aria-expanded', String(!hud.classList.contains('collapsed')));
@@ -2726,11 +2725,6 @@ document.getElementById('segLocation').addEventListener('click', (e) => {
   syncPitchOptions();
   updateDistDisplay();
   applyEnvironment();
-  rebuild();
-});
-document.getElementById('dummyToggle').addEventListener('change', (e) => {
-  state.showDummy = e.target.checked;
-  document.getElementById('distField').style.display = state.showDummy ? 'block' : 'none';
   rebuild();
 });
 
@@ -3121,7 +3115,7 @@ function applyHash() {
   const pitch = num('pitch', state.pitch);
   state.pitch = pitchesFor(state.location).includes(pitch) ? pitch : state.pitch;
   state.gob = q.get('gob') === '1' && state.location === 'indoor';
-  state.personDist = clamp(num('abstand', viewingDistanceForPitch(state.pitch)), 1, 15);
+  state.personDist = clamp(num('abstand', viewingDistanceForPitch(state.pitch)), 1, 20);
   state.content = pick(q.get('inhalt'), IS_FEST ? ['logo', 'promo', 'score'] : ['logo', 'pink', 'promo', 'score'], state.content);
   // Oberfläche nachziehen
   setActive(document.getElementById('segLocation'), state.location);
@@ -3203,6 +3197,11 @@ document.querySelectorAll('.info-btn').forEach((btn) => {
       const r = pop.getBoundingClientRect();
       const over = r.right - (window.innerWidth - 12);
       if (over > 0) pop.style.left = `${-Math.min(over, r.left - 12)}px`;
+      // unten verdeckt (z. B. vom Angebots-Button)? Dann nach oben öffnen
+      wrap.classList.remove('up');
+      const cta = document.querySelector('.cta-wrap');
+      const limit = Math.min(window.innerHeight, cta ? cta.getBoundingClientRect().top : Infinity) - 8;
+      if (pop.getBoundingClientRect().bottom > limit) wrap.classList.add('up');
     }
   });
 });
@@ -3221,7 +3220,7 @@ applyEnvironment();
 updateGobVisibility();
 updateDistDisplay();
 updateFrameBtn();
-// Auf dem Desktop ist die Infobox immer offen
+// Auf dem Desktop startet die Infobox ausgeklappt, am Handy eingeklappt
 if (!window.matchMedia('(max-width: 860px)').matches) document.getElementById('hud').classList.remove('collapsed');
 rebuild();
 animate();
