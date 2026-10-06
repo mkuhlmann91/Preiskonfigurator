@@ -1020,9 +1020,9 @@ function makeHouseFacadeTexture(w, h, ledX0, ledX1, ledY0, ledY1) {
       ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(X(x + 0.2), Y(3.3), 0.5 * ppm, 2.6 * ppm);
     }
     // Obergeschosse: Fenster dort, wo keine LED-Wand ist
+    const rightCols = [w / 2 - 2.4, w / 2 - 4.8].filter((x) => x > ledX1 + 0.8);   // rechts außen max. 2 Spalten
     for (let y = 4.6; y < h - 2; y += 3) {
-      for (let x = -w / 2 + 1; x < w / 2 - 1.4; x += 2.4) {
-        if (x < ledX1 + 0.6 && y + 1.5 > ledY0 - 0.6) continue;   // links neben und über der LED-Wand frei
+      for (const x of rightCols) {
         ctx.fillStyle = '#7f98a8'; ctx.fillRect(X(x), Y(y + 1.5), 1.3 * ppm, 1.5 * ppm);
         ctx.strokeStyle = '#f7f6f2'; ctx.lineWidth = 0.1 * ppm; ctx.strokeRect(X(x), Y(y + 1.5), 1.3 * ppm, 1.5 * ppm);
         ctx.fillStyle = '#c9c6bf'; ctx.fillRect(X(x - 0.08), Y(y - 0.02), 1.46 * ppm, 0.1 * ppm);
@@ -1047,12 +1047,28 @@ function makeWindowFacade(color, w, h) {
   }));
 }
 
+// Linke Seitenwand des LED-Hauses: Erdgeschoss mit Fenstern, oben nur je ein Fenster
+// vorne und hinten, die Mitte bleibt frei für das Plakat
+function makePosterSideFacade(color, w, h) {
+  const ppm = Math.min(24, 1024 / Math.max(w, h));
+  return canvasTexture(Math.round(w * ppm), Math.round(h * ppm), (ctx, W, H) => {
+    ctx.fillStyle = color; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#5c5f63'; ctx.fillRect(0, H - 0.45 * ppm, W, 0.45 * ppm);
+    const win = (x, y) => {
+      ctx.fillStyle = '#7d93a3'; ctx.fillRect(x * ppm, H - (y + 1.5) * ppm, 1.2 * ppm, 1.5 * ppm);
+      ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(x * ppm, H - (y + 1.5) * ppm, 1.2 * ppm, 0.08 * ppm);
+    };
+    for (let x = 1; x < w - 1.2; x += 2.4) win(x, 1.2);
+    for (let y = 4.2; y < h - 1.5; y += 3) { win(1, y); win(w - 2.2, y); }
+  });
+}
+
 // Haus als Block mit Satteldach (Giebel zeigt nach vorne)
-function buildHouse(w, h, d, frontMat, sideColor, roofColor = 0x4a4d52, roofMat = null) {
+function buildHouse(w, h, d, frontMat, sideColor, roofColor = 0x4a4d52, roofMat = null, leftMat = null) {
   const g = new THREE.Group();
   const side = new THREE.MeshStandardMaterial({ map: makeWindowFacade(sideColor, d, h), roughness: 0.9 });
   const plain = new THREE.MeshStandardMaterial({ color: new THREE.Color(sideColor), roughness: 0.9 });
-  const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [side, side, plain, plain, frontMat, plain]);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [side, leftMat || side, plain, plain, frontMat, plain]);
   body.position.set(0, h / 2, -d / 2);
   g.add(body);
   const rh = Math.min(4, w * 0.35);
@@ -1206,7 +1222,8 @@ function buildStreet(wallW, wallH) {
   const facade = new THREE.MeshStandardMaterial({
     map: makeHouseFacadeTexture(houseW, houseH, ledLeft, ledLeft + wallW, bottom, bottom + wallH), roughness: 0.9 });
   const tiles = new THREE.MeshStandardMaterial({ map: makeRoofTileTexture(), roughness: 0.75 });
-  const house = buildHouse(houseW, houseH, houseD, facade, '#e8e5de', 0x9a3324, tiles);
+  const leftSide = new THREE.MeshStandardMaterial({ map: makePosterSideFacade('#e8e5de', houseD, houseH), roughness: 0.9 });
+  const house = buildHouse(houseW, houseH, houseD, facade, '#e8e5de', 0x9a3324, tiles, leftSide);
   house.position.z = front;
   envGroup.add(house);
   // Möwe auf dem Dachfirst, vorne
