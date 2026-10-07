@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<script>
+  // Geteilte Links mit Konfiguration im #-Teil auf den mobilen Konfigurator weiterleiten
+  if (location.hash.length > 1) location.replace('/mobile/english/' + location.hash);
+</script>
+<title>LED Wall Configurator | LEDWALL 360</title>
+<meta name="description" content="Configure your LED wall in any size, see it live in 3D and request a quote right away, mobile for events or permanently installed.">
+<!-- Link-Vorschau (WhatsApp, Facebook, LinkedIn, iMessage) -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://konfigurator.ledwall-360.de/english/">
+<meta property="og:site_name" content="LEDWALL 360">
+<meta property="og:title" content="LED Wall Configurator">
+<meta property="og:description" content="Configure your LED wall in any size, see it live in 3D and request a quote right away.">
+<meta property="og:image" content="https://konfigurator.ledwall-360.de/assets/og-image.jpg">
+<meta property="og:image:secure_url" content="https://konfigurator.ledwall-360.de/assets/og-image.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Pixli, the LEDWALL 360 mascot, with logo">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://konfigurator.ledwall-360.de/assets/og-image.jpg">
+<link rel="icon" type="image/png" href="/assets/pixli-icon.png">
+<link rel="apple-touch-icon" href="/assets/pixli-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --black:#0a0a0b;
+    --card:#131315;
+    --line:#26262a;
+    --white:#f5f5f7;
+    --muted:#8d8d94;
+    --accent:#e7007f;
+    --gap:24px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--black);color:var(--white);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
+  a{color:inherit;}
+  .wrap{max-width:1120px;margin:0 auto;padding:24px 24px 32px;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;gap:var(--gap);}
+  .top{display:flex;align-items:center;justify-content:space-between;}
+  .brand{display:flex;align-items:center;gap:10px;text-decoration:none;}
+  .brand img{width:32px;height:32px;border-radius:8px;}
+  .brand span{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;letter-spacing:.5px;}
+  .top-link{font-size:13px;color:var(--muted);text-decoration:none;}
+  .top-link:hover{color:var(--white);}
+
+  .hero{position:relative;border-radius:20px;overflow:hidden;border:1px solid var(--line);aspect-ratio:24/9;min-height:300px;}
+  .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 45%;}
+  .hero::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(10,10,11,.94) 0%,rgba(10,10,11,.78) 28%,rgba(10,10,11,0) 52%);}
+  .hero-text{position:absolute;left:0;top:0;bottom:0;z-index:1;width:52%;padding:40px;display:flex;flex-direction:column;justify-content:center;}
+  .eyebrow{display:inline-block;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:10px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(30px,4.6vw,52px);line-height:1.05;margin:0 0 10px;letter-spacing:-.8px;}
+  h1 em{font-style:normal;color:var(--accent);}
+  .lead{color:#d2d2d6;font-size:16px;line-height:1.5;margin:0;}
+
+  .section-title{font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin:8px 0 0;}
+  .tiles{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);}
+  .tile{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden;text-decoration:none;transition:border-color .2s,transform .2s;}
+  .tile:hover{border-color:var(--accent);transform:translateY(-3px);}
+  .tile:hover .cta{background:#ff1a94;}
+  .tile .img{position:relative;aspect-ratio:3/2;background:#1b1b1e;}
+  .tile .img img{display:block;width:100%;height:100%;object-fit:cover;}
+  .tag{position:absolute;left:16px;top:16px;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#fff;background:rgba(10,10,11,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-radius:999px;padding:6px 12px;}
+  .tile-body{padding:24px;display:flex;flex-direction:column;gap:16px;flex:1;}
+  .tile h2{font-family:'Space Grotesk',sans-serif;font-size:24px;line-height:1.15;margin:0;}
+  .tile p{color:#c4c4c9;font-size:15px;line-height:1.5;margin:0;}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none;}
+  .chips li{font-size:12.5px;color:#d6d6da;border:1px solid var(--line);border-radius:999px;padding:5px 11px;}
+  .cta{margin-top:auto;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);color:#fff;border-radius:12px;padding:14px 18px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;transition:background .2s;}
+
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap);margin:0;padding:0;list-style:none;}
+  .steps li{display:flex;align-items:center;gap:12px;font-size:14px;color:#c4c4c9;}
+  .steps b{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;border:1px solid rgba(231,0,127,.5);color:var(--accent);font-family:'Space Grotesk',sans-serif;font-size:14px;}
+
+  footer{margin-top:auto;padding-top:8px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);padding-top:20px;}
+  footer a{color:var(--muted);text-decoration:none;}
+  footer a:hover{color:var(--white);}
+  footer nav{display:flex;gap:16px;}
+
+  @media (max-width:760px){
+    :root{--gap:16px;}
+    .wrap{padding:16px 16px 24px;}
+    .hero{aspect-ratio:1/1;min-height:0;max-height:58vh;border-radius:16px;}
+    .hero img{object-position:56% 30%;}
+    .hero::after{background:linear-gradient(180deg,rgba(10,10,11,0) 35%,rgba(10,10,11,.6) 62%,rgba(10,10,11,.94) 100%);}
+    .hero-text{top:auto;width:auto;right:0;padding:20px;}
+    .lead{font-size:15px;}
+    .tiles{grid-template-columns:1fr;}
+    .tile{border-radius:16px;}
+    .tile-body{padding:20px;}
+    .steps{grid-template-columns:1fr;gap:12px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="https://ledwall-360.de"><img src="/assets/pixli-icon.png" alt=""><span>LEDWALL 360</span></a>
+    <a class="top-link" href="https://ledwall-360.de">ledwall-360.de</a>
+  </header>
+
+  <section class="hero">
+    <img src="/assets/hero.jpg" alt="LED wall flown from a truss, live in the 3D configurator">
+    <div class="hero-text">
+      <span class="eyebrow">LED Wall Configurator</span>
+      <h1>Your LED wall,<br><em>live in 3D.</em></h1>
+      <p class="lead">Set the size, take a look, request a quote.</p>
+    </div>
+  </section>
+
+  <h2 class="section-title">What do you need the wall for?</h2>
+  <div class="tiles">
+    <a class="tile" href="/mobile/english/">
+      <div class="img"><img src="/assets/tile-mobil.jpg" alt="Mobile LED wall flown from a truss" loading="lazy"><span class="tag">Mobile</span></div>
+      <div class="tile-body">
+        <h2>For events and stages</h2>
+        <p>Light panels, quick to set up and take down.</p>
+        <ul class="chips"><li>Flown from truss</li><li>Ground stacked</li><li>Indoor &amp; outdoor</li></ul>
+        <span class="cta">Configure mobile →</span>
+      </div>
+    </a>
+    <a class="tile" href="/fixed/english/">
+      <div class="img"><img src="/assets/tile-fest.jpg" alt="Permanently installed LED wall in a sports hall" loading="lazy"><span class="tag">Fixed installation</span></div>
+      <div class="tile-body">
+        <h2>For halls, shops and facades</h2>
+        <p>Mounted to the wall, in use every day.</p>
+        <ul class="chips"><li>Wall mounted</li><li>Bracket included</li><li>Indoor &amp; outdoor</li></ul>
+        <span class="cta">Configure fixed installation →</span>
+      </div>
+    </a>
+  </div>
+
+  <ol class="steps">
+    <li><b>1</b>Choose size and pixel pitch</li>
+    <li><b>2</b>See the wall live in 3D</li>
+    <li><b>3</b>Request a free quote</li>
+  </ol>
+
+  <footer>
+    <span>© LEDWALL 360</span>
+    <nav><a href="https://ledwall-360.de">ledwall-360.de</a><a href="https://ledwall-360.de/datenschutz">Privacy</a></nav>
+  </footer>
+</div>
+</body>
+</html>
