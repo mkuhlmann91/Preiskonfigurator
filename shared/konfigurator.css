@@ -149,6 +149,13 @@
   .upload-btn{display:block;margin-top:8px;background:var(--panel-bg-2);border:1px dashed #3a3a40;color:var(--white);border-radius:10px;padding:11px 10px;text-align:center;font-size:12px;cursor:pointer;}
   .upload-btn:hover{border-color:var(--accent);}
   .upload-btn.active{border-style:solid;border-color:var(--accent);background:rgba(231,0,127,.12);}
+  /* Figur: eine Kopfzeile (i + Titel + Wert), direkt darunter der Regler */
+  .dist-head{position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;}
+  .dist-title{display:flex;align-items:center;gap:6px;font-size:12.5px;}
+  .dist-head .info-wrap{position:static;}
+  .dist-head .tooltip-pop{top:calc(100% + 6px);left:0 !important;right:0;width:auto;}
+  .dist-head #distVal{font-size:12.5px;}
+  #distField .pitch-reco{margin-top:6px;}
   .pitch-reco{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;background:var(--panel-bg-2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:12px;}
   .pitch-reco button{background:var(--accent);border:none;color:#fff;border-radius:8px;padding:6px 10px;font-size:11.5px;font-weight:600;cursor:pointer;flex-shrink:0;}
   .pitch-reco.match button{display:none;}
