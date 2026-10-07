@@ -6,6 +6,10 @@
 // Welcher Konfigurator: 'mobil' (Events / Vermietung) oder 'fest' (Festinstallation)
 const TRACK = document.body.dataset.track === 'fest' ? 'fest' : 'mobil';
 const IS_FEST = TRACK === 'fest';
+// Sprache: Deutsch (Standard) oder Englisch (Seiten unter /mobile/english/ und /fixed/english/ mit <html lang="en">)
+const EN = document.documentElement.lang === 'en';
+const tr = (de, en) => (EN ? en : de);
+const DEC = EN ? '.' : ',';
 
 const CONFIG = {
   // Name des versteckten Feldes im echten Kontaktformular der Website.
@@ -99,8 +103,8 @@ function panelMixText(L) {
     return parts.join(' + ');
   }
   const parts = [];
-  if (L.big) parts.push(`${L.big}× 0,5×1m`);
-  if (L.small) parts.push(`${L.small}× 0,5×0,5m`);
+  if (L.big) parts.push(`${L.big}× ${tr('0,5×1m', '0.5×1m')}`);
+  if (L.small) parts.push(`${L.small}× ${tr('0,5×0,5m', '0.5×0.5m')}`);
   return parts.join(' + ');
 }
 
@@ -664,9 +668,9 @@ function logoBannerTexture(src) {
 const makeBannerTexture = memoTexture(function makeBannerTexture(kind) {
   return canvasTexture(640, 320, (ctx, W, H) => {
     const designs = {
-      white: ['#f3f1ec', '#1d3f8f', 'SPONSOR', 'Deine Werbung hier'],
-      blue: ['#1f3f86', '#ffffff', 'BAUSTOFFE', 'Partner des Sports'],
-      black: ['#17181b', '#ffffff', 'AUTOHAUS', 'Mobilitätspartner']
+      white: ['#f3f1ec', '#1d3f8f', 'SPONSOR', tr('Deine Werbung hier', 'Your ad here')],
+      blue: ['#1f3f86', '#ffffff', tr('BAUSTOFFE', 'BUILDING SUPPLY'), tr('Partner des Sports', 'Partner of sport')],
+      black: ['#17181b', '#ffffff', tr('AUTOHAUS', 'CAR DEALER'), tr('Mobilitätspartner', 'Mobility partner')]
     };
     const [bg, fg, title, sub] = designs[kind];
     ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
@@ -690,7 +694,7 @@ function buildScoreboard(x, y, z) {
     ctx.fillText('10:00', W / 2, H * 0.24);
     ctx.fillStyle = '#ffffff';
     ctx.font = '800 48px Arial, sans-serif';
-    ctx.fillText('Heim', W * 0.28, H * 0.5); ctx.fillText('Gast', W * 0.72, H * 0.5);
+    ctx.fillText(tr('Heim', 'Home'), W * 0.28, H * 0.5); ctx.fillText(tr('Gast', 'Guest'), W * 0.72, H * 0.5);
     ctx.fillStyle = '#ff7a12';
     ctx.font = '700 120px "Courier New", monospace';
     ctx.fillText('0', W * 0.25, H * 0.77); ctx.fillText(':', W / 2, H * 0.77); ctx.fillText('0', W * 0.75, H * 0.77);
@@ -845,8 +849,8 @@ function buildGym(wallW, wallH) {
     envGroup.add(m);
   };
   const lowY = 1.0, lowH = 1.3;
-  [[-1, '../assets/bemotion360-logo.png'], [1, 'black']].forEach(([side, kind]) => banner(kind, 3.0, lowH, side * (Math.max(3.4, wallW / 2) + 0.4), lowY));
-  [[-1, 'blue'], [1, '../assets/newchapter-logo.png']].forEach(([side, kind]) => banner(kind, 3.0, lowH, side * (Math.max(3.4, wallW / 2) + 3.8), lowY));
+  [[-1, '/assets/bemotion360-logo.png'], [1, 'black']].forEach(([side, kind]) => banner(kind, 3.0, lowH, side * (Math.max(3.4, wallW / 2) + 0.4), lowY));
+  [[-1, 'blue'], [1, '/assets/newchapter-logo.png']].forEach(([side, kind]) => banner(kind, 3.0, lowH, side * (Math.max(3.4, wallW / 2) + 3.8), lowY));
   // Banner an den Stirnwänden hinter den Toren
   [[-1, 'white'], [1, 'blue']].forEach(([s, kind]) => banner(kind, 4, 1.4, s * (hallW / 2 - 0.01), 3.2, zc, s * -Math.PI / 2));
 }
@@ -1203,7 +1207,7 @@ const makeKielPosterTexture = memoTexture(function makeKielPosterTexture() {
     ctx.fillText('HOLSTEIN', W / 2, H * 0.43);
     ctx.fillText('KIEL', W / 2, H * 0.64);
     ctx.fillStyle = '#0a3d8f'; ctx.font = '700 34px Inter, Arial, sans-serif';
-    ctx.fillText('HEIMSPIEL IM HOLSTEIN-STADION', W / 2, H * 0.785);
+    ctx.fillText(tr('HEIMSPIEL IM HOLSTEIN-STADION', 'HOME GAME AT HOLSTEIN-STADION'), W / 2, H * 0.785);
     ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 10; ctx.strokeRect(5, 5, W - 10, H - 10);
   });
 });
@@ -1326,7 +1330,7 @@ function buildStreet(wallW, wallH) {
   [[-30, 12, 11, '#efe6d4'], [-15, 10, 13, '#dfe4ea'], [0, 11, 12, '#eadbd0'], [16, 9, 12, '#e6e1d6'], [32, 12, 11, '#d9dfd8']]
     .forEach(([z, w, h, c]) => neighbour(oppX, z, w, h, 10, c, Math.PI / 2));
   // Gegenüber: Tomorrowland-Flagge hängt aus einem Fenster (Haus bei z = 0, 1. OG)
-  const flag = buildHangingFlag('../assets/tomorrowland-flagge.jpg', 2.8, 2.1);
+  const flag = buildHangingFlag('/assets/tomorrowland-flagge.jpg', 2.8, 2.1);
   flag.rotation.y = Math.PI / 2;
   flag.position.set(oppX + 0.08, 4.2 - 1.1, -0.9);
   envGroup.add(flag);
@@ -1738,7 +1742,7 @@ const motifs = {
     ctx.fillStyle = '#e7007f';
     ctx.font = `700 ${bandH * 0.5}px Inter, Arial, sans-serif`;
     ctx.textAlign = 'left';
-    const msg = 'Neue Kollektion  ·  Jetzt im Store  ·  Nur diese Woche  ·  ';
+    const msg = tr('Neue Kollektion  ·  Jetzt im Store  ·  Nur diese Woche  ·  ', 'New collection  ·  In store now  ·  This week only  ·  ');
     const mw = ctx.measureText(msg).width;
     const off = -((t * 45) % mw);
     for (let x = off; x < W; x += mw) ctx.fillText(msg, x, H - bandH / 2);
@@ -1764,7 +1768,7 @@ const motifs = {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     // Kopfzeile
     ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.font = font(700, u * 0.42);
-    ctx.fillText('HANDBALL  ·  HEIMSPIEL', cx, cy - u * 4.0);
+    ctx.fillText(tr('HANDBALL  ·  HEIMSPIEL', 'HANDBALL  ·  HOME GAME'), cx, cy - u * 4.0);
     // Ergebnis zählt langsam hoch
     const goals = Math.floor(t / 7);
     const score = [14 + Math.floor((goals + 1) / 2) % 20, 12 + Math.floor(goals / 2) % 20];
@@ -1805,7 +1809,7 @@ const motifs = {
     const time = `${String(Math.floor(secs / 60) % 60).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`;
     pill(cx - u * 2.3, cy + u * 1.0, u * 4.6, u * 1.7, u * 0.85, 'rgba(0,0,0,0.55)');
     ctx.fillStyle = '#ffc928'; ctx.font = font(800, u * 1.15); ctx.fillText(time, cx, cy + u * 1.88);
-    ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = font(700, u * 0.42); ctx.fillText('2. HALBZEIT', cx, cy + u * 3.25);
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = font(700, u * 0.42); ctx.fillText(tr('2. HALBZEIT', '2ND HALF'), cx, cy + u * 3.25);
     // Sponsorenlaufband
     ctx.fillStyle = '#ffffff'; ctx.fillRect(0, H - bandH, W, bandH);
     ctx.fillStyle = '#e7007f'; ctx.fillRect(0, H - bandH, W, Math.max(2, bandH * 0.08));
@@ -1870,11 +1874,11 @@ const motifs = {
     ctx.fillStyle = '#ffffff';
     ctx.shadowColor = 'rgba(0,40,80,0.45)'; ctx.shadowBlur = u * 0.3;
     ctx.font = `800 ${u * 1.25}px Inter, Arial, sans-serif`;
-    ctx.fillText('SOMMER.', W * 0.3, H * 0.24);
-    ctx.fillText('SONNE. MEER.', W * 0.3, H * 0.24 + u * 1.3);
+    ctx.fillText(tr('SOMMER.', 'SUMMER.'), W * 0.3, H * 0.24);
+    ctx.fillText(tr('SONNE. MEER.', 'SUN. SEA.'), W * 0.3, H * 0.24 + u * 1.3);
     ctx.shadowBlur = 0;
     ctx.font = `600 ${u * 0.55}px Inter, Arial, sans-serif`;
-    ctx.fillText('Last Minute in den Süden', W * 0.3, H * 0.24 + u * 2.2);
+    ctx.fillText(tr('Last Minute in den Süden', 'Last minute to the sun'), W * 0.3, H * 0.24 + u * 2.2);
     // Button
     const bw = u * 3.6, bh = u * 0.85, bx = W * 0.3, by = H * 0.86 - bh;
     ctx.fillStyle = '#e7007f';
@@ -1882,7 +1886,7 @@ const motifs = {
     ctx.arcTo(bx, by + bh, bx, by, bh / 2); ctx.arcTo(bx, by, bx + bw, by, bh / 2); ctx.fill();
     ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = `800 ${u * 0.42}px Inter, Arial, sans-serif`;
-    ctx.fillText('JETZT BUCHEN', bx + bw / 2, by + bh / 2);
+    ctx.fillText(tr('JETZT BUCHEN', 'BOOK NOW'), bx + bw / 2, by + bh / 2);
   },
 
   custom(ctx, W, H, t) {
@@ -2765,14 +2769,14 @@ function updateHUD(dims) {
   const resY = Math.round((dims.totalHeight * 1000) / pitchMm);
   const totalWeight = Math.round(L.weight);
 
-  const fmtSize = IS_FEST ? (v) => v.toFixed(2).replace('.', ',') : fmtM;
+  const fmtSize = IS_FEST ? (v) => v.toFixed(2).replace('.', DEC) : fmtM;
   document.getElementById('hudSize').textContent = `${fmtSize(dims.totalWidth)}m × ${fmtSize(dims.totalHeight)}m`;
   document.getElementById('hudPanels').textContent = `${L.total} (${panelMixText(L)})`;
   document.getElementById('hudPitch').textContent = `P${pitchMm}`;
   document.getElementById('hudRes').textContent = `${resX} × ${resY} px`;
   document.getElementById('hudWeight').textContent = `${totalWeight} kg`;
   document.getElementById('hudSummary').textContent = `${fmtSize(dims.totalWidth)}m × ${fmtSize(dims.totalHeight)}m · P${pitchMm} · ${totalWeight} kg`;
-  document.getElementById('hudDistance').textContent = `${fmtM(viewingDistanceForPitch(pitchMm))}m (Richtwert)`;
+  document.getElementById('hudDistance').textContent = `${fmtM(viewingDistanceForPitch(pitchMm))}m ${tr('(Richtwert)', '(guide value)')}`;
 }
 
 /* ------------------------------ MAIN REBUILD ------------------------------- */
@@ -2942,8 +2946,8 @@ function updateDistDisplay() {
   document.getElementById('distVal').textContent = `${fmtM(state.personDist)}m`;
   const reco = recommendedPitchForDistance(state.personDist);
   document.getElementById('pitchRecoText').textContent = reco === state.pitch
-    ? `✓ P${reco} passt zu ${fmtM(state.personDist)}m Abstand`
-    : `Für ${fmtM(state.personDist)}m empfehlen wir P${reco}`;
+    ? tr(`✓ P${reco} passt zu ${fmtM(state.personDist)}m Abstand`, `✓ P${reco} suits a ${fmtM(state.personDist)}m distance`)
+    : tr(`Für ${fmtM(state.personDist)}m empfehlen wir P${reco}`, `For ${fmtM(state.personDist)}m we recommend P${reco}`);
   document.getElementById('pitchReco').classList.toggle('match', reco === state.pitch);
 }
 document.getElementById('pitchRecoBtn').addEventListener('click', () => {
@@ -2995,7 +2999,7 @@ document.getElementById('segMount')?.addEventListener('click', (e) => {
 });
 
 function clamp(v, min, max) { return Math.min(Math.max(v, min), max); }
-function fmtM(v) { return v.toFixed(1).replace('.', ','); }
+function fmtM(v) { return v.toFixed(1).replace('.', DEC); }
 
 // Maximal 30 × 30 m Wandfläche
 const MAX_WALL_M = 30;
@@ -3009,20 +3013,21 @@ function updateSizeDisplay() {
   const colsInput = document.getElementById('colsVal');
   const rowsInput = document.getElementById('rowsVal');
   // Während der Eingabe nicht überschreiben
-  const fmtSize = IS_FEST ? (v) => v.toFixed(2).replace('.', ',') : fmtM;
+  const fmtSize = IS_FEST ? (v) => v.toFixed(2).replace('.', DEC) : fmtM;
   if (document.activeElement !== colsInput) colsInput.value = fmtSize(state.cols * panelW);
   if (document.activeElement !== rowsInput) rowsInput.value = fmtSize(state.rows * panelH);
   const L = getLayout();
   const rowsCount = [L.bigRows, L.smallRows].filter(Boolean).join(' + ');
   const nCols = IS_FEST ? L.cols : state.cols;
   const nRows = IS_FEST ? state.rows : L.bigRows + L.smallRows;
-  document.getElementById('colsPanelsLabel').innerHTML = `${nCols} Panel${nCols === 1 ? '' : 's'}<br>nebeneinander`;
+  document.getElementById('colsPanelsLabel').innerHTML = `${nCols} Panel${nCols === 1 ? '' : 's'}<br>${tr('nebeneinander', 'wide')}`;
   document.getElementById('rowsPanelsLabel').innerHTML = IS_FEST && L.small && L.big
-    ? `${nRows}× 960 / ${nRows * 2}× 480<br>übereinander`
-    : `${IS_FEST ? nRows : rowsCount} Panel${nRows === 1 ? '' : 's'}<br>übereinander`;
-  document.getElementById('panelTotal').innerHTML = `<b>Gesamt: ${L.total} Panels</b><br>${panelMixText(L)}`;
+    ? `${nRows}× 960 / ${nRows * 2}× 480<br>${tr('übereinander', 'high')}`
+    : `${IS_FEST ? nRows : rowsCount} Panel${nRows === 1 ? '' : 's'}<br>${tr('übereinander', 'high')}`;
+  document.getElementById('panelTotal').innerHTML = `<b>${tr('Gesamt', 'Total')}: ${L.total} Panels</b><br>${panelMixText(L)}`;
   const note = document.getElementById('sizeNote');
-  if (note) note.textContent = 'Die Wand besteht aus Panels mit 960 × 960 mm, bei Zwischengrößen kommen am Rand Panels mit 640 × 480 mm dazu.';
+  if (note) note.textContent = tr('Die Wand besteht aus Panels mit 960 × 960 mm, bei Zwischengrößen kommen am Rand Panels mit 640 × 480 mm dazu.',
+    'The wall is built from 960 × 960 mm panels. For in-between sizes, 640 × 480 mm panels are added at the edge.');
 }
 
 // Eingetippte Meter auf 50 cm runden (Komma oder Punkt erlaubt).
@@ -3084,6 +3089,7 @@ function buildConfigText() {
   const totalWidth = L.totalWidth.toFixed(1);
   const totalHeight = L.totalHeight.toFixed(1);
   const totalWeight = Math.round(L.weight);
+  if (EN) return buildConfigTextEn(L, totalWidth, totalHeight, totalWeight);
   const mountLabel = { truss: 'Hängend an Traverse (Hanging Bars)', wall: 'Feststehend / schwebend an der Wand', floor: 'Auf dem Boden (Ground Beam + Stacking Structures)',
     fixed: 'Wandmontage, Front-Service, inkl. Wandhalterung' }[state.mount];
   if (IS_FEST) {
@@ -3115,6 +3121,41 @@ function buildConfigText() {
     `Gewicht ca.: ${totalWeight} kg (inkl. Kabel)`
   ];
   return lines.join('\n');
+}
+
+// Englische Fassung der Konfiguration (Formular, PDF)
+function buildConfigTextEn(L, totalWidth, totalHeight, totalWeight) {
+  const mountLabel = { truss: 'Flown from truss (hanging bars)', wall: 'Freestanding / floating at a wall', floor: 'Ground stacked (ground beam + stacking structures)',
+    fixed: 'Wall mounted, front service, wall bracket included' }[state.mount];
+  const loc = state.location === 'indoor' ? 'Indoor' : 'Outdoor';
+  const res = (w, h) => `${Math.round((w * 1000) / state.pitch)} × ${Math.round((h * 1000) / state.pitch)} px`;
+  if (IS_FEST) {
+    return [
+      'Category: Fixed installation',
+      `Location: ${loc}`,
+      `Wall size: ${L.totalWidth.toFixed(2)} × ${L.totalHeight.toFixed(2)} m`,
+      `Panels: ${[L.big ? `${L.big} × 960 × 960 mm` : '', L.small ? `${L.small} × 640 × 480 mm` : ''].filter(Boolean).join(' + ')} (total ${L.total})`,
+      `Pixel pitch: P${state.pitch}`,
+      `Resolution approx.: ${res(L.totalWidth, L.totalHeight)}`,
+      `Recommended viewing distance approx.: ${viewingDistanceForPitch(state.pitch).toFixed(1)} m`,
+      `Mounting: ${mountLabel}`,
+      `GOB coating: ${state.gob ? 'Yes' : 'No'}`,
+      `Weight approx.: ${totalWeight} kg (approx. ${CONFIG.fest.weightPerM2} kg/m²)`
+    ].join('\n');
+  }
+  return [
+    'Category: Mobile (events / rental)',
+    `Location: ${loc}`,
+    `Wall size: ${totalWidth} × ${totalHeight} m`,
+    `Panels: ${L.big} × 0.5 × 1 m (portrait)${L.small ? ` + ${L.small} × 0.5 × 0.5 m (top row)` : ''}`,
+    `Total panels: ${L.total}`,
+    `Pixel pitch: P${state.pitch}`,
+    `Resolution approx.: ${res(totalWidth, totalHeight)}`,
+    `Recommended viewing distance approx.: ${viewingDistanceForPitch(state.pitch).toFixed(1)} m`,
+    `Setup: ${mountLabel}`,
+    `GOB coating: ${state.gob ? 'Yes' : 'No'}`,
+    `Weight approx.: ${totalWeight} kg (incl. cables)`
+  ].join('\n');
 }
 
 function updateConfigPreview() {
@@ -3152,10 +3193,10 @@ function validateForm() {
   const consent = document.getElementById('fConsent');
   const problems = [];
   name.classList.toggle('invalid', !name.value.trim());
-  if (!name.value.trim()) problems.push('Name');
+  if (!name.value.trim()) problems.push(tr('Name', 'name'));
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim());
   email.classList.toggle('invalid', !emailOk);
-  if (!emailOk) problems.push('gültige E-Mail-Adresse');
+  if (!emailOk) problems.push(tr('gültige E-Mail-Adresse', 'a valid email address'));
   consent.closest('.consent-row').classList.toggle('invalid', !consent.checked);
   if (!consent.checked) problems.push('Einwilligung zum Datenschutz');
   return problems;
@@ -3163,9 +3204,11 @@ function validateForm() {
 
 function mailtoFallbackLink(payload) {
   const body = encodeURIComponent(
-    `Name: ${payload.fields.name}\nFirma: ${payload.fields.company}\nE-Mail: ${payload.fields.email}\nTelefon: ${payload.fields.phone}\n\nNachricht:\n${payload.fields.message}\n\n--- Konfiguration ---\n${payload.konfiguration}`
+    EN
+      ? `Name: ${payload.fields.name}\nCompany: ${payload.fields.company}\nEmail: ${payload.fields.email}\nPhone: ${payload.fields.phone}\n\nMessage:\n${payload.fields.message}\n\n--- Configuration ---\n${payload.konfiguration}`
+      : `Name: ${payload.fields.name}\nFirma: ${payload.fields.company}\nE-Mail: ${payload.fields.email}\nTelefon: ${payload.fields.phone}\n\nNachricht:\n${payload.fields.message}\n\n--- Konfiguration ---\n${payload.konfiguration}`
   );
-  return `mailto:${CONFIG.recipientEmail}?subject=${encodeURIComponent('LEDWALL Konfigurator Anfrage')}&body=${body}`;
+  return `mailto:${CONFIG.recipientEmail}?subject=${encodeURIComponent(tr('LEDWALL Konfigurator Anfrage', 'LEDWALL configurator request'))}&body=${body}`;
 }
 
 const submitBtn = document.getElementById('submitBtn');
@@ -3173,7 +3216,7 @@ submitBtn.addEventListener('click', async () => {
   showFormError('');
   const problems = validateForm();
   if (problems.length) {
-    showFormError(`Bitte ergänzen: ${problems.join(', ')}.`);
+    showFormError(tr(`Bitte ergänzen: ${problems.join(', ')}.`, `Please add: ${problems.join(', ')}.`));
     return;
   }
 
@@ -3204,7 +3247,7 @@ submitBtn.addEventListener('click', async () => {
   }
 
   submitBtn.disabled = true;
-  submitBtn.textContent = 'Wird gesendet …';
+  submitBtn.textContent = tr('Wird gesendet …', 'Sending …');
   // Antwortet der Versanddienst nicht, nach 15 s abbrechen und die E-Mail-Alternative zeigen
   const abort = new AbortController();
   const abortTimer = setTimeout(() => abort.abort(), 15000);
@@ -3214,7 +3257,7 @@ submitBtn.addEventListener('click', async () => {
       signal: abort.signal,
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({
-        _subject: `LEDWALL Konfigurator Anfrage – ${payload.fields.name}${payload.fields.company ? ' (' + payload.fields.company + ')' : ''}`,
+        _subject: `${tr('LEDWALL Konfigurator Anfrage', 'LEDWALL Konfigurator Anfrage (EN)')} – ${payload.fields.name}${payload.fields.company ? ' (' + payload.fields.company + ')' : ''}`,
         _replyto: payload.fields.email,
         _template: 'box',
         _captcha: 'false',
@@ -3233,11 +3276,12 @@ submitBtn.addEventListener('click', async () => {
     document.getElementById('successBox').classList.add('show');
   } catch (err) {
     console.error('Anfrage konnte nicht gesendet werden:', err);
-    showFormError(`Die Anfrage konnte leider nicht gesendet werden. Bitte versuch es erneut oder schreib uns direkt per <a href="${mailtoFallbackLink(payload)}">E-Mail an ${CONFIG.recipientEmail}</a>.`);
+    showFormError(tr(`Die Anfrage konnte leider nicht gesendet werden. Bitte versuch es erneut oder schreib uns direkt per <a href="${mailtoFallbackLink(payload)}">E-Mail an ${CONFIG.recipientEmail}</a>.`,
+      `Sorry, your request could not be sent. Please try again or email us directly at <a href="${mailtoFallbackLink(payload)}">${CONFIG.recipientEmail}</a>.`));
   } finally {
     clearTimeout(abortTimer);
     submitBtn.disabled = false;
-    submitBtn.textContent = 'Anfrage absenden';
+    submitBtn.textContent = tr('Anfrage absenden', 'Send request');
   }
 });
 
@@ -3301,13 +3345,13 @@ document.getElementById('shareLinkBtn').addEventListener('click', async () => {
   const url = shareUrl();
   history.replaceState(null, '', configToHash());
   if (navigator.share && window.matchMedia('(hover:none)').matches) {
-    try { await navigator.share({ title: 'LED-Wand Konfiguration', url }); return; } catch (e) { /* abgebrochen */ }
+    try { await navigator.share({ title: tr('LED-Wand Konfiguration', 'LED wall configuration'), url }); return; } catch (e) { /* abgebrochen */ }
   }
   try {
     await navigator.clipboard.writeText(url);
-    showToast('Link kopiert ✓');
+    showToast(tr('Link kopiert ✓', 'Link copied ✓'));
   } catch (e) {
-    window.prompt('Link zum Kopieren:', url);
+    window.prompt(tr('Link zum Kopieren:', 'Link to copy:'), url);
   }
 });
 
@@ -3319,14 +3363,14 @@ document.getElementById('pdfBtn').addEventListener('click', () => {
   // Bild direkt nach dem Rendern abgreifen (ohne preserveDrawingBuffer).
   renderer.render(scene, camera);
   const img = renderer.domElement.toDataURL('image/jpeg', 0.9);
-  const date = new Date().toLocaleDateString('de-DE');
+  const date = new Date().toLocaleDateString(tr('de-DE', 'en-GB'));
   const rows = buildConfigText().split('\n').map((line) => {
     const k = line.indexOf(':');
     return `<tr><td>${escapeHtml(line.slice(0, k))}</td><td>${escapeHtml(line.slice(k + 1).trim())}</td></tr>`;
   }).join('');
   const w = window.open('', '_blank');
-  if (!w) { showToast('Bitte Pop-ups erlauben, um das PDF zu erstellen.'); return; }
-  w.document.write(`<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>LED-Wand Konfiguration ${date}</title>
+  if (!w) { showToast(tr('Bitte Pop-ups erlauben, um das PDF zu erstellen.', 'Please allow pop-ups to create the PDF.')); return; }
+  w.document.write(`<!DOCTYPE html><html lang="${tr('de', 'en')}"><head><meta charset="UTF-8"><title>${tr('LED-Wand Konfiguration', 'LED wall configuration')} ${date}</title>
 <style>
   body{font-family:Inter,Arial,sans-serif;color:#111;margin:32px;}
   h1{font-size:22px;margin:0 0 4px;} .sub{color:#666;font-size:12px;margin:0 0 18px;}
@@ -3337,12 +3381,12 @@ document.getElementById('pdfBtn').addEventListener('click', () => {
   a{color:#e7007f;}
   @page{margin:14mm;}
 </style></head><body>
-<h1>LED-Wand Konfiguration</h1>
-<p class="sub">Erstellt am ${date}</p>
-<img src="${img}" alt="Vorschau der LED-Wand">
+<h1>${tr('LED-Wand Konfiguration', 'LED wall configuration')}</h1>
+<p class="sub">${tr('Erstellt am', 'Created on')} ${date}</p>
+<img src="${img}" alt="${tr('Vorschau der LED-Wand', 'LED wall preview')}">
 <table>${rows}</table>
-<p class="foot">Konfiguration online öffnen: <a href="${escapeHtml(shareUrl())}">${escapeHtml(shareUrl())}</a><br>
-Angebot anfragen: <a href="mailto:${CONFIG.recipientEmail}">${CONFIG.recipientEmail}</a></p>
+<p class="foot">${tr('Konfiguration online öffnen', 'Open configuration online')}: <a href="${escapeHtml(shareUrl())}">${escapeHtml(shareUrl())}</a><br>
+${tr('Angebot anfragen', 'Request a quote')}: <a href="mailto:${CONFIG.recipientEmail}">${CONFIG.recipientEmail}</a></p>
 <script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script>
 </body></html>`);
   w.document.close();
