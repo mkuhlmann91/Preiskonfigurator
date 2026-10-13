@@ -12,6 +12,9 @@ const tr = (de, en) => (EN ? en : de);
 const DEC = EN ? '.' : ',';
 
 const CONFIG = {
+  // Google Tag Manager Container-ID (z. B. 'GTM-ABC1234'). Leer = kein GTM, Events landen trotzdem in
+  // window.dataLayer und gehen bei Einbettung per postMessage an die Webseite (siehe TRACKING).
+  gtmId: '',
   // Name des versteckten Feldes im echten Kontaktformular der Website.
   // Bitte an den tatsächlichen Feldnamen anpassen, falls abweichend.
   hiddenFieldName: 'ledwall_konfigurator',
@@ -3241,11 +3244,8 @@ submitBtn.addEventListener('click', async () => {
     return;
   }
 
-  // Wenn eingebettet, zusätzlich an die übergeordnete Seite melden
-  // (z.B. für Tracking). Der eigentliche Versand läuft unten per FormSubmit.
-  if (window.parent && window.parent !== window) {
-    window.parent.postMessage(payload, '*');
-  }
+  // Tracking: nur Eckdaten der Wand, keine Kontaktdaten
+  track('generate_lead', { firma_angegeben: payload.fields.company ? 'ja' : 'nein' });
 
   submitBtn.disabled = true;
   submitBtn.textContent = tr('Wird gesendet …', 'Sending …');
@@ -3423,6 +3423,67 @@ document.addEventListener('click', () => {
 
 /* --------------------------------- INIT ------------------------------------ */
 
+/* ------------------------------- TRACKING ---------------------------------
+   Jede Aktion geht als Event in window.dataLayer (Google Tag Manager / GA4) und,
+   wenn der Konfigurator per iframe eingebettet ist, zusätzlich per postMessage an
+   die Webseite: { source: 'ledwall360-konfigurator', event, ...Parameter }.
+   Es werden keine Kontaktdaten übertragen, nur Eckdaten der Wand.
+   ------------------------------------------------------------------------- */
+window.dataLayer = window.dataLayer || [];
+function trackParams() {
+  const L = getLayout();
+  return {
+    konfigurator: TRACK, sprache: EN ? 'en' : 'de',
+    breite_m: +L.totalWidth.toFixed(2), hoehe_m: +L.totalHeight.toFixed(2),
+    flaeche_m2: +(L.totalWidth * L.totalHeight).toFixed(2),
+    pitch: 'P' + state.pitch, einsatzort: state.location, aufbauart: state.mount,
+    eingebettet: window.parent !== window ? 'ja' : 'nein'
+  };
+}
+function track(event, extra) {
+  const data = Object.assign({ event }, trackParams(), extra || {});
+  window.dataLayer.push(data);
+  if (window.parent !== window) {
+    try { window.parent.postMessage(Object.assign({ source: 'ledwall360-konfigurator' }, data), '*'); } catch (e) { /* egal */ }
+  }
+}
+// Änderungen an der Wand: erstes Ändern = "aktiv", danach pro Feld höchstens ein Event je 2 s
+const TRACK_FIELDS = {
+  colsMinus: 'breite', colsPlus: 'breite', colsVal: 'breite',
+  rowsMinus: 'hoehe', rowsPlus: 'hoehe', rowsVal: 'hoehe',
+  segLocation: 'einsatzort', segMount: 'aufbauart', pitchSelect: 'pitch', pitchRecoBtn: 'pitch',
+  segContent: 'inhalt', contentFile: 'inhalt', gobToggle: 'gob', distRange: 'abstand'
+};
+let trackedActive = false;
+const trackTimers = {};
+function onTrackedChange(e) {
+  let el = e.target;
+  while (el && el !== document && !(el.id && TRACK_FIELDS[el.id])) el = el.parentNode;
+  if (!el || el === document) return;
+  if (e.type === 'click' && (el.tagName === 'INPUT' || el.tagName === 'SELECT')) return;
+  if (e.type === 'click' && el.id.startsWith('seg') && !e.target.closest('.seg-btn')) return;
+  const feld = TRACK_FIELDS[el.id];
+  if (!trackedActive) { trackedActive = true; track('konfigurator_aktiv', { feld }); }
+  clearTimeout(trackTimers[feld]);
+  trackTimers[feld] = setTimeout(() => track('konfiguration_geaendert', { feld }), 2000);
+}
+['click', 'change'].forEach((t) => document.addEventListener(t, onTrackedChange));
+document.getElementById('openModalBtn').addEventListener('click', () => track('anfrage_geoeffnet'));
+document.getElementById('shareLinkBtn').addEventListener('click', () => track('link_geteilt'));
+document.getElementById('pdfBtn').addEventListener('click', () => track('pdf_erstellt'));
+// Google Tag Manager nur laden, wenn eine Container-ID eingetragen ist und der Konfigurator
+// direkt aufgerufen wird. Eingebettet übernimmt die Webseite das Tracking (postMessage), sonst doppelt gezählt.
+// Consent Mode v2: bis zur Einwilligung (Cookie-Banner im GTM) ist alles abgelehnt.
+if (CONFIG.gtmId && window.parent === window) {
+  window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
+  window.gtag('consent', 'default', { ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', analytics_storage: 'denied', wait_for_update: 500 });
+  window.dataLayer.push({ 'gtm.start': Date.now(), event: 'gtm.js' });
+  const gtm = document.createElement('script');
+  gtm.async = true;
+  gtm.src = 'https://www.googletagmanager.com/gtm.js?id=' + encodeURIComponent(CONFIG.gtmId);
+  document.head.appendChild(gtm);
+}
+
 resize();
 state.personDist = viewingDistanceForPitch(state.pitch);
 applyHash();
@@ -3434,4 +3495,5 @@ updateDistDisplay();
 // Auf dem Desktop startet die Infobox ausgeklappt, am Handy eingeklappt
 if (!window.matchMedia('(max-width: 860px)').matches) document.getElementById('hud').classList.remove('collapsed');
 rebuild();
+track('konfigurator_geladen');
 animate();
