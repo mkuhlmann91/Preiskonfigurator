@@ -44,6 +44,7 @@ const state = {
   panelType: 'mix',     // Festinstallation: 960 × 960 mit 640 × 480 am Rand (Indoor und Outdoor)
   bracket: true,        // Festinstallation: Wandhalterung (Gestell) immer inklusive
   gob: false,
+  ratio169: false,      // Größe nur in 16:9-Schritten (Haken bei „Größe der Wand“)
   showEdges: true,
   showDummy: true,     // Figur ist immer sichtbar (kein Schalter mehr)
   content: 'logo',      // 'logo' | 'pink' | 'promo' | 'custom'
@@ -2786,6 +2787,7 @@ function updateHUD(dims) {
 /* ------------------------------ MAIN REBUILD ------------------------------- */
 
 function rebuild() {
+  if (state.ratio169) snap169();
   applyEnvironment();
   const dims = buildWallMeshes();
   buildSupport(dims);
@@ -3012,6 +3014,44 @@ const LIMITS = {
   get rows() { return [IS_FEST ? 1 : 2, Math.floor(MAX_WALL_M / getPanelDims().panelH + 1e-9)]; } // in Panel-Schritten
 };
 
+// 16:9-Raster: alle Wandgrößen, die im Panelraster höchstens 5 % von 16:9 abweichen,
+// eine pro Höhenstufe, aufsteigend sortiert.
+const RATIO_169 = 16 / 9, RATIO_TOL = 0.05;
+function sizes169() {
+  const { panelW, panelH } = getPanelDims();
+  const [cMin, cMax] = LIMITS.cols, [rMin, rMax] = LIMITS.rows;
+  const out = [];
+  for (let r = rMin; r <= rMax; r++) {
+    const c = Math.round((r * panelH * RATIO_169) / panelW);
+    if (c < cMin || c > cMax) continue;
+    if (Math.abs((c * panelW) / (r * panelH) / RATIO_169 - 1) <= RATIO_TOL) out.push({ cols: c, rows: r });
+  }
+  return out;
+}
+// Auf die 16:9-Größe springen, deren Höhe (oder Breite) der aktuellen am nächsten ist
+function snap169(by = 'rows') {
+  const list = sizes169();
+  if (!list.length) return;
+  let best = list[0];
+  for (const s of list) if (Math.abs(s[by] - state[by]) < Math.abs(best[by] - state[by])) best = s;
+  state.cols = best.cols; state.rows = best.rows;
+}
+// + / − im 16:9-Modus: zur nächstgrößeren bzw. -kleineren 16:9-Größe
+function step169(dir) {
+  if (!state.ratio169) return false;
+  snap169();
+  const list = sizes169();
+  const i = list.findIndex((s) => s.rows === state.rows);
+  const next = list[clamp(i + dir, 0, list.length - 1)];
+  if (next) { state.cols = next.cols; state.rows = next.rows; }
+  return true;
+}
+function ratioText() {
+  const L = getLayout();
+  const dev = Math.abs(L.totalWidth / L.totalHeight / RATIO_169 - 1);
+  return dev < 0.005 ? tr('Format: 16:9 exakt', 'Format: exactly 16:9') : tr('Format: ≈ 16:9', 'Format: ≈ 16:9');
+}
+
 function updateSizeDisplay() {
   const { panelW, panelH } = getPanelDims();
   const colsInput = document.getElementById('colsVal');
@@ -3028,7 +3068,8 @@ function updateSizeDisplay() {
   document.getElementById('rowsPanelsLabel').innerHTML = IS_FEST && L.small && L.big
     ? `${nRows}× 960 / ${nRows * 2}× 480<br>${tr('übereinander', 'high')}`
     : `${IS_FEST ? nRows : rowsCount} Panel${nRows === 1 ? '' : 's'}<br>${tr('übereinander', 'high')}`;
-  document.getElementById('panelTotal').innerHTML = `<b>${tr('Gesamt', 'Total')}: ${L.total} Panels</b><br>${panelMixText(L)}`;
+  document.getElementById('panelTotal').innerHTML = `<b>${tr('Gesamt', 'Total')}: ${L.total} Panels</b><br>${panelMixText(L)}`
+    + (state.ratio169 ? `<br><span class="ratio-note">${ratioText()}</span>` : '');
   const note = document.getElementById('sizeNote');
   if (note) note.textContent = tr('Die Wand besteht aus Panels mit 960 × 960 mm, bei Zwischengrößen kommen am Rand Panels mit 640 × 480 mm dazu.',
     'The wall is built from 960 × 960 mm panels. For in-between sizes, 640 × 480 mm panels are added at the edge.');
@@ -3041,6 +3082,7 @@ function applySizeInput(input, key) {
   const meters = parseFloat(String(input.value).replace(',', '.').replace(/[^0-9.]/g, ''));
   if (!isNaN(meters) && meters > 0) {
     state[key] = clamp(Math.round(meters / unit), LIMITS[key][0], LIMITS[key][1]);
+    if (state.ratio169) snap169(key);
   }
   input.blur();
   updateSizeDisplay();
@@ -3054,22 +3096,22 @@ function applySizeInput(input, key) {
 });
 
 document.getElementById('colsMinus').addEventListener('click', () => {
-  state.cols = clamp(state.cols - 1, ...LIMITS.cols);
+  if (!step169(-1)) state.cols = clamp(state.cols - 1, ...LIMITS.cols);
   updateSizeDisplay();
   rebuild();
 });
 document.getElementById('colsPlus').addEventListener('click', () => {
-  state.cols = clamp(state.cols + 1, ...LIMITS.cols);
+  if (!step169(1)) state.cols = clamp(state.cols + 1, ...LIMITS.cols);
   updateSizeDisplay();
   rebuild();
 });
 document.getElementById('rowsMinus').addEventListener('click', () => {
-  state.rows = clamp(state.rows - 1, ...LIMITS.rows);
+  if (!step169(-1)) state.rows = clamp(state.rows - 1, ...LIMITS.rows);
   updateSizeDisplay();
   rebuild();
 });
 document.getElementById('rowsPlus').addEventListener('click', () => {
-  state.rows = clamp(state.rows + 1, ...LIMITS.rows);
+  if (!step169(1)) state.rows = clamp(state.rows + 1, ...LIMITS.rows);
   updateSizeDisplay();
   rebuild();
 });
@@ -3083,6 +3125,10 @@ document.getElementById('pitchSelect').addEventListener('change', (e) => {
 });
 document.getElementById('gobToggle').addEventListener('change', (e) => {
   state.gob = e.target.checked;
+  rebuild();
+});
+document.getElementById('ratio169').addEventListener('change', (e) => {
+  state.ratio169 = e.target.checked;
   rebuild();
 });
 
@@ -3100,7 +3146,7 @@ function buildConfigText() {
     return [
       'Bereich: Festinstallation',
       `Einsatzort: ${state.location === 'indoor' ? 'Indoor' : 'Outdoor'}`,
-      `Wandgröße: ${L.totalWidth.toFixed(2)} × ${L.totalHeight.toFixed(2)} m`,
+      `Wandgröße: ${L.totalWidth.toFixed(2)} × ${L.totalHeight.toFixed(2)} m${state.ratio169 ? ' (16:9-Raster)' : ''}`,
       `Panels: ${[L.big ? `${L.big} × 960 × 960 mm` : '', L.small ? `${L.small} × 640 × 480 mm` : ''].filter(Boolean).join(' + ')} (gesamt ${L.total})`,
       `Pixel Pitch: P${state.pitch}`,
       `Auflösung ca.: ${Math.round((L.totalWidth * 1000) / state.pitch)} × ${Math.round((L.totalHeight * 1000) / state.pitch)} px`,
@@ -3114,7 +3160,7 @@ function buildConfigText() {
   const lines = [
     `Bereich: ${document.body.dataset.track === 'fest' ? 'Festinstallation' : 'Mobil (Events / Vermietung)'}`,
     `Einsatzort: ${state.location === 'indoor' ? 'Indoor' : 'Outdoor'}`,
-    `Wandgröße: ${totalWidth} × ${totalHeight} m`,
+    `Wandgröße: ${totalWidth} × ${totalHeight} m${state.ratio169 ? ' (16:9-Raster)' : ''}`,
     `Panels: ${L.big} × 0,5 × 1 m (hochkant)${L.small ? ` + ${L.small} × 0,5 × 0,5 m (oberste Reihe)` : ''}`,
     `Panelanzahl gesamt: ${L.total}`,
     `Pixel Pitch: P${state.pitch}`,
@@ -3137,7 +3183,7 @@ function buildConfigTextEn(L, totalWidth, totalHeight, totalWeight) {
     return [
       'Category: Fixed installation',
       `Location: ${loc}`,
-      `Wall size: ${L.totalWidth.toFixed(2)} × ${L.totalHeight.toFixed(2)} m`,
+      `Wall size: ${L.totalWidth.toFixed(2)} × ${L.totalHeight.toFixed(2)} m${state.ratio169 ? ' (16:9 grid)' : ''}`,
       `Panels: ${[L.big ? `${L.big} × 960 × 960 mm` : '', L.small ? `${L.small} × 640 × 480 mm` : ''].filter(Boolean).join(' + ')} (total ${L.total})`,
       `Pixel pitch: P${state.pitch}`,
       `Resolution approx.: ${res(L.totalWidth, L.totalHeight)}`,
@@ -3150,7 +3196,7 @@ function buildConfigTextEn(L, totalWidth, totalHeight, totalWeight) {
   return [
     'Category: Mobile (events / rental)',
     `Location: ${loc}`,
-    `Wall size: ${totalWidth} × ${totalHeight} m`,
+    `Wall size: ${totalWidth} × ${totalHeight} m${state.ratio169 ? ' (16:9 grid)' : ''}`,
     `Panels: ${L.big} × 0.5 × 1 m (portrait)${L.small ? ` + ${L.small} × 0.5 × 0.5 m (top row)` : ''}`,
     `Total panels: ${L.total}`,
     `Pixel pitch: P${state.pitch}`,
@@ -3302,7 +3348,7 @@ function configToHash() {
   const q = new URLSearchParams({
     ort: state.location, aufbau: state.mount,
     b: state.cols, hm: state.rows, pitch: state.pitch,
-    gob: state.gob ? 1 : 0, abstand: state.personDist,
+    gob: state.gob ? 1 : 0, abstand: state.personDist, f169: state.ratio169 ? 1 : 0,
 
     inhalt: state.content === 'custom' ? 'logo' : state.content
   });
@@ -3327,6 +3373,8 @@ function applyHash() {
   const pitch = num('pitch', state.pitch);
   state.pitch = pitchesFor(state.location).includes(pitch) ? pitch : state.pitch;
   state.gob = q.get('gob') === '1' && state.location === 'indoor';
+  state.ratio169 = q.get('f169') === '1';
+  document.getElementById('ratio169').checked = state.ratio169;
   state.personDist = clamp(num('abstand', viewingDistanceForPitch(state.pitch)), 1, state.location === 'outdoor' ? 30 : 20);
   state.content = pick(q.get('inhalt'), IS_FEST ? ['logo', 'promo', 'score'] : ['logo', 'pink', 'promo', 'score'], state.content);
   // Oberfläche nachziehen
@@ -3437,6 +3485,7 @@ function trackParams() {
     breite_m: +L.totalWidth.toFixed(2), hoehe_m: +L.totalHeight.toFixed(2),
     flaeche_m2: +(L.totalWidth * L.totalHeight).toFixed(2),
     pitch: 'P' + state.pitch, einsatzort: state.location, aufbauart: state.mount,
+    format_16_9: state.ratio169 ? 'ja' : 'nein',
     eingebettet: window.parent !== window ? 'ja' : 'nein'
   };
 }
@@ -3452,7 +3501,7 @@ const TRACK_FIELDS = {
   colsMinus: 'breite', colsPlus: 'breite', colsVal: 'breite',
   rowsMinus: 'hoehe', rowsPlus: 'hoehe', rowsVal: 'hoehe',
   segLocation: 'einsatzort', segMount: 'aufbauart', pitchSelect: 'pitch', pitchRecoBtn: 'pitch',
-  segContent: 'inhalt', contentFile: 'inhalt', gobToggle: 'gob', distRange: 'abstand'
+  segContent: 'inhalt', contentFile: 'inhalt', gobToggle: 'gob', distRange: 'abstand', ratio169: 'format_16_9'
 };
 let trackedActive = false;
 const trackTimers = {};
