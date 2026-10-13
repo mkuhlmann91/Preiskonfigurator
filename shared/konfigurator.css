@@ -37,7 +37,7 @@
     padding:16px 18px;width:360px;   /* feste Breite, egal wie groß die Wand ist */
     box-shadow:0 0 0 1px rgba(231,0,127,.08), 0 12px 30px rgba(0,0,0,.4);
   }
-  .hud .eyebrow{display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;padding:0;cursor:pointer;text-align:left;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.5px;color:var(--accent);text-transform:uppercase;margin-bottom:10px;}
+  .hud .eyebrow{display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;padding:0;cursor:pointer;text-align:left;font-family:'Inter',sans-serif;font-size:10.5px;font-weight:600;letter-spacing:1.4px;color:var(--accent);text-transform:uppercase;margin-bottom:10px;}
   .hud-summary{display:none;}
   .hud{cursor:pointer;}
   .hud-title{display:flex;align-items:center;gap:10px;}
@@ -47,7 +47,7 @@
   .hud.collapsed .hud-row{display:none;}
   .hud:not(.collapsed) .hud-chevron{transform:rotate(180deg);}
   .hud:not(.collapsed) .eyebrow{position:absolute;top:10px;right:12px;width:auto;margin:0;}
-  .hud-row{display:flex;justify-content:space-between;gap:18px;font-family:'JetBrains Mono',monospace;font-size:12.5px;padding:3px 0;}
+  .hud-row{display:flex;justify-content:space-between;gap:18px;font-family:'Inter',sans-serif;font-size:13px;font-variant-numeric:tabular-nums;padding:3px 0;}
   .hud-row span:first-child{color:var(--muted);}
   .hud-row span:last-child{color:var(--white);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
 
