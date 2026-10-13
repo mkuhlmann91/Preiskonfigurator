@@ -2771,7 +2771,8 @@ function updateHUD(dims) {
 
   const fmtSize = IS_FEST ? (v) => v.toFixed(2).replace('.', DEC) : fmtM;
   document.getElementById('hudSize').textContent = `${fmtSize(dims.totalWidth)}m × ${fmtSize(dims.totalHeight)}m`;
-  document.getElementById('hudPanels').textContent = `${L.total} (${panelMixText(L)})`;
+  // im Infokasten ohne Einheiten (mm/m), damit er bei jeder Wandgröße gleich breit bleibt
+  document.getElementById('hudPanels').textContent = `${L.total} (${panelMixText(L).replace(/mm/g, '').replace(/(\d)m\b/g, '$1')})`;
   document.getElementById('hudPitch').textContent = `P${pitchMm}`;
   document.getElementById('hudRes').textContent = `${resX} × ${resY} px`;
   document.getElementById('hudWeight').textContent = `${totalWeight} kg`;
