@@ -3014,9 +3014,9 @@ const LIMITS = {
   get rows() { return [IS_FEST ? 1 : 2, Math.floor(MAX_WALL_M / getPanelDims().panelH + 1e-9)]; } // in Panel-Schritten
 };
 
-// 16:9-Raster: alle Wandgrößen, die im Panelraster höchstens 4 % von 16:9 abweichen,
+// 16:9-Raster: alle Wandgrößen, die im Panelraster höchstens 5 % von 16:9 abweichen,
 // eine pro Höhenstufe, aufsteigend sortiert.
-const RATIO_169 = 16 / 9, RATIO_TOL = 0.04;
+const RATIO_169 = 16 / 9, RATIO_TOL = 0.05;
 function sizes169() {
   const { panelW, panelH } = getPanelDims();
   const [cMin, cMax] = LIMITS.cols, [rMin, rMax] = LIMITS.rows;
