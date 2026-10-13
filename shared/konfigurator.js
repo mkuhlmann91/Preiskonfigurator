@@ -14,7 +14,7 @@ const DEC = EN ? '.' : ',';
 const CONFIG = {
   // Google Tag Manager Container-ID (z. B. 'GTM-ABC1234'). Leer = kein GTM, Events landen trotzdem in
   // window.dataLayer und gehen bei Einbettung per postMessage an die Webseite (siehe TRACKING).
-  gtmId: '',
+  gtmId: 'GTM-5G4GJ3PJ',
   // Name des versteckten Feldes im echten Kontaktformular der Website.
   // Bitte an den tatsächlichen Feldnamen anpassen, falls abweichend.
   hiddenFieldName: 'ledwall_konfigurator',
