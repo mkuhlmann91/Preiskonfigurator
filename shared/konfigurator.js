@@ -3470,9 +3470,10 @@ function onTrackedChange(e) {
 document.getElementById('openModalBtn').addEventListener('click', () => track('anfrage_geoeffnet'));
 document.getElementById('shareLinkBtn').addEventListener('click', () => track('link_geteilt'));
 document.getElementById('pdfBtn').addEventListener('click', () => track('pdf_erstellt'));
-// Google Tag Manager nur laden, wenn eine Container-ID eingetragen ist.
+// Google Tag Manager nur laden, wenn eine Container-ID eingetragen ist und der Konfigurator
+// direkt aufgerufen wird. Eingebettet übernimmt die Webseite das Tracking (postMessage), sonst doppelt gezählt.
 // Consent Mode v2: bis zur Einwilligung (Cookie-Banner im GTM) ist alles abgelehnt.
-if (CONFIG.gtmId) {
+if (CONFIG.gtmId && window.parent === window) {
   window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
   window.gtag('consent', 'default', { ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', analytics_storage: 'denied', wait_for_update: 500 });
   window.dataLayer.push({ 'gtm.start': Date.now(), event: 'gtm.js' });
