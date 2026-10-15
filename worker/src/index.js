@@ -6,6 +6,11 @@ const RECIPIENT = 'hallo@ledwall-360.de';            // hier kommen die Anfragen
 const SENDER = { name: 'LEDWALL 360', email: 'hallo@ledwall-360.de' }; // muss in Brevo bestätigt sein
 const ALLOWED_ORIGINS = ['https://konfigurator.ledwall-360.de'];
 const PINK = '#e7007f';
+const PHONE = '+49 431 88864540';
+const PHONE_LINK = 'tel:+4943188864540';
+const WHATSAPP_LINK = 'https://wa.me/4943188864540';
+const INSTAGRAM_LINK = 'https://www.instagram.com/ledwall360/';
+const LOGO_WHITE = 'https://konfigurator.ledwall-360.de/assets/ledwall360-logo-weiss.png';
 const FONT = "Inter,'Helvetica Neue',Helvetica,Arial,sans-serif";   // wie im Konfigurator
 const HEAD_FONT = "'Space Grotesk',Inter,'Helvetica Neue',Helvetica,Arial,sans-serif";
 
@@ -59,8 +64,8 @@ export default {
       subject: en ? 'Your request at LEDWALL 360' : 'Deine Anfrage bei LEDWALL 360',
       htmlContent: customerHtml(f, rows),
       textContent: en
-        ? `Thanks for your request, ${f.name}!\n\nWe received your configuration and will get back to you with an offer within 24 hours.\n\nYour LED wall: ${f.link}\n\nLEDWALL 360`
-        : `Danke für deine Anfrage, ${f.name}!\n\nWir haben deine Konfiguration erhalten und melden uns innerhalb von 24 Stunden mit einem Angebot bei dir.\n\nDeine LED-Wand: ${f.link}\n\nDein LEDWALL 360 Team`
+        ? `Thanks for your request, ${f.name}!\n\nWe received your configuration and will get back to you with an offer within 48 hours.\n\nWhat happens next:\n1. We review your configuration.\n2. You receive your offer within 48 hours.\n3. If you like, we advise you personally.\n\nYour LED wall: ${f.link}\n\nRather talk directly? Call us at ${PHONE} or message us on WhatsApp: ${WHATSAPP_LINK}\n\nIn the meantime, check out our Instagram, where we show real projects: ${INSTAGRAM_LINK}\n\nQuestions? Just reply to this email.\n\nBest regards\nYour LEDWALL 360 team`
+        : `Danke für deine Anfrage, ${f.name}!\n\nWir haben deine Konfiguration erhalten und melden uns innerhalb von 48 Stunden mit einem Angebot bei dir.\n\nSo geht es weiter:\n1. Wir prüfen deine Konfiguration.\n2. Du bekommst dein Angebot innerhalb von 48 Stunden.\n3. Auf Wunsch beraten wir dich persönlich.\n\nDeine LED-Wand: ${f.link}\n\nLieber direkt sprechen? Ruf uns an unter ${PHONE} oder schreib uns per WhatsApp: ${WHATSAPP_LINK}\n\nIn der Zwischenzeit schau doch mal auf unserem Instagram vorbei, dort zeigen wir echte Projekte: ${INSTAGRAM_LINK}\n\nFragen vorab? Antworte einfach auf diese Mail.\n\nViele Grüße\nDein LEDWALL 360 Team`
     };
 
     const send = (mail) => fetch('https://api.brevo.com/v3/smtp/email', {
@@ -113,17 +118,38 @@ function internalHtml(f, rows) {
 
 function customerHtml(f, rows) {
   const en = f.lang === 'en';
+  const t = (de, enText) => (en ? enText : de);
   const keep = en ? ['Wall size', 'Category', 'Location', 'Pixel pitch', 'Mounting'] : ['Wandgröße', 'Bereich', 'Einsatzort', 'Pixel Pitch', 'Montage', 'Aufbauart'];
   const first = f.name.split(' ')[0];
+  const nb = (v) => `<span style="white-space:nowrap;">${esc(v)}</span>`;
+  const p = (html, extra = '') => `<p style="font-family:${FONT};font-size:14px;line-height:1.6;margin:0;${extra}">${html}</p>`;
+  const ghost = (href, label) => `<a href="${esc(href)}" style="display:inline-block;border:1.5px solid ${PINK};color:${PINK};text-decoration:none;font-family:${FONT};font-weight:600;font-size:13px;padding:9px 16px;border-radius:8px;margin:4px 6px 0 0;">${esc(label)}</a>`;
+  const steps = [
+    t('Wir prüfen deine Konfiguration.', 'We review your configuration.'),
+    t('Du bekommst dein Angebot innerhalb von 48 Stunden.', 'You receive your offer within 48 hours.'),
+    t('Auf Wunsch beraten wir dich persönlich.', 'If you like, we advise you personally.')
+  ].map((txt, i) => `<tr><td style="width:30px;padding:5px 0;vertical-align:top;"><div style="width:22px;height:22px;line-height:22px;border-radius:50%;background:${PINK};color:#fff;text-align:center;font-family:${FONT};font-size:12px;font-weight:600;">${i + 1}</div></td><td style="padding:6px 0;font-family:${FONT};font-size:14px;line-height:1.5;">${esc(txt)}</td></tr>`).join('');
   return frame(`
-  <tr><td style="background:#0a0a0b;padding:18px 24px;"><img src="https://konfigurator.ledwall-360.de/assets/ledwall360-logo.jpg" alt="LEDWALL 360" height="44" style="display:block;height:44px;"></td></tr>
-  <tr><td style="background:${PINK};height:4px;line-height:4px;font-size:0;">&nbsp;</td></tr>
-  <tr><td style="padding:24px 24px 6px;">
-    <div style="font-family:${HEAD_FONT};font-size:22px;font-weight:700;">${en ? `Thanks for your request, ${esc(first)}!` : `Danke für deine Anfrage, ${esc(first)}!`}</div>
-    <p style="font-size:14px;line-height:1.6;margin:10px 0 0;">${en ? 'We received your configuration and will get back to you with an offer within 24 hours.' : 'Wir haben deine Konfiguration erhalten und melden uns innerhalb von 24 Stunden mit einem Angebot bei dir.'}</p>
+  <tr><td style="background:${PINK};padding:22px 24px;"><img src="${LOGO_WHITE}" alt="LEDWALL 360" width="200" style="display:block;width:200px;max-width:60%;height:auto;border:0;"></td></tr>
+  <tr><td style="padding:26px 24px 4px;">
+    <div style="font-family:${HEAD_FONT};font-size:22px;font-weight:700;">${t(`Danke für deine Anfrage, ${esc(first)}!`, `Thanks for your request, ${esc(first)}!`)}</div>
+    ${p(t('Wir haben deine Konfiguration erhalten und melden uns innerhalb von 48 Stunden mit einem Angebot bei dir.', 'We received your configuration and will get back to you with an offer within 48 hours.'), 'margin-top:10px;')}
   </td></tr>
-  <tr><td style="padding:16px 24px 4px;">${heading(en ? 'Your LED wall' : 'Deine LED-Wand')}${table(rows.filter(([k]) => keep.includes(k)).map(([k, v]) => [k, esc(v)]))}</td></tr>
-  <tr><td align="center" style="padding:22px 24px 8px;">${button(f.link, en ? 'View your LED wall' : 'Deine LED-Wand ansehen')}</td></tr>
-  <tr><td style="padding:14px 24px 24px;font-size:14px;line-height:1.6;">${en ? 'Questions? Just reply to this email.<br><br>Best regards<br><b>Your LEDWALL 360 team</b>' : 'Fragen vorab? Antworte einfach auf diese Mail.<br><br>Viele Grüße<br><b>Dein LEDWALL 360 Team</b>'}</td></tr>
-  <tr><td style="background:#f7f7f8;padding:12px 24px;font-size:11px;color:#8d8d94;">LEDWALL 360 GmbH · hallo@ledwall-360.de · ledwall-360.de</td></tr>`);
+  <tr><td style="padding:18px 24px 4px;">${heading(t('So geht es weiter', 'What happens next'))}<table role="presentation" cellpadding="0" cellspacing="0">${steps}</table></td></tr>
+  <tr><td style="padding:16px 24px 4px;">${heading(t('Deine LED-Wand', 'Your LED wall'))}${table(rows.filter(([k]) => keep.includes(k)).map(([k, v]) => [k, esc(v)]))}</td></tr>
+  <tr><td align="center" style="padding:22px 24px 6px;">${button(f.link, t('Deine LED-Wand ansehen', 'View your LED wall'))}</td></tr>
+  <tr><td style="padding:22px 24px 4px;">
+    <div style="background:#fbf0f6;border-radius:10px;padding:16px 18px;">
+      ${p(`<b style="font-weight:600;">${t('Lieber direkt sprechen?', 'Rather talk directly?')}</b> ${t(`Ruf uns an unter ${nb(PHONE)} oder schreib uns per WhatsApp.`, `Call us at ${nb(PHONE)} or message us on WhatsApp.`)}`)}
+      <div style="margin-top:8px;">${ghost(PHONE_LINK, t('Anrufen', 'Call'))}${ghost(WHATSAPP_LINK, 'WhatsApp')}</div>
+    </div>
+  </td></tr>
+  <tr><td style="padding:14px 24px 4px;">
+    <div style="background:#fbf0f6;border-radius:10px;padding:16px 18px;">
+      ${p(`<b style="font-weight:600;">${t('In der Zwischenzeit', 'In the meantime')}</b> ${t('schau doch mal auf unserem Instagram vorbei, dort zeigen wir echte Projekte.', 'check out our Instagram, where we show real projects.')}`)}
+      <div style="margin-top:8px;">${ghost(INSTAGRAM_LINK, t('Zu Instagram', 'Go to Instagram'))}</div>
+    </div>
+  </td></tr>
+  <tr><td style="padding:20px 24px 24px;">${p(t('Fragen vorab? Antworte einfach auf diese Mail.<br><br>Viele Grüße<br>Dein LEDWALL 360 Team', 'Questions? Just reply to this email.<br><br>Best regards<br>Your LEDWALL 360 team'))}</td></tr>
+  <tr><td style="background:#f7f7f8;padding:12px 24px;font-family:${FONT};font-size:11px;color:#8d8d94;">LEDWALL 360 GmbH · ${PHONE} · hallo@ledwall-360.de · ledwall-360.de</td></tr>`);
 }
