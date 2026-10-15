@@ -11,8 +11,10 @@ const PHONE_LINK = 'tel:+4943188864540';
 const WHATSAPP_LINK = 'https://wa.me/4943188864540';
 const INSTAGRAM_LINK = 'https://www.instagram.com/ledwall360/';
 const LOGO_WHITE = 'https://konfigurator.ledwall-360.de/assets/ledwall360-logo-weiss.png';
+const NIKKI = 'https://konfigurator.ledwall-360.de/assets/nikki-breuer.png';
+const ICON = (n) => `https://konfigurator.ledwall-360.de/assets/icon-${n}.png`;
 const FONT = "Inter,'Helvetica Neue',Helvetica,Arial,sans-serif";   // wie im Konfigurator
-const HEAD_FONT = "'Space Grotesk',Inter,'Helvetica Neue',Helvetica,Arial,sans-serif";
+const HEAD_FONT = FONT;   // Überschriften in derselben Schrift wie der Text (Marvin-Wunsch)
 
 export default {
   async fetch(request, env) {
@@ -64,8 +66,8 @@ export default {
       subject: en ? 'Your request at LEDWALL 360' : 'Deine Anfrage bei LEDWALL 360',
       htmlContent: customerHtml(f, rows),
       textContent: en
-        ? `Thanks for your request, ${f.name}!\n\nWe received your configuration and will get back to you with an offer within 48 hours.\n\nWhat happens next:\n1. We review your configuration.\n2. You receive your offer within 48 hours.\n3. If you like, we advise you personally.\n\nYour LED wall: ${f.link}\n\nRather talk directly? Call us at ${PHONE} or message us on WhatsApp: ${WHATSAPP_LINK}\n\nIn the meantime, check out our Instagram, where we show real projects: ${INSTAGRAM_LINK}\n\nQuestions? Just reply to this email.\n\nBest regards\nYour LEDWALL 360 team`
-        : `Danke für deine Anfrage, ${f.name}!\n\nWir haben deine Konfiguration erhalten und melden uns innerhalb von 48 Stunden mit einem Angebot bei dir.\n\nSo geht es weiter:\n1. Wir prüfen deine Konfiguration.\n2. Du bekommst dein Angebot innerhalb von 48 Stunden.\n3. Auf Wunsch beraten wir dich persönlich.\n\nDeine LED-Wand: ${f.link}\n\nLieber direkt sprechen? Ruf uns an unter ${PHONE} oder schreib uns per WhatsApp: ${WHATSAPP_LINK}\n\nIn der Zwischenzeit schau doch mal auf unserem Instagram vorbei, dort zeigen wir echte Projekte: ${INSTAGRAM_LINK}\n\nFragen vorab? Antworte einfach auf diese Mail.\n\nViele Grüße\nDein LEDWALL 360 Team`
+        ? `Thanks for your request, ${f.name}!\n\nWe received your configuration and will get back to you with an offer within 48 hours.\n\nWhat happens next:\n1. We review your configuration.\n2. You receive your offer within 48 hours.\n3. If you like, we advise you personally.\n\nYour LEDWALL: ${f.link}\n\nRather talk directly? I'm Nikki and happy to advise you personally on your LEDWALL. Just call me at ${PHONE} or send me a WhatsApp: ${WHATSAPP_LINK}\n\nIn the meantime, check out our Instagram, where we show real projects: ${INSTAGRAM_LINK}\n\nQuestions? Just reply to this email.\n\nBest regards\nNikki Breuer\nLEDWALL 360`
+        : `Danke für deine Anfrage, ${f.name}!\n\nWir haben deine Konfiguration erhalten und melden uns innerhalb von 48 Stunden mit einem Angebot bei dir.\n\nSo geht es weiter:\n1. Wir prüfen deine Konfiguration.\n2. Du bekommst dein Angebot innerhalb von 48 Stunden.\n3. Auf Wunsch beraten wir dich persönlich.\n\nDeine LEDWALL: ${f.link}\n\nLieber direkt sprechen? Ich bin Nikki und berate dich gern persönlich zu deiner LEDWALL. Ruf mich einfach an unter ${PHONE} oder schreib mir per WhatsApp: ${WHATSAPP_LINK}\n\nIn der Zwischenzeit schau doch mal auf unserem Instagram vorbei, dort zeigen wir echte Projekte: ${INSTAGRAM_LINK}\n\nFragen vorab? Antworte einfach auf diese Mail.\n\nViele Grüße\nNikki Breuer\nLEDWALL 360`
     };
 
     const send = (mail) => fetch('https://api.brevo.com/v3/smtp/email', {
@@ -94,7 +96,7 @@ function table(pairs) {
 }
 const heading = (t) => `<div style="font-family:${HEAD_FONT};font-size:13px;font-weight:700;color:${PINK};text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">${esc(t)}</div>`;
 const button = (href, label) => href ? `<a href="${esc(href)}" style="display:inline-block;background:${PINK};color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:8px;">${esc(label)}</a>` : '';
-const frame = (inner) => `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;600&display=swap" rel="stylesheet"></head>
+const frame = (inner) => `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet"><style>@media only screen and (max-width:520px){.dk{display:none!important;}.mb{display:table-row!important;}}</style></head>
 <body style="margin:0;background:#f2f2f4;font-family:${FONT};color:#1b1b1e;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f2f2f4;padding:24px 0;"><tr><td align="center">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:12px;overflow:hidden;">${inner}</table></td></tr></table></body></html>`;
 
@@ -123,7 +125,7 @@ function customerHtml(f, rows) {
   const first = f.name.split(' ')[0];
   const nb = (v) => `<span style="white-space:nowrap;">${esc(v)}</span>`;
   const p = (html, extra = '') => `<p style="font-family:${FONT};font-size:14px;line-height:1.6;margin:0;${extra}">${html}</p>`;
-  const ghost = (href, label) => `<a href="${esc(href)}" style="display:inline-block;border:1.5px solid ${PINK};color:${PINK};text-decoration:none;font-family:${FONT};font-weight:600;font-size:13px;padding:9px 16px;border-radius:8px;margin:4px 6px 0 0;">${esc(label)}</a>`;
+  const ghost = (href, label, icon) => `<a href="${esc(href)}" style="display:inline-block;border:1.5px solid ${PINK};color:${PINK};text-decoration:none;font-family:${FONT};font-weight:600;font-size:13px;line-height:16px;padding:9px 16px 9px 13px;border-radius:8px;margin:4px 6px 0 0;"><img src="${ICON(icon)}" alt="" width="16" height="16" style="display:inline-block;width:16px;height:16px;border:0;vertical-align:-3px;margin-right:7px;">${esc(label)}</a>`;
   const steps = [
     t('Wir prüfen deine Konfiguration.', 'We review your configuration.'),
     t('Du bekommst dein Angebot innerhalb von 48 Stunden.', 'You receive your offer within 48 hours.'),
@@ -136,20 +138,31 @@ function customerHtml(f, rows) {
     ${p(t('Wir haben deine Konfiguration erhalten und melden uns innerhalb von 48 Stunden mit einem Angebot bei dir.', 'We received your configuration and will get back to you with an offer within 48 hours.'), 'margin-top:10px;')}
   </td></tr>
   <tr><td style="padding:18px 24px 4px;">${heading(t('So geht es weiter', 'What happens next'))}<table role="presentation" cellpadding="0" cellspacing="0">${steps}</table></td></tr>
-  <tr><td style="padding:16px 24px 4px;">${heading(t('Deine LED-Wand', 'Your LED wall'))}${table(rows.filter(([k]) => keep.includes(k)).map(([k, v]) => [k, esc(v)]))}</td></tr>
-  <tr><td align="center" style="padding:22px 24px 6px;">${button(f.link, t('Deine LED-Wand ansehen', 'View your LED wall'))}</td></tr>
+  <tr><td style="padding:16px 24px 4px;">${heading(t('Deine LEDWALL', 'Your LEDWALL'))}${table(rows.filter(([k]) => keep.includes(k)).map(([k, v]) => [k, esc(v)]))}</td></tr>
+  <tr><td align="center" style="padding:22px 24px 6px;">${button(f.link, t('Deine LEDWALL ansehen', 'View your LEDWALL'))}</td></tr>
   <tr><td style="padding:22px 24px 4px;">
     <div style="background:#fbf0f6;border-radius:10px;padding:16px 18px;">
-      ${p(`<b style="font-weight:600;">${t('Lieber direkt sprechen?', 'Rather talk directly?')}</b> ${t(`Ruf uns an unter ${nb(PHONE)} oder schreib uns per WhatsApp.`, `Call us at ${nb(PHONE)} or message us on WhatsApp.`)}`)}
-      <div style="margin-top:8px;">${ghost(PHONE_LINK, t('Anrufen', 'Call'))}${ghost(WHATSAPP_LINK, 'WhatsApp')}</div>
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr>
+        <td width="120" style="width:120px;vertical-align:top;"><img src="${NIKKI}" alt="Nikki Breuer" width="105" height="140" style="display:block;width:105px;height:140px;border-radius:12px;border:0;"></td>
+        <td style="vertical-align:top;">
+          ${p(`<b style="font-weight:600;">${t('Lieber direkt sprechen?', 'Rather talk directly?')}</b><br>${t('Ich bin Nikki und berate dich gern persönlich zu deiner LEDWALL. Ruf mich einfach an oder schreib mir per WhatsApp.', "I'm Nikki and happy to advise you personally on your LEDWALL. Just call me or send me a WhatsApp.")}`)}
+          ${p(nb(PHONE), 'margin-top:4px;font-size:12px;color:#8d8d94;')}
+          <div class="dk" style="margin-top:6px;">${ghost(PHONE_LINK, t('Anrufen', 'Call'), 'phone')}${ghost(WHATSAPP_LINK, 'WhatsApp', 'whatsapp')}</div>
+        </td>
+      </tr>
+      <!-- Handy: Anrufen unter dem Foto, WhatsApp daneben -->
+      <tr class="mb" style="display:none;mso-hide:all;">
+        <td style="vertical-align:top;padding-top:6px;">${ghost(PHONE_LINK, t('Anrufen', 'Call'), 'phone')}</td>
+        <td style="vertical-align:top;padding-top:6px;">${ghost(WHATSAPP_LINK, 'WhatsApp', 'whatsapp')}</td>
+      </tr></table>
     </div>
   </td></tr>
   <tr><td style="padding:14px 24px 4px;">
     <div style="background:#fbf0f6;border-radius:10px;padding:16px 18px;">
       ${p(`<b style="font-weight:600;">${t('In der Zwischenzeit', 'In the meantime')}</b> ${t('schau doch mal auf unserem Instagram vorbei, dort zeigen wir echte Projekte.', 'check out our Instagram, where we show real projects.')}`)}
-      <div style="margin-top:8px;">${ghost(INSTAGRAM_LINK, t('Zu Instagram', 'Go to Instagram'))}</div>
+      <div style="margin-top:8px;">${ghost(INSTAGRAM_LINK, t('Zu Instagram', 'Go to Instagram'), 'instagram')}</div>
     </div>
   </td></tr>
-  <tr><td style="padding:20px 24px 24px;">${p(t('Fragen vorab? Antworte einfach auf diese Mail.<br><br>Viele Grüße<br>Dein LEDWALL 360 Team', 'Questions? Just reply to this email.<br><br>Best regards<br>Your LEDWALL 360 team'))}</td></tr>
+  <tr><td style="padding:20px 24px 24px;">${p(t('Fragen vorab? Antworte einfach auf diese Mail.<br><br>Viele Grüße<br>Nikki Breuer<br>LEDWALL 360', 'Questions? Just reply to this email.<br><br>Best regards<br>Nikki Breuer<br>LEDWALL 360'))}</td></tr>
   <tr><td style="background:#f7f7f8;padding:12px 24px;font-family:${FONT};font-size:11px;color:#8d8d94;">LEDWALL 360 GmbH · ${PHONE} · hallo@ledwall-360.de · ledwall-360.de</td></tr>`);
 }
