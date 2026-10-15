@@ -18,10 +18,10 @@ const CONFIG = {
   // Name des versteckten Feldes im echten Kontaktformular der Website.
   // Bitte an den tatsächlichen Feldnamen anpassen, falls abweichend.
   hiddenFieldName: 'ledwall_konfigurator',
-  // Empfänger der Anfragen. Versand läuft über FormSubmit (formsubmit.co).
-  // Beim allerersten Versand schickt FormSubmit eine Bestätigungs-Mail an diese
-  // Adresse; erst nach Klick auf den Link dort werden Anfragen zugestellt.
+  // Empfänger der Anfragen. Versand läuft über unseren Cloudflare Worker (Brevo, eigenes Mail-Design
+  // + Bestätigung an den Kunden). Fällt der aus, geht die Anfrage wie bisher über FormSubmit (formsubmit.co).
   recipientEmail: 'hallo@ledwall-360.de',
+  mailEndpoint: 'https://konfigurator-anfrage.shrill-math-bebd.workers.dev',
   // Datenschutzerklärung, verlinkt an der Einwilligungs-Checkbox.
   privacyUrl: 'https://ledwall-360.de/datenschutz',
   // Gewichte pro Panel in kg (vom Kunden angegeben)
@@ -3261,6 +3261,56 @@ function mailtoFallbackLink(payload) {
   return `mailto:${CONFIG.recipientEmail}?subject=${encodeURIComponent(tr('LEDWALL Konfigurator Anfrage', 'LEDWALL configurator request'))}&body=${body}`;
 }
 
+// fetch mit Zeitlimit: antwortet der Dienst nicht, wird abgebrochen
+async function postJson(url, body, ms) {
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), ms);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      signal: abort.signal,
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || String(data.success) !== 'true') throw new Error(data.message || `HTTP ${res.status}`);
+    return data;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Versand über den Cloudflare Worker: Mail an uns im eigenen Design + Bestätigung an den Kunden
+function sendViaWorker(payload) {
+  if (!CONFIG.mailEndpoint) return Promise.reject(new Error('kein mailEndpoint'));
+  const L = getLayout();
+  const fmt = IS_FEST ? (v) => v.toFixed(2).replace('.', DEC) : fmtM;
+  return postJson(CONFIG.mailEndpoint, {
+    ...payload.fields,
+    size: `${fmt(L.totalWidth)} × ${fmt(L.totalHeight)} m`,
+    area: `${IS_FEST ? 'Festinstallation' : 'Mobil'} · ${state.location === 'indoor' ? 'Indoor' : 'Outdoor'}`,
+    lang: EN ? 'en' : 'de',
+    link: shareUrl(),
+    config: payload.konfiguration
+  }, 12000);
+}
+
+// Ersatzweg: FormSubmit (Standard-Design, keine Kundenbestätigung)
+function sendViaFormSubmit(payload) {
+  return postJson(`https://formsubmit.co/ajax/${CONFIG.recipientEmail}`, {
+    _subject: `${tr('LEDWALL Konfigurator Anfrage', 'LEDWALL Konfigurator Anfrage (EN)')} – ${payload.fields.name}${payload.fields.company ? ' (' + payload.fields.company + ')' : ''}`,
+    _replyto: payload.fields.email,
+    _template: 'box',
+    _captcha: 'false',
+    Name: payload.fields.name,
+    Firma: payload.fields.company || '–',
+    'E-Mail': payload.fields.email,
+    Telefon: payload.fields.phone || '–',
+    Nachricht: payload.fields.message || '–',
+    Konfiguration: payload.konfiguration
+  }, 15000);
+}
+
 const submitBtn = document.getElementById('submitBtn');
 submitBtn.addEventListener('click', async () => {
   showFormError('');
@@ -3295,30 +3345,14 @@ submitBtn.addEventListener('click', async () => {
 
   submitBtn.disabled = true;
   submitBtn.textContent = tr('Wird gesendet …', 'Sending …');
-  // Antwortet der Versanddienst nicht, nach 15 s abbrechen und die E-Mail-Alternative zeigen
-  const abort = new AbortController();
-  const abortTimer = setTimeout(() => abort.abort(), 15000);
   try {
-    const res = await fetch(`https://formsubmit.co/ajax/${CONFIG.recipientEmail}`, {
-      method: 'POST',
-      signal: abort.signal,
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({
-        _subject: `${tr('LEDWALL Konfigurator Anfrage', 'LEDWALL Konfigurator Anfrage (EN)')} – ${payload.fields.name}${payload.fields.company ? ' (' + payload.fields.company + ')' : ''}`,
-        _replyto: payload.fields.email,
-        _template: 'box',
-        _captcha: 'false',
-        Name: payload.fields.name,
-        Firma: payload.fields.company || '–',
-        'E-Mail': payload.fields.email,
-        Telefon: payload.fields.phone || '–',
-        Nachricht: payload.fields.message || '–',
-        Konfiguration: payload.konfiguration
-      })
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || String(data.success) !== 'true') throw new Error(data.message || `HTTP ${res.status}`);
-
+    // Zuerst über den Worker (Brevo), bei Fehler über FormSubmit
+    try {
+      await sendViaWorker(payload);
+    } catch (err) {
+      console.warn('Worker-Versand fehlgeschlagen, nutze FormSubmit:', err);
+      await sendViaFormSubmit(payload);
+    }
     document.getElementById('formView').style.display = 'none';
     document.getElementById('successBox').classList.add('show');
   } catch (err) {
@@ -3326,7 +3360,6 @@ submitBtn.addEventListener('click', async () => {
     showFormError(tr(`Die Anfrage konnte leider nicht gesendet werden. Bitte versuch es erneut oder schreib uns direkt per <a href="${mailtoFallbackLink(payload)}">E-Mail an ${CONFIG.recipientEmail}</a>.`,
       `Sorry, your request could not be sent. Please try again or email us directly at <a href="${mailtoFallbackLink(payload)}">${CONFIG.recipientEmail}</a>.`));
   } finally {
-    clearTimeout(abortTimer);
     submitBtn.disabled = false;
     submitBtn.textContent = tr('Anfrage absenden', 'Send request');
   }
