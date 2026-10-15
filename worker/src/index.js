@@ -66,8 +66,8 @@ export default {
       subject: en ? 'Your request at LEDWALL 360' : 'Deine Anfrage bei LEDWALL 360',
       htmlContent: customerHtml(f, rows),
       textContent: en
-        ? `Thanks for your request, ${f.name}!\n\nWe received your configuration and will get back to you with an offer within 48 hours.\n\nWhat happens next:\n1. We review your configuration.\n2. You receive your offer within 48 hours.\n3. If you like, we advise you personally.\n\nYour LEDWALL: ${f.link}\n\nRather talk directly? I'm Nikki and happy to advise you personally on your LEDWALL. Just call me at ${PHONE} or send me a WhatsApp: ${WHATSAPP_LINK}\n\nIn the meantime, check out our Instagram, where we show real projects: ${INSTAGRAM_LINK}\n\nQuestions? Just reply to this email.\n\nBest regards\nNikki Breuer\nLEDWALL 360`
-        : `Danke für deine Anfrage, ${f.name}!\n\nWir haben deine Konfiguration erhalten und melden uns innerhalb von 48 Stunden mit einem Angebot bei dir.\n\nSo geht es weiter:\n1. Wir prüfen deine Konfiguration.\n2. Du bekommst dein Angebot innerhalb von 48 Stunden.\n3. Auf Wunsch beraten wir dich persönlich.\n\nDeine LEDWALL: ${f.link}\n\nLieber direkt sprechen? Ich bin Nikki und berate dich gern persönlich zu deiner LEDWALL. Ruf mich einfach an unter ${PHONE} oder schreib mir per WhatsApp: ${WHATSAPP_LINK}\n\nIn der Zwischenzeit schau doch mal auf unserem Instagram vorbei, dort zeigen wir echte Projekte: ${INSTAGRAM_LINK}\n\nFragen vorab? Antworte einfach auf diese Mail.\n\nViele Grüße\nNikki Breuer\nLEDWALL 360`
+        ? `Thanks for your request, ${f.name}!\n\nWe received your configuration.\n\nWhat happens next:\n1. We review your configuration.\n2. You receive your offer within 48 hours.\n3. Questions? We're happy to advise you personally.\n\nYour LEDWALL: ${f.link}\n\nRather talk directly? I'm Nikki and happy to advise you personally on your LEDWALL. Just call me at ${PHONE} or send me a WhatsApp: ${WHATSAPP_LINK}\n\nIn the meantime, check out our Instagram, where we show real projects: ${INSTAGRAM_LINK}\n\nQuestions? Just reply to this email.\n\nBest regards\nNikki Breuer\nLEDWALL 360`
+        : `Danke für deine Anfrage, ${f.name}!\n\nWir haben deine Konfiguration erhalten.\n\nSo geht es weiter:\n1. Wir prüfen deine Konfiguration.\n2. Du bekommst dein Angebot innerhalb von 48 Stunden.\n3. Fragen? Wir beraten dich gern persönlich.\n\nDeine LEDWALL: ${f.link}\n\nLieber direkt sprechen? Ich bin Nikki und berate dich gern persönlich zu deiner LEDWALL. Ruf mich einfach an unter ${PHONE} oder schreib mir per WhatsApp: ${WHATSAPP_LINK}\n\nIn der Zwischenzeit schau doch mal auf unserem Instagram vorbei, dort zeigen wir echte Projekte: ${INSTAGRAM_LINK}\n\nFragen vorab? Antworte einfach auf diese Mail.\n\nBeste Grüße\nNikki Breuer\nLEDWALL 360`
     };
 
     const send = (mail) => fetch('https://api.brevo.com/v3/smtp/email', {
@@ -129,13 +129,13 @@ function customerHtml(f, rows) {
   const steps = [
     t('Wir prüfen deine Konfiguration.', 'We review your configuration.'),
     t('Du bekommst dein Angebot innerhalb von 48 Stunden.', 'You receive your offer within 48 hours.'),
-    t('Auf Wunsch beraten wir dich persönlich.', 'If you like, we advise you personally.')
+    t('Fragen? Wir beraten dich gern persönlich.', "Questions? We're happy to advise you personally.")
   ].map((txt, i) => `<tr><td style="width:30px;padding:5px 0;vertical-align:top;"><div style="width:22px;height:22px;line-height:22px;border-radius:50%;background:${PINK};color:#fff;text-align:center;font-family:${FONT};font-size:12px;font-weight:600;">${i + 1}</div></td><td style="padding:6px 0;font-family:${FONT};font-size:14px;line-height:1.5;">${esc(txt)}</td></tr>`).join('');
   return frame(`
   <tr><td style="background:${PINK};padding:22px 24px;"><img src="${LOGO_WHITE}" alt="LEDWALL 360" width="200" style="display:block;width:200px;max-width:60%;height:auto;border:0;"></td></tr>
   <tr><td style="padding:26px 24px 4px;">
     <div style="font-family:${HEAD_FONT};font-size:22px;font-weight:700;">${t(`Danke für deine Anfrage, ${esc(first)}!`, `Thanks for your request, ${esc(first)}!`)}</div>
-    ${p(t('Wir haben deine Konfiguration erhalten und melden uns innerhalb von 48 Stunden mit einem Angebot bei dir.', 'We received your configuration and will get back to you with an offer within 48 hours.'), 'margin-top:10px;')}
+    ${p(t('Wir haben deine Konfiguration erhalten.', 'We received your configuration.'), 'margin-top:10px;')}
   </td></tr>
   <tr><td style="padding:18px 24px 4px;">${heading(t('So geht es weiter', 'What happens next'))}<table role="presentation" cellpadding="0" cellspacing="0">${steps}</table></td></tr>
   <tr><td style="padding:16px 24px 4px;">${heading(t('Deine LEDWALL', 'Your LEDWALL'))}${table(rows.filter(([k]) => keep.includes(k)).map(([k, v]) => [k, esc(v)]))}</td></tr>
@@ -163,6 +163,6 @@ function customerHtml(f, rows) {
       <div style="margin-top:8px;">${ghost(INSTAGRAM_LINK, t('Zu Instagram', 'Go to Instagram'), 'instagram')}</div>
     </div>
   </td></tr>
-  <tr><td style="padding:20px 24px 24px;">${p(t('Fragen vorab? Antworte einfach auf diese Mail.<br><br>Viele Grüße<br>Nikki Breuer<br>LEDWALL 360', 'Questions? Just reply to this email.<br><br>Best regards<br>Nikki Breuer<br>LEDWALL 360'))}</td></tr>
+  <tr><td style="padding:20px 24px 24px;">${p(t('Fragen vorab? Antworte einfach auf diese Mail.<br><br>Beste Grüße<br>Nikki Breuer<br>LEDWALL 360', 'Questions? Just reply to this email.<br><br>Best regards<br>Nikki Breuer<br>LEDWALL 360'))}</td></tr>
   <tr><td style="background:#f7f7f8;padding:12px 24px;font-family:${FONT};font-size:11px;color:#8d8d94;">LEDWALL 360 GmbH · ${PHONE} · hallo@ledwall-360.de · ledwall-360.de</td></tr>`);
 }
