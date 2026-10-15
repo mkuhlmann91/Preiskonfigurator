@@ -1,0 +1,9 @@
+// Cloudflare Worker für den Anfrage-Versand (Brevo).
+// Wird von Cloudflare "Workers Builds" bei jedem Merge auf main automatisch neu bereitgestellt.
+// Der Brevo-Schlüssel ist als Secret BREVO_API_KEY in Cloudflare hinterlegt und bleibt bei jedem Deploy erhalten.
+{
+  "name": "konfigurator-anfrage",
+  "main": "src/index.js",
+  "compatibility_date": "2025-09-01",
+  "observability": { "enabled": true }
+}
