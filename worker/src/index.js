@@ -66,8 +66,8 @@ export default {
       subject: en ? 'Your request at LEDWALL 360' : 'Deine Anfrage bei LEDWALL 360',
       htmlContent: customerHtml(f, rows),
       textContent: en
-        ? `Thanks for your request, ${f.name}!\n\nWe received your configuration and will get back to you with an offer within 48 hours.\n\nWhat happens next:\n1. We review your configuration.\n2. You receive your offer within 48 hours.\n3. If you like, we advise you personally.\n\nYour LED wall: ${f.link}\n\nRather talk directly? I'm Nikki and happy to advise you personally on your LED wall. Just call me at ${PHONE} or send me a WhatsApp: ${WHATSAPP_LINK}\n\nIn the meantime, check out our Instagram, where we show real projects: ${INSTAGRAM_LINK}\n\nQuestions? Just reply to this email.\n\nBest regards\nNikki Breuer\nLEDWALL 360`
-        : `Danke für deine Anfrage, ${f.name}!\n\nWir haben deine Konfiguration erhalten und melden uns innerhalb von 48 Stunden mit einem Angebot bei dir.\n\nSo geht es weiter:\n1. Wir prüfen deine Konfiguration.\n2. Du bekommst dein Angebot innerhalb von 48 Stunden.\n3. Auf Wunsch beraten wir dich persönlich.\n\nDeine LED-Wand: ${f.link}\n\nLieber direkt sprechen? Ich bin Nikki und berate dich gern persönlich zu deiner LED-Wand. Ruf mich einfach an unter ${PHONE} oder schreib mir per WhatsApp: ${WHATSAPP_LINK}\n\nIn der Zwischenzeit schau doch mal auf unserem Instagram vorbei, dort zeigen wir echte Projekte: ${INSTAGRAM_LINK}\n\nFragen vorab? Antworte einfach auf diese Mail.\n\nViele Grüße\nNikki Breuer\nLEDWALL 360`
+        ? `Thanks for your request, ${f.name}!\n\nWe received your configuration and will get back to you with an offer within 48 hours.\n\nWhat happens next:\n1. We review your configuration.\n2. You receive your offer within 48 hours.\n3. If you like, we advise you personally.\n\nYour LEDWALL: ${f.link}\n\nRather talk directly? I'm Nikki and happy to advise you personally on your LEDWALL. Just call me at ${PHONE} or send me a WhatsApp: ${WHATSAPP_LINK}\n\nIn the meantime, check out our Instagram, where we show real projects: ${INSTAGRAM_LINK}\n\nQuestions? Just reply to this email.\n\nBest regards\nNikki Breuer\nLEDWALL 360`
+        : `Danke für deine Anfrage, ${f.name}!\n\nWir haben deine Konfiguration erhalten und melden uns innerhalb von 48 Stunden mit einem Angebot bei dir.\n\nSo geht es weiter:\n1. Wir prüfen deine Konfiguration.\n2. Du bekommst dein Angebot innerhalb von 48 Stunden.\n3. Auf Wunsch beraten wir dich persönlich.\n\nDeine LEDWALL: ${f.link}\n\nLieber direkt sprechen? Ich bin Nikki und berate dich gern persönlich zu deiner LEDWALL. Ruf mich einfach an unter ${PHONE} oder schreib mir per WhatsApp: ${WHATSAPP_LINK}\n\nIn der Zwischenzeit schau doch mal auf unserem Instagram vorbei, dort zeigen wir echte Projekte: ${INSTAGRAM_LINK}\n\nFragen vorab? Antworte einfach auf diese Mail.\n\nViele Grüße\nNikki Breuer\nLEDWALL 360`
     };
 
     const send = (mail) => fetch('https://api.brevo.com/v3/smtp/email', {
@@ -138,18 +138,18 @@ function customerHtml(f, rows) {
     ${p(t('Wir haben deine Konfiguration erhalten und melden uns innerhalb von 48 Stunden mit einem Angebot bei dir.', 'We received your configuration and will get back to you with an offer within 48 hours.'), 'margin-top:10px;')}
   </td></tr>
   <tr><td style="padding:18px 24px 4px;">${heading(t('So geht es weiter', 'What happens next'))}<table role="presentation" cellpadding="0" cellspacing="0">${steps}</table></td></tr>
-  <tr><td style="padding:16px 24px 4px;">${heading(t('Deine LED-Wand', 'Your LED wall'))}${table(rows.filter(([k]) => keep.includes(k)).map(([k, v]) => [k, esc(v)]))}</td></tr>
-  <tr><td align="center" style="padding:22px 24px 6px;">${button(f.link, t('Deine LED-Wand ansehen', 'View your LED wall'))}</td></tr>
+  <tr><td style="padding:16px 24px 4px;">${heading(t('Deine LEDWALL', 'Your LEDWALL'))}${table(rows.filter(([k]) => keep.includes(k)).map(([k, v]) => [k, esc(v)]))}</td></tr>
+  <tr><td align="center" style="padding:22px 24px 6px;">${button(f.link, t('Deine LEDWALL ansehen', 'View your LEDWALL'))}</td></tr>
   <tr><td style="padding:22px 24px 4px;">
     <div style="background:#fbf0f6;border-radius:10px;padding:16px 18px;">
       <table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr>
-        <td width="80" style="width:80px;vertical-align:top;padding-top:2px;"><img src="${NIKKI}" alt="Nikki Breuer" width="64" height="64" style="display:block;width:64px;height:64px;border-radius:50%;border:0;"></td>
+        <td width="120" style="width:120px;vertical-align:top;"><img src="${NIKKI}" alt="Nikki Breuer" width="105" height="140" style="display:block;width:105px;height:140px;border-radius:12px;border:0;"></td>
         <td style="vertical-align:top;">
-          ${p(`<b style="font-weight:600;">${t('Lieber direkt sprechen?', 'Rather talk directly?')}</b><br>${t('Ich bin Nikki und berate dich gern persönlich zu deiner LED-Wand. Ruf mich einfach an oder schreib mir per WhatsApp.', "I'm Nikki and happy to advise you personally on your LED wall. Just call me or send me a WhatsApp.")}`)}
-          ${p(`Nikki Breuer · LEDWALL 360 · ${nb(PHONE)}`, 'margin-top:4px;font-size:12px;color:#8d8d94;')}
+          ${p(`<b style="font-weight:600;">${t('Lieber direkt sprechen?', 'Rather talk directly?')}</b><br>${t('Ich bin Nikki und berate dich gern persönlich zu deiner LEDWALL. Ruf mich einfach an oder schreib mir per WhatsApp.', "I'm Nikki and happy to advise you personally on your LEDWALL. Just call me or send me a WhatsApp.")}`)}
+          ${p(nb(PHONE), 'margin-top:4px;font-size:12px;color:#8d8d94;')}
+          <div style="margin-top:6px;">${ghost(PHONE_LINK, t('Anrufen', 'Call'), 'phone')}${ghost(WHATSAPP_LINK, 'WhatsApp', 'whatsapp')}</div>
         </td>
       </tr></table>
-      <div style="margin-top:8px;">${ghost(PHONE_LINK, t('Anrufen', 'Call'), 'phone')}${ghost(WHATSAPP_LINK, 'WhatsApp', 'whatsapp')}</div>
     </div>
   </td></tr>
   <tr><td style="padding:14px 24px 4px;">
