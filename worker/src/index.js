@@ -11,8 +11,9 @@ const PHONE_LINK = 'tel:+4943188864540';
 const WHATSAPP_LINK = 'https://wa.me/4943188864540';
 const INSTAGRAM_LINK = 'https://www.instagram.com/ledwall360/';
 const LOGO_WHITE = 'https://konfigurator.ledwall-360.de/assets/ledwall360-logo-weiss.png';
+const ICON = (n) => `https://konfigurator.ledwall-360.de/assets/icon-${n}.png`;
 const FONT = "Inter,'Helvetica Neue',Helvetica,Arial,sans-serif";   // wie im Konfigurator
-const HEAD_FONT = "'Space Grotesk',Inter,'Helvetica Neue',Helvetica,Arial,sans-serif";
+const HEAD_FONT = FONT;   // Überschriften in derselben Schrift wie der Text (Marvin-Wunsch)
 
 export default {
   async fetch(request, env) {
@@ -94,7 +95,7 @@ function table(pairs) {
 }
 const heading = (t) => `<div style="font-family:${HEAD_FONT};font-size:13px;font-weight:700;color:${PINK};text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">${esc(t)}</div>`;
 const button = (href, label) => href ? `<a href="${esc(href)}" style="display:inline-block;background:${PINK};color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:8px;">${esc(label)}</a>` : '';
-const frame = (inner) => `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;600&display=swap" rel="stylesheet"></head>
+const frame = (inner) => `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet"></head>
 <body style="margin:0;background:#f2f2f4;font-family:${FONT};color:#1b1b1e;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f2f2f4;padding:24px 0;"><tr><td align="center">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:12px;overflow:hidden;">${inner}</table></td></tr></table></body></html>`;
 
@@ -123,7 +124,7 @@ function customerHtml(f, rows) {
   const first = f.name.split(' ')[0];
   const nb = (v) => `<span style="white-space:nowrap;">${esc(v)}</span>`;
   const p = (html, extra = '') => `<p style="font-family:${FONT};font-size:14px;line-height:1.6;margin:0;${extra}">${html}</p>`;
-  const ghost = (href, label) => `<a href="${esc(href)}" style="display:inline-block;border:1.5px solid ${PINK};color:${PINK};text-decoration:none;font-family:${FONT};font-weight:600;font-size:13px;padding:9px 16px;border-radius:8px;margin:4px 6px 0 0;">${esc(label)}</a>`;
+  const ghost = (href, label, icon) => `<a href="${esc(href)}" style="display:inline-block;border:1.5px solid ${PINK};color:${PINK};text-decoration:none;font-family:${FONT};font-weight:600;font-size:13px;line-height:16px;padding:9px 16px 9px 13px;border-radius:8px;margin:4px 6px 0 0;"><img src="${ICON(icon)}" alt="" width="16" height="16" style="display:inline-block;width:16px;height:16px;border:0;vertical-align:-3px;margin-right:7px;">${esc(label)}</a>`;
   const steps = [
     t('Wir prüfen deine Konfiguration.', 'We review your configuration.'),
     t('Du bekommst dein Angebot innerhalb von 48 Stunden.', 'You receive your offer within 48 hours.'),
@@ -141,13 +142,13 @@ function customerHtml(f, rows) {
   <tr><td style="padding:22px 24px 4px;">
     <div style="background:#fbf0f6;border-radius:10px;padding:16px 18px;">
       ${p(`<b style="font-weight:600;">${t('Lieber direkt sprechen?', 'Rather talk directly?')}</b> ${t(`Ruf uns an unter ${nb(PHONE)} oder schreib uns per WhatsApp.`, `Call us at ${nb(PHONE)} or message us on WhatsApp.`)}`)}
-      <div style="margin-top:8px;">${ghost(PHONE_LINK, t('Anrufen', 'Call'))}${ghost(WHATSAPP_LINK, 'WhatsApp')}</div>
+      <div style="margin-top:8px;">${ghost(PHONE_LINK, t('Anrufen', 'Call'), 'phone')}${ghost(WHATSAPP_LINK, 'WhatsApp', 'whatsapp')}</div>
     </div>
   </td></tr>
   <tr><td style="padding:14px 24px 4px;">
     <div style="background:#fbf0f6;border-radius:10px;padding:16px 18px;">
       ${p(`<b style="font-weight:600;">${t('In der Zwischenzeit', 'In the meantime')}</b> ${t('schau doch mal auf unserem Instagram vorbei, dort zeigen wir echte Projekte.', 'check out our Instagram, where we show real projects.')}`)}
-      <div style="margin-top:8px;">${ghost(INSTAGRAM_LINK, t('Zu Instagram', 'Go to Instagram'))}</div>
+      <div style="margin-top:8px;">${ghost(INSTAGRAM_LINK, t('Zu Instagram', 'Go to Instagram'), 'instagram')}</div>
     </div>
   </td></tr>
   <tr><td style="padding:20px 24px 24px;">${p(t('Fragen vorab? Antworte einfach auf diese Mail.<br><br>Viele Grüße<br>Dein LEDWALL 360 Team', 'Questions? Just reply to this email.<br><br>Best regards<br>Your LEDWALL 360 team'))}</td></tr>
