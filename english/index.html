@@ -27,72 +27,69 @@
 <link rel="icon" type="image/png" href="/assets/pixli-icon.png">
 <link rel="apple-touch-icon" href="/assets/pixli-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --black:#0a0a0b;
-    --card:#131315;
-    --line:#26262a;
-    --white:#f5f5f7;
-    --muted:#8d8d94;
+    --bg:#f5f3f8;
+    --card:#ffffff;
+    --line:#e6e1ec;
+    --text:#16141a;
+    --muted:#6e6a76;
     --accent:#e7007f;
     --gap:24px;
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;background:var(--black);color:var(--white);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
+  body{background:radial-gradient(900px 500px at 85% -10%,rgba(231,0,127,.10),transparent 70%),radial-gradient(700px 420px at 0% 0%,rgba(120,80,255,.06),transparent 70%),var(--bg);}
   a{color:inherit;}
-  .wrap{max-width:1120px;margin:0 auto;padding:24px 24px 32px;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;gap:var(--gap);}
-  .top{display:flex;align-items:center;justify-content:space-between;}
-  .brand{display:flex;align-items:center;gap:10px;text-decoration:none;}
-  .brand img{width:32px;height:32px;border-radius:8px;}
-  .brand span{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;letter-spacing:.5px;}
-  .top-link{font-size:13px;color:var(--muted);text-decoration:none;}
-  .top-link:hover{color:var(--white);}
+  .wrap{max-width:1120px;margin:0 auto;padding:20px 24px 32px;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;gap:var(--gap);}
+  .top{display:flex;align-items:center;justify-content:flex-end;}
+  .top-link{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:500;color:var(--muted);text-decoration:none;background:rgba(255,255,255,.7);border:1px solid var(--line);border-radius:999px;padding:7px 14px 7px 11px;transition:color .2s,border-color .2s;}
+  .top-link svg{width:16px;height:16px;flex:none;}
+  .top-link:hover{color:var(--accent);border-color:var(--accent);}
 
-  .hero{position:relative;border-radius:20px;overflow:hidden;border:1px solid var(--line);aspect-ratio:24/9;min-height:300px;}
-  .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 45%;}
-  .hero::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(10,10,11,.94) 0%,rgba(10,10,11,.78) 28%,rgba(10,10,11,0) 52%);}
-  .hero-text{position:absolute;left:0;top:0;bottom:0;z-index:1;width:52%;padding:40px;display:flex;flex-direction:column;justify-content:center;}
-  .eyebrow{display:inline-block;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--accent);margin-bottom:10px;}
-  h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(30px,4.6vw,52px);line-height:1.05;margin:0 0 10px;letter-spacing:-.8px;}
+  .hero{position:relative;overflow:hidden;border-radius:24px;padding:56px 40px 52px;text-align:center;color:#fff;
+    background:radial-gradient(600px 300px at 80% 0%,rgba(231,0,127,.38),transparent 70%),radial-gradient(500px 300px at 10% 100%,rgba(140,60,255,.22),transparent 70%),linear-gradient(160deg,#1c1324 0%,#120d18 100%);
+    box-shadow:0 20px 50px -24px rgba(40,10,40,.45);}
+  .logo{width:min(440px,78%);aspect-ratio:1735/500;margin:0 auto 26px;}
+  .logo img{width:100%;height:auto;display:block;}
+  h1{font-size:clamp(30px,4.4vw,50px);font-weight:800;line-height:1.08;letter-spacing:-1.4px;margin:0 0 14px;}
   h1 em{font-style:normal;color:var(--accent);}
-  .lead{color:#d2d2d6;font-size:16px;line-height:1.5;margin:0;}
+  .lead{color:rgba(255,255,255,.72);font-size:16.5px;line-height:1.5;margin:0;}
 
-  .section-title{font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin:8px 0 0;}
+  .section-title{font-size:13px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin:10px 0 0;}
   .tiles{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);}
-  .tile{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden;text-decoration:none;transition:border-color .2s,transform .2s;}
-  .tile:hover{border-color:var(--accent);transform:translateY(-3px);}
+  .tile{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden;text-decoration:none;box-shadow:0 10px 30px -18px rgba(40,20,60,.25);transition:border-color .2s,transform .2s,box-shadow .2s;}
+  .tile:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 18px 40px -20px rgba(231,0,127,.35);}
   .tile:hover .cta{background:#ff1a94;}
-  .tile .img{position:relative;aspect-ratio:3/2;background:#1b1b1e;}
+  .tile .img{position:relative;aspect-ratio:16/9;background:#ece8f0;}
   .tile .img img{display:block;width:100%;height:100%;object-fit:cover;}
-  .tag{position:absolute;left:16px;top:16px;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#fff;background:rgba(10,10,11,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-radius:999px;padding:6px 12px;}
-  .tile-body{padding:24px;display:flex;flex-direction:column;gap:16px;flex:1;}
-  .tile h2{font-family:'Space Grotesk',sans-serif;font-size:24px;line-height:1.15;margin:0;}
-  .tile p{color:#c4c4c9;font-size:15px;line-height:1.5;margin:0;}
+  .tag{position:absolute;left:14px;top:14px;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#fff;background:rgba(18,13,24,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-radius:999px;padding:6px 12px;}
+  .tile-body{padding:22px 24px 24px;display:flex;flex-direction:column;gap:14px;flex:1;}
+  .tile h2{font-size:22px;font-weight:700;letter-spacing:-.5px;line-height:1.2;margin:0;}
+  .tile p{color:var(--muted);font-size:15px;line-height:1.5;margin:0;}
   .chips{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none;}
-  .chips li{font-size:12.5px;color:#d6d6da;border:1px solid var(--line);border-radius:999px;padding:5px 11px;}
-  .cta{margin-top:auto;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);color:#fff;border-radius:12px;padding:14px 18px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;transition:background .2s;}
+  .chips li{font-size:12.5px;color:#4a4652;background:#f4f1f7;border-radius:999px;padding:5px 11px;}
+  .cta{margin-top:auto;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);color:#fff;border-radius:12px;padding:14px 18px;font-weight:600;font-size:15px;transition:background .2s;}
 
   .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap);margin:0;padding:0;list-style:none;}
-  .steps li{display:flex;align-items:center;gap:12px;font-size:14px;color:#c4c4c9;}
-  .steps b{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;border:1px solid rgba(231,0,127,.5);color:var(--accent);font-family:'Space Grotesk',sans-serif;font-size:14px;}
+  .steps li{display:flex;align-items:center;gap:12px;font-size:14px;color:#4a4652;}
+  .steps b{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:rgba(231,0,127,.1);color:var(--accent);font-size:14px;font-weight:700;}
 
-  footer{margin-top:auto;padding-top:8px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);padding-top:20px;}
+  footer{margin-top:auto;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);padding-top:20px;}
   footer a{color:var(--muted);text-decoration:none;}
-  footer a:hover{color:var(--white);}
+  footer a:hover{color:var(--accent);}
   footer nav{display:flex;gap:16px;}
 
   @media (max-width:760px){
     :root{--gap:16px;}
-    .wrap{padding:16px 16px 24px;}
-    .hero{aspect-ratio:1/1;min-height:0;max-height:58vh;border-radius:16px;}
-    .hero img{object-position:56% 30%;}
-    .hero::after{background:linear-gradient(180deg,rgba(10,10,11,0) 35%,rgba(10,10,11,.6) 62%,rgba(10,10,11,.94) 100%);}
-    .hero-text{top:auto;width:auto;right:0;padding:20px;}
+    .wrap{padding:14px 16px 24px;}
+    .hero{padding:36px 20px 32px;border-radius:18px;}
+    .logo{width:86%;margin-bottom:20px;}
     .lead{font-size:15px;}
     .tiles{grid-template-columns:1fr;}
     .tile{border-radius:16px;}
-    .tile-body{padding:20px;}
+    .tile-body{padding:18px 20px 20px;}
     .steps{grid-template-columns:1fr;gap:12px;}
   }
 </style>
@@ -100,17 +97,13 @@
 <body>
 <div class="wrap">
   <header class="top">
-    <a class="brand" href="https://ledwall-360.de"><img src="/assets/pixli-icon.png" alt=""><span>LEDWALL 360</span></a>
-    <a class="top-link" href="https://ledwall-360.de">ledwall-360.de</a>
+    <a class="top-link" href="https://ledwall-360.de"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg>ledwall-360.de</a>
   </header>
 
   <section class="hero">
-    <img src="/assets/hero.jpg" alt="LED wall flown from a truss, live in the 3D configurator">
-    <div class="hero-text">
-      <span class="eyebrow">LED Wall Configurator</span>
-      <h1>Your LED wall,<br><em>live in 3D.</em></h1>
-      <p class="lead">Set the size, take a look, request a quote.</p>
-    </div>
+    <div class="logo" id="logoAnim"><img src="/assets/ledwall360-logo-weiss.png" alt="LEDWALL 360" width="600" height="166"></div>
+    <h1>Configure your LEDWALL,<br><em>live in 3D!</em></h1>
+    <p class="lead">Set the size, take a look, request a quote.</p>
   </section>
 
   <h2 class="section-title">What do you need the wall for?</h2>
@@ -146,5 +139,17 @@
     <nav><a href="https://ledwall-360.de">ledwall-360.de</a><a href="https://ledwall-360.de/datenschutz">Privacy</a></nav>
   </footer>
 </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js" defer></script>
+<script>
+  // Animiertes Logo (Lottie). Ohne Bibliothek oder bei Fehler bleibt das Standbild stehen.
+  window.addEventListener('load', function () {
+    var box = document.getElementById('logoAnim');
+    if (!box || !window.lottie || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    fetch('/assets/ledwall360-logo-animiert.json').then(function (r) { return r.json(); }).then(function (data) {
+      var anim = lottie.loadAnimation({ container: box, renderer: 'svg', loop: true, autoplay: true, animationData: data });
+      anim.addEventListener('DOMLoaded', function () { var img = box.querySelector('img'); if (img) img.remove(); });
+    }).catch(function () {});
+  });
+</script>
 </body>
 </html>
