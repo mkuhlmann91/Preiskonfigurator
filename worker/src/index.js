@@ -42,6 +42,7 @@ export default {
       link: s(d.link, 1500), config: s(d.config, 4000)
     };
     if (!f.name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) return reply(400, { success: false, message: 'Name oder E-Mail fehlt' });
+    if ((f.phone.match(/\d/g) || []).length < 6) return reply(400, { success: false, message: 'Telefonnummer fehlt' });
     if (f.link && !f.link.startsWith(ALLOWED_ORIGINS[0])) f.link = '';
     if (!env.BREVO_API_KEY) return reply(500, { success: false, message: 'BREVO_API_KEY fehlt' });
 

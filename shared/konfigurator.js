@@ -3247,6 +3247,10 @@ function validateForm() {
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim());
   email.classList.toggle('invalid', !emailOk);
   if (!emailOk) problems.push(tr('gültige E-Mail-Adresse', 'a valid email address'));
+  const phone = document.getElementById('fPhone');
+  const phoneOk = (phone.value.match(/\d/g) || []).length >= 6;
+  phone.classList.toggle('invalid', !phoneOk);
+  if (!phoneOk) problems.push(tr('Telefonnummer', 'phone number'));
   consent.closest('.consent-row').classList.toggle('invalid', !consent.checked);
   if (!consent.checked) problems.push('Einwilligung zum Datenschutz');
   return problems;
