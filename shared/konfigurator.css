@@ -24,7 +24,7 @@
   .viewer canvas{display:block;width:100%;height:100%;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
   .hint{
     position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
-    font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);
+    font-family:'Inter',sans-serif;font-size:12px;font-weight:500;color:var(--muted);
     background:rgba(20,20,22,.6);backdrop-filter:blur(6px);padding:6px 14px;border-radius:999px;
     border:1px solid var(--line);pointer-events:none;
   }
