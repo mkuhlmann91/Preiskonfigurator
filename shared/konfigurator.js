@@ -3461,9 +3461,15 @@ function escapeHtml(str) {
     btn.classList.toggle('active', !!fsEl());
     window.dispatchEvent(new Event('resize'));
   };
+  // Pulsieren, bis der Button einmal geklickt wurde (gemerkt im Browser)
+  let seen = false;
+  try { seen = localStorage.getItem('lw360-fs-seen') === '1'; } catch (e) {}
+  if (!seen) btn.classList.add('pulse');
   document.addEventListener('fullscreenchange', sync);
   document.addEventListener('webkitfullscreenchange', sync);
   btn.addEventListener('click', () => {
+    btn.classList.remove('pulse');
+    try { localStorage.setItem('lw360-fs-seen', '1'); } catch (e) {}
     if (fsEl()) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
     if (canFs) {
       const req = root.requestFullscreen || root.webkitRequestFullscreen;
