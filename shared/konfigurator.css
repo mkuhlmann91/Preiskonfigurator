@@ -276,5 +276,18 @@
   .mount-hint a{color:var(--accent);font-weight:600;text-decoration:none;white-space:nowrap;}
   .mount-hint a:hover{text-decoration:underline;}
   .mount-hint .hint-i{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;margin-right:6px;border:1px solid currentColor;border-radius:50%;font-size:9px;font-weight:600;line-height:1;vertical-align:1px;font-family:inherit;color:inherit;}
+  /* Vollbild-Button groß unten links, pulsiert bis zum ersten Klick */
+  .fs-btn{position:absolute;left:14px;bottom:14px;z-index:3;display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:0;border-radius:999px;padding:11px 18px;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 6px 18px rgba(231,0,127,.45);transition:background .2s,transform .2s;}
+  .fs-btn:hover{background:#ff1a94;transform:translateY(-1px);}
+  .fs-btn.active{background:rgba(20,20,22,.8);border:1px solid var(--accent);box-shadow:none;}
+  .fs-btn.pulse{animation:fsPulse 1.6s ease-in-out infinite;}
+  @keyframes fsPulse{
+    0%{box-shadow:0 0 0 0 rgba(231,0,127,.75),0 6px 18px rgba(231,0,127,.45);transform:scale(1);}
+    50%{transform:scale(1.06);}
+    70%{box-shadow:0 0 0 16px rgba(231,0,127,0),0 6px 18px rgba(231,0,127,.45);}
+    100%{box-shadow:0 0 0 0 rgba(231,0,127,0),0 6px 18px rgba(231,0,127,.45);transform:scale(1);}
+  }
+  @media (prefers-reduced-motion:reduce){.fs-btn.pulse{animation:none;}}
+  @media (max-width:860px){.fs-btn{left:8px;bottom:8px;padding:8px 13px;font-size:12.5px;gap:6px;}.fs-btn svg{width:15px;height:15px;}}
   .view-btn.active{border-color:var(--accent);color:#fff;background:rgba(231,0,127,.85);}
   .seg-4 .seg-btn{min-width:0;flex:1 1 0;padding-left:4px;padding-right:4px;}
