@@ -3445,6 +3445,37 @@ function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+// Vollbild: echtes Vollbild, auch im iframe (braucht allow="fullscreen").
+// Geht das nicht (iframe ohne Freigabe, iPhone), öffnet sich der Konfigurator mit gleicher Konfiguration in einem neuen Tab.
+(function () {
+  const btn = document.getElementById('fullscreenBtn');
+  if (!btn) return;
+  const root = document.documentElement;
+  const canFs = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+  const inFrame = window.parent !== window;
+  if (!canFs && !inFrame) { btn.style.display = 'none'; return; }
+  const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
+  const label = document.getElementById('fullscreenLabel');
+  const sync = () => {
+    label.textContent = fsEl() ? tr('Beenden', 'Exit') : tr('Vollbild', 'Fullscreen');
+    btn.classList.toggle('active', !!fsEl());
+    window.dispatchEvent(new Event('resize'));
+  };
+  document.addEventListener('fullscreenchange', sync);
+  document.addEventListener('webkitfullscreenchange', sync);
+  btn.addEventListener('click', () => {
+    if (fsEl()) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
+    if (canFs) {
+      const req = root.requestFullscreen || root.webkitRequestFullscreen;
+      const p = req.call(root);
+      if (p && p.catch) p.catch(() => window.open(location.href.split('#')[0] + configToHash(), '_blank'));
+    } else {
+      window.open(location.href.split('#')[0] + configToHash(), '_blank');
+    }
+    track('fullscreen', {});
+  });
+})();
+
 document.getElementById('pdfBtn').addEventListener('click', () => {
   // Bild direkt nach dem Rendern abgreifen (ohne preserveDrawingBuffer).
   renderer.render(scene, camera);
