@@ -10,6 +10,8 @@ const PHONE = '+49 431 88864540';
 const PHONE_LINK = 'tel:+4943188864540';
 const WHATSAPP_LINK = 'https://wa.me/4943188864540';
 const INSTAGRAM_LINK = 'https://www.instagram.com/ledwall360/';
+// Buchungsseite für das kostenlose Erstgespräch. Leer = kein Termin-Button, die Mail sieht dann aus wie vorher.
+const BOOKING_LINK = '';
 const LOGO_WHITE = 'https://konfigurator.ledwall-360.de/assets/ledwall360-logo-weiss.png';
 const NIKKI = 'https://konfigurator.ledwall-360.de/assets/nikki-breuer.png';
 const ICON = (n) => `https://konfigurator.ledwall-360.de/assets/icon-${n}.png`;
@@ -67,8 +69,8 @@ export default {
       subject: en ? 'Your request at LEDWALL 360' : 'Deine Anfrage bei LEDWALL 360',
       htmlContent: customerHtml(f, rows),
       textContent: en
-        ? `Thanks for your request, ${f.name}!\n\nWe received your configuration.\n\nWhat happens next:\n1. We review your configuration.\n2. You receive your offer within 48 hours.\n3. If you like, we're happy to advise you personally.\n\nYour LEDWALL: ${f.link}\n\nRather talk directly? I'm Nikki and happy to advise you personally on your LEDWALL. Just call me at ${PHONE} or send me a WhatsApp: ${WHATSAPP_LINK}\n\nIn the meantime, check out our Instagram, where we show real projects: ${INSTAGRAM_LINK}\n\nBest regards\nNikki Breuer\nLEDWALL 360`
-        : `Danke für deine Anfrage, ${f.name}!\n\nWir haben deine Konfiguration erhalten.\n\nSo geht es weiter:\n1. Wir prüfen deine Konfiguration.\n2. Du bekommst dein Angebot innerhalb von 48 Stunden.\n3. Auf Wunsch beraten wir dich gerne persönlich.\n\nDeine LEDWALL: ${f.link}\n\nLieber direkt sprechen? Ich bin Nikki und berate dich gern persönlich zu deiner LEDWALL. Ruf mich einfach an unter ${PHONE} oder schreib mir per WhatsApp: ${WHATSAPP_LINK}\n\nIn der Zwischenzeit schau doch mal auf unserem Instagram vorbei, dort zeigen wir echte Projekte: ${INSTAGRAM_LINK}\n\nBeste Grüße\nNikki Breuer\nLEDWALL 360`
+        ? `Thanks for your request, ${f.name}!\n\nWe received your configuration.${BOOKING_LINK ? `\n\nBefore we send your offer, we'd like to understand what you're planning. That way we can fine-tune the wall and you don't pay for anything you don't need. Just pick a slot for a short call (about 15 minutes, free): ${BOOKING_LINK}` : ''}\n\nWhat happens next:\n${steps(true).map((x, i) => `${i + 1}. ${x}`).join('\n')}\n\nYour LEDWALL: ${f.link}\n\nRather talk directly? I'm Nikki and happy to advise you personally on your LEDWALL. Just call me at ${PHONE} or send me a WhatsApp: ${WHATSAPP_LINK}\n\nIn the meantime, check out our Instagram, where we show real projects: ${INSTAGRAM_LINK}\n\nBest regards\nNikki Breuer\nLEDWALL 360`
+        : `Danke für deine Anfrage, ${f.name}!\n\nWir haben deine Konfiguration erhalten.${BOOKING_LINK ? `\n\nBevor wir dir ein Angebot schicken, wollen wir kurz verstehen, was du vorhast. So können wir die Wand noch feinjustieren und du zahlst nichts, was du nicht brauchst. Such dir einfach einen Slot für ein kurzes Gespräch aus (ca. 15 Minuten, kostenlos): ${BOOKING_LINK}` : ''}\n\nSo geht es weiter:\n${steps(false).map((x, i) => `${i + 1}. ${x}`).join('\n')}\n\nDeine LEDWALL: ${f.link}\n\nLieber direkt sprechen? Ich bin Nikki und berate dich gern persönlich zu deiner LEDWALL. Ruf mich einfach an unter ${PHONE} oder schreib mir per WhatsApp: ${WHATSAPP_LINK}\n\nIn der Zwischenzeit schau doch mal auf unserem Instagram vorbei, dort zeigen wir echte Projekte: ${INSTAGRAM_LINK}\n\nBeste Grüße\nNikki Breuer\nLEDWALL 360`
     };
 
     const send = (mail) => fetch('https://api.brevo.com/v3/smtp/email', {
@@ -85,6 +87,22 @@ export default {
 };
 
 /* ----------------------------- Mail-Vorlagen ----------------------------- */
+
+// "So geht es weiter" – mit Buchungslink steht das Gespräch vorne, ohne bleibt alles wie bisher
+function steps(en) {
+  const t = (de, enText) => (en ? enText : de);
+  return BOOKING_LINK
+    ? [
+      t('Du wählst einen Termin für ein kurzes Gespräch (ca. 15 Min., kostenlos).', 'You pick a slot for a short call (about 15 min, free).'),
+      t('Wir gehen deine Konfiguration gemeinsam durch und nennen dir einen Preisrahmen.', 'We go through your configuration together and give you a price range.'),
+      t('Du bekommst dein Angebot innerhalb von 48 Stunden.', 'You receive your offer within 48 hours.')
+    ]
+    : [
+      t('Wir prüfen deine Konfiguration.', 'We review your configuration.'),
+      t('Du bekommst dein Angebot innerhalb von 48 Stunden.', 'You receive your offer within 48 hours.'),
+      t('Auf Wunsch beraten wir dich gerne persönlich.', "If you like, we're happy to advise you personally.")
+    ];
+}
 
 const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const nl = (v) => esc(v).replace(/\n/g, '<br>');
@@ -127,18 +145,19 @@ function customerHtml(f, rows) {
   const nb = (v) => `<span style="white-space:nowrap;">${esc(v)}</span>`;
   const p = (html, extra = '') => `<p style="font-family:${FONT};font-size:14px;line-height:1.6;margin:0;${extra}">${html}</p>`;
   const ghost = (href, label, icon) => `<a href="${esc(href)}" style="display:inline-block;border:1.5px solid ${PINK};color:${PINK};text-decoration:none;font-family:${FONT};font-weight:600;font-size:13px;line-height:16px;padding:9px 16px 9px 13px;border-radius:8px;margin:4px 6px 0 0;"><img src="${ICON(icon)}" alt="" width="16" height="16" style="display:inline-block;width:16px;height:16px;border:0;vertical-align:-3px;margin-right:7px;">${esc(label)}</a>`;
-  const steps = [
-    t('Wir prüfen deine Konfiguration.', 'We review your configuration.'),
-    t('Du bekommst dein Angebot innerhalb von 48 Stunden.', 'You receive your offer within 48 hours.'),
-    t('Auf Wunsch beraten wir dich gerne persönlich.', "If you like, we're happy to advise you personally.")
-  ].map((txt, i) => `<tr><td style="width:30px;padding:5px 0;vertical-align:top;"><div style="width:22px;height:22px;line-height:22px;border-radius:50%;background:${PINK};color:#fff;text-align:center;font-family:${FONT};font-size:12px;font-weight:600;">${i + 1}</div></td><td style="padding:6px 0;font-family:${FONT};font-size:14px;line-height:1.5;">${esc(txt)}</td></tr>`).join('');
+  const stepRows = steps(en).map((txt, i) => `<tr><td style="width:30px;padding:5px 0;vertical-align:top;"><div style="width:22px;height:22px;line-height:22px;border-radius:50%;background:${PINK};color:#fff;text-align:center;font-family:${FONT};font-size:12px;font-weight:600;">${i + 1}</div></td><td style="padding:6px 0;font-family:${FONT};font-size:14px;line-height:1.5;">${esc(txt)}</td></tr>`).join('');
   return frame(`
   <tr><td style="background:${PINK};padding:22px 24px;"><img src="${LOGO_WHITE}" alt="LEDWALL 360" width="200" style="display:block;width:200px;max-width:60%;height:auto;border:0;"></td></tr>
   <tr><td style="padding:26px 24px 4px;">
     <div style="font-family:${HEAD_FONT};font-size:22px;font-weight:700;">${t(`Danke für deine Anfrage, ${esc(first)}!`, `Thanks for your request, ${esc(first)}!`)}</div>
     ${p(t('Wir haben deine Konfiguration erhalten.', 'We received your configuration.'), 'margin-top:10px;')}
+  </td></tr>${BOOKING_LINK ? `
+  <tr><td style="padding:14px 24px 4px;">
+    ${p(t('Bevor wir dir ein Angebot schicken, wollen wir kurz verstehen, was du vorhast: Wo steht die Wand, wofür nutzt du sie, wie weit sind die Leute weg? So können wir die Wand noch feinjustieren und du zahlst nichts, was du nicht brauchst.', "Before we send your offer, we'd like to understand what you're planning: where the wall goes, what it's for, how far away people are. That way we can fine-tune the wall and you don't pay for anything you don't need."))}
   </td></tr>
-  <tr><td style="padding:18px 24px 4px;">${heading(t('So geht es weiter', 'What happens next'))}<table role="presentation" cellpadding="0" cellspacing="0">${steps}</table></td></tr>
+  <tr><td align="center" style="padding:18px 24px 0;">${button(BOOKING_LINK, t('Kurzes Gespräch buchen', 'Book a short call'))}</td></tr>
+  <tr><td align="center" style="padding:6px 24px 4px;">${p(t('ca. 15 Minuten · kostenlos', 'about 15 minutes · free'), 'font-size:12px;color:#8d8d94;')}</td></tr>` : ''}
+  <tr><td style="padding:18px 24px 4px;">${heading(t('So geht es weiter', 'What happens next'))}<table role="presentation" cellpadding="0" cellspacing="0">${stepRows}</table></td></tr>
   <tr><td style="padding:16px 24px 4px;">${heading(t('Deine LEDWALL', 'Your LEDWALL'))}${table(rows.filter(([k]) => keep.includes(k)).map(([k, v]) => [k, esc(v)]))}</td></tr>
   <tr><td align="center" style="padding:22px 24px 6px;">${button(f.link, t('Deine LEDWALL ansehen', 'View your LEDWALL'))}</td></tr>
   <tr><td style="padding:22px 24px 4px;">
