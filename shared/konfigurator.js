@@ -1338,6 +1338,12 @@ function buildStreet(wallW, wallH) {
   flag.rotation.y = Math.PI / 2;
   flag.position.set(oppX + 0.08, 4.2 - 1.1, -0.9);
   envGroup.add(flag);
+  // Im Fenster darüber (2. OG) schaut Tim heraus
+  const tim = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.5),
+    new THREE.MeshStandardMaterial({ map: loadImageTexture('/assets/tim-fenster.jpg'), roughness: 0.4 }));
+  tim.rotation.y = Math.PI / 2;
+  tim.position.set(oppX + 0.03, 4.2 + 0.75, -0.9);
+  envGroup.add(tim);
 
   // Autos: geparkt am Rand gegenüber, zwei fahren vorbei
   const lane = roadW / 4;
