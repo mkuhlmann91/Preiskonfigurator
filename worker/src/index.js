@@ -11,7 +11,7 @@ const PHONE_LINK = 'tel:+4943188864540';
 const WHATSAPP_LINK = 'https://wa.me/4943188864540';
 const INSTAGRAM_LINK = 'https://www.instagram.com/ledwall360/';
 // Buchungsseite für das kostenlose Erstgespräch. Leer = kein Termin-Button, die Mail sieht dann aus wie vorher.
-const BOOKING_LINK = 'https://meet.brevo.com/marvin-kuhlmann-1/kostenloses-erstgesprach-ledwall-15-min';
+const BOOKING_LINK = 'https://meet.brevo.com/ledwall-360';
 const LOGO_WHITE = 'https://konfigurator.ledwall-360.de/assets/ledwall360-logo-weiss.png';
 const NIKKI = 'https://konfigurator.ledwall-360.de/assets/nikki-breuer.png';
 const ICON = (n) => `https://konfigurator.ledwall-360.de/assets/icon-${n}.png`;
