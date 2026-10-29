@@ -5,7 +5,7 @@
 const RECIPIENT = 'hallo@ledwall-360.de';            // hier kommen die Anfragen an
 const SENDER = { name: 'LEDWALL 360', email: 'hallo@ledwall-360.de' }; // muss in Brevo bestätigt sein
 const ALLOWED_ORIGINS = ['https://konfigurator.ledwall-360.de'];
-const PINK = '#e7007f';
+const PINK = '#d10070';
 const PHONE = '+49 431 88864540';
 const PHONE_LINK = 'tel:+4943188864540';
 const WHATSAPP_LINK = 'https://wa.me/4943188864540';
@@ -69,8 +69,8 @@ export default {
       subject: en ? 'Your request at LEDWALL 360' : 'Deine Anfrage bei LEDWALL 360',
       htmlContent: customerHtml(f, rows),
       textContent: en
-        ? `Thanks for your request, ${f.name}!\n\nWe received your configuration.${BOOKING_LINK ? `\n\nThe fastest way to your offer is a short call. We go through your configuration together, answer open questions and give you a price range right away.\n\nBook a call (about 15 minutes, free): ${BOOKING_LINK}\n\nYour advantage: after the call you'll know roughly what your wall costs, and you'll get your offer even faster.` : ''}\n\nWhat happens next:\n${steps(true).map((x, i) => `${i + 1}. ${x}`).join('\n')}\n\nYour LEDWALL: ${f.link}\n\nRather talk directly? I'm Nikki and happy to advise you personally on your LEDWALL. Just call me at ${PHONE} or send me a WhatsApp: ${WHATSAPP_LINK}\n\nIn the meantime, check out our Instagram, where we show real projects: ${INSTAGRAM_LINK}\n\nBest regards\nNikki Breuer\nLEDWALL 360`
-        : `Danke für deine Anfrage, ${f.name}!\n\nWir haben deine Konfiguration erhalten.${BOOKING_LINK ? `\n\nAm schnellsten kommst du zu deinem Angebot mit einem kurzen Gespräch. Wir gehen deine Konfiguration gemeinsam durch, klären offene Fragen und nennen dir direkt einen Preisrahmen.\n\nTermin buchen (ca. 15 Minuten, kostenlos): ${BOOKING_LINK}\n\nDein Vorteil: Nach dem Gespräch weißt du, was deine Wand ungefähr kostet, und bekommst dein Angebot noch schneller.` : ''}\n\nSo geht es weiter:\n${steps(false).map((x, i) => `${i + 1}. ${x}`).join('\n')}\n\nDeine LEDWALL: ${f.link}\n\nLieber direkt sprechen? Ich bin Nikki und berate dich gern persönlich zu deiner LEDWALL. Ruf mich einfach an unter ${PHONE} oder schreib mir per WhatsApp: ${WHATSAPP_LINK}\n\nIn der Zwischenzeit schau doch mal auf unserem Instagram vorbei, dort zeigen wir echte Projekte: ${INSTAGRAM_LINK}\n\nBeste Grüße\nNikki Breuer\nLEDWALL 360`
+        ? `Thanks for your request, ${f.name}!\n\nYou will receive your offer within 72 hours.${BOOKING_LINK ? `\n\nFaster and more precise with a short call: in 15 minutes we look at what you need the wall for and fine-tune your LEDWALL to match. That way you get the best solution at the best price.\n\nBook a call now (15 minutes, free & no obligation): ${BOOKING_LINK}\n\nWith a call: offer right after the call, tailored to you.\nWithout a call: offer within 72 hours based on your configuration.` : ''}\n\nView your configuration: ${f.link}\n\nRather talk right away? No problem! I'm Nikki. Just call me at ${PHONE} or drop me a quick WhatsApp: ${WHATSAPP_LINK}\n\nIn the meantime, check out real projects and great offers on our Instagram: ${INSTAGRAM_LINK}\n\nBest regards\nNikki Breuer\nLEDWALL360`
+        : `Danke für deine Anfrage, ${f.name}!\n\nDein Angebot bekommst du innerhalb von 72 Stunden.${BOOKING_LINK ? `\n\nSchneller und genauer geht's mit einem kurzen Termin: In 15 Minuten schauen wir auf deinen Einsatzzweck und stimmen deine LEDWALL perfekt darauf ab. So erhältst du die beste Lösung zum besten Preis.\n\nJetzt Termin buchen (15 Minuten, kostenlos & unverbindlich): ${BOOKING_LINK}\n\nMit Termin: Angebot direkt nach dem Gespräch, genau auf dich abgestimmt.\nOhne Termin: Angebot innerhalb von 72 Std. auf Basis deiner Konfiguration.` : ''}\n\nDeine Konfiguration ansehen: ${f.link}\n\nDu willst lieber direkt sprechen? Kein Ding! Ich bin Nikki. Ruf mich einfach an unter ${PHONE} oder schreib mir kurz per WhatsApp: ${WHATSAPP_LINK}\n\nIn der Zwischenzeit findest du echte Projekte und starke Angebote bei uns auf Instagram: ${INSTAGRAM_LINK}\n\nBeste Grüße\nNikki Breuer\nLEDWALL360`
     };
 
     const send = (mail) => fetch('https://api.brevo.com/v3/smtp/email', {
@@ -88,22 +88,6 @@ export default {
 
 /* ----------------------------- Mail-Vorlagen ----------------------------- */
 
-// "So geht es weiter" – mit Buchungslink steht das Gespräch vorne, ohne bleibt alles wie bisher
-function steps(en) {
-  const t = (de, enText) => (en ? enText : de);
-  return BOOKING_LINK
-    ? [
-      t('Du wählst einen Termin für ein kurzes Gespräch (ca. 15 Min., kostenlos).', 'You pick a slot for a short call (about 15 min, free).'),
-      t('Wir gehen deine Konfiguration gemeinsam durch und nennen dir einen Preisrahmen.', 'We go through your configuration together and give you a price range.'),
-      t('Du bekommst dein Angebot innerhalb von 48 Stunden.', 'You receive your offer within 48 hours.')
-    ]
-    : [
-      t('Wir prüfen deine Konfiguration.', 'We review your configuration.'),
-      t('Du bekommst dein Angebot innerhalb von 48 Stunden.', 'You receive your offer within 48 hours.'),
-      t('Auf Wunsch beraten wir dich gerne persönlich.', "If you like, we're happy to advise you personally.")
-    ];
-}
-
 const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const nl = (v) => esc(v).replace(/\n/g, '<br>');
 
@@ -115,9 +99,7 @@ function table(pairs) {
 }
 const heading = (t) => `<div style="font-family:${HEAD_FONT};font-size:13px;font-weight:700;color:${PINK};text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">${esc(t)}</div>`;
 const button = (href, label) => href ? `<a href="${esc(href)}" style="display:inline-block;background:${PINK};color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:8px;">${esc(label)}</a>` : '';
-// Zweitrangiger Button: Umriss statt Fläche, damit der Termin-Button die Hauptaktion bleibt
-const outline = (href, label) => href ? `<a href="${esc(href)}" style="display:inline-block;border:1.5px solid ${PINK};color:${PINK};text-decoration:none;font-weight:600;font-size:14px;padding:11px 21px;border-radius:8px;">${esc(label)}</a>` : '';
-const frame = (inner) => `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet"><style>@media only screen and (max-width:520px){.dk{display:none!important;}.mb{display:table-row!important;}}</style></head>
+const frame = (inner) => `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet"><style>@media only screen and (max-width:520px){.dk{display:none!important;}.mb{display:table-row!important;}.cb{padding-left:10px!important;padding-right:10px!important;}.cbi{padding:14px 12px!important;}.ph{width:86px!important;}.ph img{width:76px!important;height:101px!important;}}</style></head>
 <body style="margin:0;background:#f2f2f4;font-family:${FONT};color:#1b1b1e;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f2f2f4;padding:24px 0;"><tr><td align="center">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:12px;overflow:hidden;">${inner}</table></td></tr></table></body></html>`;
 
@@ -147,47 +129,52 @@ function customerHtml(f, rows) {
   const nb = (v) => `<span style="white-space:nowrap;">${esc(v)}</span>`;
   const p = (html, extra = '') => `<p style="font-family:${FONT};font-size:14px;line-height:1.6;margin:0;${extra}">${html}</p>`;
   const ghost = (href, label, icon) => `<a href="${esc(href)}" style="display:inline-block;border:1.5px solid ${PINK};color:${PINK};text-decoration:none;font-family:${FONT};font-weight:600;font-size:13px;line-height:16px;padding:9px 16px 9px 13px;border-radius:8px;margin:4px 6px 0 0;"><img src="${ICON(icon)}" alt="" width="16" height="16" style="display:inline-block;width:16px;height:16px;border:0;vertical-align:-3px;margin-right:7px;">${esc(label)}</a>`;
-  const stepRows = steps(en).map((txt, i) => `<tr><td style="width:30px;padding:5px 0;vertical-align:top;"><div style="width:22px;height:22px;line-height:22px;border-radius:50%;background:${PINK};color:#fff;text-align:center;font-family:${FONT};font-size:12px;font-weight:600;">${i + 1}</div></td><td style="padding:6px 0;font-family:${FONT};font-size:14px;line-height:1.5;">${esc(txt)}</td></tr>`).join('');
+  // Ohne Buchungslink fällt der ganze Termin-Block weg
+  const booking = BOOKING_LINK ? `
+  <tr><td style="padding:22px 24px 4px;">
+    ${p(`<b style="font-weight:600;">${t("Schneller und genauer geht's mit einem kurzen Termin:", 'Faster and more precise with a short call:')}</b> ${t('In 15&nbsp;Minuten schauen wir auf deinen Einsatzzweck und stimmen deine LEDWALL perfekt darauf ab. So erhältst du die beste Lösung zum besten Preis.', 'In 15&nbsp;minutes we look at what you need the wall for and fine-tune your LEDWALL to match. That way you get the best solution at the best price.')}`)}
+  </td></tr>
+  <tr><td align="center" style="padding:18px 24px 0;"><a href="${esc(BOOKING_LINK)}" style="display:inline-block;background:${PINK};color:#fff;text-decoration:none;font-weight:600;font-size:15px;padding:13px 26px;border-radius:8px;font-family:${FONT};"><span style="font-size:17px;vertical-align:-1px;margin-right:8px;">📅</span>${t('Jetzt Termin buchen', 'Book a call now')}</a></td></tr>
+  <tr><td align="center" style="padding:6px 24px 4px;">${p(t('15 Minuten · kostenlos &amp; unverbindlich', '15 minutes · free &amp; no obligation'), 'font-size:12px;line-height:1.5;color:#8d8d94;')}</td></tr>
+  <tr><td style="padding:18px 24px 4px;">${heading(t("So geht's weiter", 'What happens next'))}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-family:${FONT};font-size:14px;line-height:1.5;">
+      <tr><td style="width:28px;padding:6px 0 5px;vertical-align:top;"><img src="${ICON('blitz')}" alt="" width="20" height="20" style="display:block;width:20px;height:20px;border:0;"></td><td style="padding:5px 0;"><b style="font-weight:600;">${t('Mit Termin:', 'With a call:')}</b> ${t('Angebot direkt nach dem Gespräch, genau auf dich abgestimmt', 'offer right after the call, tailored to you')}</td></tr>
+      <tr><td style="width:28px;padding:7px 0 5px;vertical-align:top;border-top:1px solid #eee;"><img src="${ICON('uhr')}" alt="" width="18" height="18" style="display:block;width:18px;height:18px;border:0;margin-left:1px;"></td><td style="padding:5px 0;border-top:1px solid #eee;color:#6b6b75;"><b style="font-weight:600;">${t('Ohne Termin:', 'Without a call:')}</b> ${t('Angebot innerhalb von 72&nbsp;Std. auf Basis deiner Konfiguration', 'offer within 72&nbsp;hours based on your configuration')}</td></tr>
+    </table></td></tr>` : '';
   return frame(`
-  <tr><td style="background:${PINK};padding:22px 24px;"><img src="${LOGO_WHITE}" alt="LEDWALL 360" width="200" style="display:block;width:200px;max-width:60%;height:auto;border:0;"></td></tr>
+  <tr><td style="background:${PINK};padding:22px 24px;"><img src="${LOGO_WHITE}" alt="LEDWALL360" width="200" style="display:block;width:200px;max-width:60%;height:auto;border:0;"></td></tr>
   <tr><td style="padding:26px 24px 4px;">
     <div style="font-family:${HEAD_FONT};font-size:22px;font-weight:700;">${t(`Danke für deine Anfrage, ${esc(first)}!`, `Thanks for your request, ${esc(first)}!`)}</div>
-    ${p(t('Wir haben deine Konfiguration erhalten.', 'We received your configuration.'), 'margin-top:10px;')}
-  </td></tr>${BOOKING_LINK ? `
-  <tr><td style="padding:14px 24px 4px;">
-    ${p(t('Am schnellsten kommst du zu deinem Angebot mit einem kurzen Gespräch. Wir gehen deine Konfiguration gemeinsam durch, klären offene Fragen und nennen dir direkt einen Preisrahmen.', 'The fastest way to your offer is a short call. We go through your configuration together, answer open questions and give you a price range right away.'))}
-  </td></tr>
-  <tr><td align="center" style="padding:18px 24px 0;">${button(BOOKING_LINK, t('Kurzes Gespräch buchen', 'Book a short call'))}</td></tr>
-  <tr><td align="center" style="padding:6px 24px 4px;">${p(t('ca. 15 Minuten · kostenlos', 'about 15 minutes · free'), 'font-size:12px;color:#8d8d94;')}</td></tr>
-  <tr><td style="padding:14px 24px 4px;">
-    ${p(`<b style="font-weight:600;">${t('Dein Vorteil:', 'Your advantage:')}</b> ${t('Nach dem Gespräch weißt du, was deine Wand ungefähr kostet, und bekommst dein Angebot noch schneller.', "After the call you'll know roughly what your wall costs, and you'll get your offer even faster.")}`)}
-  </td></tr>` : ''}
-  <tr><td style="padding:18px 24px 4px;">${heading(t('So geht es weiter', 'What happens next'))}<table role="presentation" cellpadding="0" cellspacing="0">${stepRows}</table></td></tr>
-  <tr><td style="padding:16px 24px 4px;">${heading(t('Deine LEDWALL', 'Your LEDWALL'))}${table(rows.filter(([k]) => keep.includes(k)).map(([k, v]) => [k, esc(v)]))}</td></tr>
-  <tr><td align="center" style="padding:22px 24px 6px;">${(BOOKING_LINK ? outline : button)(f.link, t('Deine LEDWALL ansehen', 'View your LEDWALL'))}</td></tr>
-  <tr><td style="padding:22px 24px 4px;">
-    <div style="background:#fbf0f6;border-radius:10px;padding:16px 18px;">
+    ${p(t('Dein Angebot bekommst du innerhalb von 72&nbsp;Stunden.', 'You will receive your offer within 72&nbsp;hours.'), 'margin-top:10px;')}
+  </td></tr>${booking}
+  <tr><td style="padding:16px 24px 4px;">${heading(t('Deine LEDWALL', 'Your LEDWALL'))}${table(rows.filter(([k]) => keep.includes(k)).map(([k, v]) => [k, esc(v)]))}</td></tr>${f.link ? `
+  <tr><td style="padding:14px 24px 4px;"><a href="${esc(f.link)}" style="display:inline-block;background:#fbf0f6;border:1.5px solid #f3cfe2;border-radius:8px;padding:10px 16px;font-family:${FONT};font-size:14px;line-height:18px;font-weight:600;color:${PINK};text-decoration:none;"><img src="${ICON('auge')}" alt="" width="16" height="16" style="display:inline-block;width:16px;height:16px;border:0;vertical-align:-3px;margin-right:8px;">${t('Deine Konfiguration ansehen', 'View your configuration')}</a></td></tr>` : ''}
+  <tr><td class="cb" style="padding:22px 24px 4px;">
+    <div class="cbi" style="background:#fbf0f6;border-radius:10px;padding:16px 18px;">
       <table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr>
-        <td width="120" style="width:120px;vertical-align:top;"><img src="${NIKKI}" alt="Nikki Breuer" width="105" height="140" style="display:block;width:105px;height:140px;border-radius:12px;border:0;"></td>
+        <td class="ph" width="120" style="width:120px;vertical-align:top;"><img src="${NIKKI}" alt="Nikki Breuer" width="105" height="140" style="display:block;width:105px;height:140px;border-radius:12px;border:0;"></td>
         <td style="vertical-align:top;">
-          ${p(`<b style="font-weight:600;">${t('Lieber direkt sprechen?', 'Rather talk directly?')}</b><br>${t('Ich bin Nikki und berate dich gern persönlich zu deiner LEDWALL. Ruf mich einfach an oder schreib mir per WhatsApp.', "I'm Nikki and happy to advise you personally on your LEDWALL. Just call me or send me a WhatsApp.")}`)}
+          ${p(`<b style="font-weight:600;">${t('Du willst lieber direkt sprechen?', 'Rather talk right away?')}</b><br>${t('Kein Ding! Ich bin Nikki. Ruf&nbsp;mich einfach an oder schreib mir kurz per&nbsp;WhatsApp.', "No problem! I'm Nikki. Just call me or drop me a quick WhatsApp.")}`)}
           ${p(nb(PHONE), 'margin-top:4px;font-size:12px;color:#8d8d94;')}
           <div class="dk" style="margin-top:6px;">${ghost(PHONE_LINK, t('Anrufen', 'Call'), 'phone')}${ghost(WHATSAPP_LINK, 'WhatsApp', 'whatsapp')}</div>
         </td>
       </tr>
-      <!-- Handy: Anrufen unter dem Foto, WhatsApp daneben -->
+      <!-- Handy: Buttons unter Foto und Text -->
       <tr class="mb" style="display:none;mso-hide:all;">
-        <td style="vertical-align:top;padding-top:6px;">${ghost(PHONE_LINK, t('Anrufen', 'Call'), 'phone')}</td>
-        <td style="vertical-align:top;padding-top:6px;">${ghost(WHATSAPP_LINK, 'WhatsApp', 'whatsapp')}</td>
+        <td colspan="2" style="padding-top:8px;">${ghost(PHONE_LINK, t('Anrufen', 'Call'), 'phone')}${ghost(WHATSAPP_LINK, 'WhatsApp', 'whatsapp')}</td>
       </tr></table>
     </div>
   </td></tr>
-  <tr><td style="padding:14px 24px 4px;">
-    <div style="background:#fbf0f6;border-radius:10px;padding:16px 18px;">
-      ${p(`<b style="font-weight:600;">${t('In der Zwischenzeit', 'In the meantime')}</b> ${t('schau doch mal auf unserem Instagram vorbei, dort zeigen wir echte Projekte.', 'check out our Instagram, where we show real projects.')}`)}
-      <div style="margin-top:8px;">${ghost(INSTAGRAM_LINK, t('Zu Instagram', 'Go to Instagram'), 'instagram')}</div>
-    </div>
+  <tr><td style="padding:22px 24px 4px;">${heading('Instagram')}
+    <a href="${INSTAGRAM_LINK}" style="display:block;text-decoration:none;color:#1b1b1e;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td width="56" style="width:56px;vertical-align:middle;"><img src="${ICON('instagram-farbe')}" alt="Instagram" width="44" height="44" style="display:block;width:44px;height:44px;border:0;border-radius:12px;"></td>
+      <td style="vertical-align:middle;font-family:${FONT};">
+        <div style="font-size:14px;line-height:1.5;color:#1b1b1e;">${t('In der Zwischenzeit findest du echte Projekte und starke Angebote bei uns auf Instagram.', 'In the meantime, check out real projects and great offers on our Instagram.')}</div>
+        <div style="font-size:13px;line-height:1.4;font-weight:600;color:${PINK};margin-top:4px;">${t('@ledwall360 ansehen →', 'View @ledwall360 →')}</div>
+      </td>
+    </tr></table></a>
   </td></tr>
-  <tr><td style="padding:20px 24px 24px;">${p(t('Beste Grüße<br>Nikki Breuer<br>LEDWALL 360', 'Best regards<br>Nikki Breuer<br>LEDWALL 360'))}</td></tr>
-  <tr><td style="background:#f7f7f8;padding:12px 24px;font-family:${FONT};font-size:11px;color:#8d8d94;">LEDWALL 360 GmbH · ${PHONE} · hallo@ledwall-360.de · ledwall-360.de</td></tr>`);
+  <tr><td style="padding:20px 24px 24px;">${p(t('Beste Grüße<br>Nikki Breuer<br>LEDWALL360', 'Best regards<br>Nikki Breuer<br>LEDWALL360'))}</td></tr>
+  <tr><td style="background:#f7f7f8;padding:12px 24px;font-family:${FONT};font-size:11px;color:#8d8d94;">LEDWALL360 GmbH · ${PHONE} · hallo@ledwall-360.de · ledwall-360.de</td></tr>`);
 }
