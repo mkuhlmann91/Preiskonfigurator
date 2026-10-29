@@ -115,6 +115,8 @@ function table(pairs) {
 }
 const heading = (t) => `<div style="font-family:${HEAD_FONT};font-size:13px;font-weight:700;color:${PINK};text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">${esc(t)}</div>`;
 const button = (href, label) => href ? `<a href="${esc(href)}" style="display:inline-block;background:${PINK};color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 22px;border-radius:8px;">${esc(label)}</a>` : '';
+// Zweitrangiger Button: Umriss statt Fläche, damit der Termin-Button die Hauptaktion bleibt
+const outline = (href, label) => href ? `<a href="${esc(href)}" style="display:inline-block;border:1.5px solid ${PINK};color:${PINK};text-decoration:none;font-weight:600;font-size:14px;padding:11px 21px;border-radius:8px;">${esc(label)}</a>` : '';
 const frame = (inner) => `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet"><style>@media only screen and (max-width:520px){.dk{display:none!important;}.mb{display:table-row!important;}}</style></head>
 <body style="margin:0;background:#f2f2f4;font-family:${FONT};color:#1b1b1e;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f2f2f4;padding:24px 0;"><tr><td align="center">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:12px;overflow:hidden;">${inner}</table></td></tr></table></body></html>`;
@@ -159,7 +161,7 @@ function customerHtml(f, rows) {
   <tr><td align="center" style="padding:6px 24px 4px;">${p(t('ca. 15 Minuten · kostenlos', 'about 15 minutes · free'), 'font-size:12px;color:#8d8d94;')}</td></tr>` : ''}
   <tr><td style="padding:18px 24px 4px;">${heading(t('So geht es weiter', 'What happens next'))}<table role="presentation" cellpadding="0" cellspacing="0">${stepRows}</table></td></tr>
   <tr><td style="padding:16px 24px 4px;">${heading(t('Deine LEDWALL', 'Your LEDWALL'))}${table(rows.filter(([k]) => keep.includes(k)).map(([k, v]) => [k, esc(v)]))}</td></tr>
-  <tr><td align="center" style="padding:22px 24px 6px;">${button(f.link, t('Deine LEDWALL ansehen', 'View your LEDWALL'))}</td></tr>
+  <tr><td align="center" style="padding:22px 24px 6px;">${(BOOKING_LINK ? outline : button)(f.link, t('Deine LEDWALL ansehen', 'View your LEDWALL'))}</td></tr>
   <tr><td style="padding:22px 24px 4px;">
     <div style="background:#fbf0f6;border-radius:10px;padding:16px 18px;">
       <table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr>
