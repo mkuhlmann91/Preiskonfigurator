@@ -5,6 +5,10 @@
 const RECIPIENT = 'hallo@ledwall-360.de';            // hier kommen die Anfragen an
 const SENDER = { name: 'LEDWALL 360', email: 'hallo@ledwall-360.de' }; // muss in Brevo bestätigt sein
 const ALLOWED_ORIGINS = ['https://konfigurator.ledwall-360.de'];
+// Kontaktformular auf ledwall-360.de/kontakt: Bestätigung an den Kunden über Brevo-Vorlage 13
+const KONTAKT_ORIGINS = ['https://www.ledwall-360.de', 'https://ledwall-360.de'];
+const KONTAKT_TEMPLATE = 13;
+const KONTAKT_THEMEN = ['Kauf / Beratung', 'Miete', 'Frage zu deiner Bestellung', 'Sonstiges'];
 const PINK = '#d10070';
 const PHONE = '+49 431 88864540';
 const PHONE_LINK = 'tel:+4943188864540';
@@ -21,8 +25,10 @@ const HEAD_FONT = FONT;   // Überschriften in derselben Schrift wie der Text (M
 export default {
   async fetch(request, env) {
     const origin = request.headers.get('Origin') || '';
+    const isKontakt = new URL(request.url).pathname.replace(/\/+$/, '') === '/kontakt';
+    const origins = isKontakt ? KONTAKT_ORIGINS : ALLOWED_ORIGINS;
     const cors = {
-      'Access-Control-Allow-Origin': ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0],
+      'Access-Control-Allow-Origin': origins.includes(origin) ? origin : origins[0],
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
       'Vary': 'Origin'
@@ -31,7 +37,8 @@ export default {
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
     if (request.method !== 'POST') return reply(405, { success: false, message: 'Nur POST' });
-    if (!ALLOWED_ORIGINS.includes(origin)) return reply(403, { success: false, message: 'Herkunft nicht erlaubt' });
+    if (!origins.includes(origin)) return reply(403, { success: false, message: 'Herkunft nicht erlaubt' });
+    if (isKontakt) return kontakt(request, env, reply);
 
     let d;
     try { d = await request.json(); } catch { return reply(400, { success: false, message: 'Ungültige Daten' }); }
@@ -85,6 +92,30 @@ export default {
     return reply(200, { success: true });
   }
 };
+
+// Kontaktformular: nur die Bestätigung an den Kunden. Die Anfrage selbst kommt wie bisher über Webflow bei euch an.
+async function kontakt(request, env, reply) {
+  let d;
+  try { d = await request.json(); } catch { return reply(400, { success: false, message: 'Ungültige Daten' }); }
+  if (d.honey) return reply(200, { success: true });
+  const s = (v, max) => String(v ?? '').trim().slice(0, max);
+  const name = s(d.name, 120), email = s(d.email, 200), thema = s(d.thema, 60);
+  if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return reply(400, { success: false, message: 'Name oder E-Mail fehlt' });
+  if (!KONTAKT_THEMEN.includes(thema)) return reply(400, { success: false, message: 'Thema fehlt' });
+  if (!env.BREVO_API_KEY) return reply(500, { success: false, message: 'BREVO_API_KEY fehlt' });
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({
+      templateId: KONTAKT_TEMPLATE,
+      to: [{ email, name }],
+      replyTo: { email: RECIPIENT, name: 'LEDWALL 360' },
+      params: { NAME: name.split(' ')[0], THEMA: thema, COMPANY: s(d.company, 160), MESSAGE: s(d.message, 1500) }
+    })
+  });
+  if (!res.ok) return reply(502, { success: false, message: 'Brevo: ' + (await res.text()).slice(0, 300) });
+  return reply(200, { success: true });
+}
 
 /* ----------------------------- Mail-Vorlagen ----------------------------- */
 
