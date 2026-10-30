@@ -3,9 +3,9 @@
 // Der Brevo-Schlüssel steht NICHT hier, sondern als Secret "BREVO_API_KEY" in Cloudflare.
 
 const RECIPIENT = 'hallo@ledwall-360.de';            // Antwortadresse für Kunden
-// VORÜBERGEHEND: Mailserver von ledwall-360.de (hostingplus) nimmt seit 30.10. keine Brevo-Mails an.
-// Konfigurator-Anfragen gehen deshalb an web.de. Nach Behebung wieder auf RECIPIENT zurückstellen.
-const INQUIRY_TO = 'marvink.golds@web.de';
+// VORÜBERGEHEND: Zustellung von Brevo an den Mailserver von ledwall-360.de (hostingplus) hakt seit 29.10.
+// Konfigurator-Anfragen gehen deshalb zusätzlich als Kopie an web.de. Nach Behebung INQUIRY_CC entfernen.
+const INQUIRY_CC = 'marvink.golds@web.de';
 const SENDER = { name: 'LEDWALL 360', email: 'hallo@ledwall-360.de' }; // muss in Brevo bestätigt sein
 const ALLOWED_ORIGINS = ['https://konfigurator.ledwall-360.de'];
 // Kontaktformular auf ledwall-360.de/kontakt: Bestätigung an den Kunden über Brevo-Vorlage 13
@@ -70,7 +70,8 @@ export default {
     const en = f.lang === 'en';
     const internal = {
       sender: SENDER,
-      to: [{ email: INQUIRY_TO }],
+      to: [{ email: RECIPIENT }],
+      cc: [{ email: INQUIRY_CC }],
       replyTo: { email: f.email, name: f.name },
       subject: `Anfrage - Konfigurator - ${f.size || 'ohne Größe'}${en ? ' (EN)' : ''}`,
       htmlContent: internalHtml(f, rows),
