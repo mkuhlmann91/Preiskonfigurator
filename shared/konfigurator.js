@@ -210,10 +210,11 @@ function applyEnvironment() {
     else buildGym(wallW, wallH);
   } else if (state.location === 'outdoor') {
     // Moderner Stadtpark an einem sonnigen Tag: Platz aus großen Betonplatten, Rasen,
-    // Wege, unterschiedliche Bäume, Wolken. Highlights: Coffee-Truck und Bodenfontäne.
-    scene.background = skyTexture;
-    scene.fog = new THREE.Fog(0xdde9f3, 34, 90);
-    Object.assign(fogBase, { near: 34, far: 90 });
+    // Wege, unterschiedliche Bäume. Highlight: Bodenfontäne.
+    scene.background = new THREE.Color(PARK_GREEN);
+    // Nebel in Rasenfarbe: der Rasen läuft bis zum Horizont grün aus
+    scene.fog = new THREE.Fog(PARK_GREEN, 60, 190);
+    Object.assign(fogBase, { near: 60, far: 190 });
     hemiLight.color.set(0xdcecff);
     hemiLight.groundColor.set(0x6d7a52);
     floorMat.color.set(0x4d7a35);   // Rasen (Fläche weit draußen)
@@ -337,21 +338,6 @@ const makeGravelTexture = memoTexture(function makeGravelTexture() {
   return t;
 });
 
-// Weiche Wolke für den Himmel
-const makeCloudTexture = memoTexture(function makeCloudTexture(seed) {
-  return canvasTexture(512, 256, (ctx, W, H) => {
-    const rnd = seeded(seed);
-    for (let i = 0; i < 22; i++) {
-      const x = W * (0.15 + rnd() * 0.7), y = H * (0.45 + rnd() * 0.3), r = 40 + rnd() * 70;
-      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-      g.addColorStop(0, 'rgba(255,255,255,0.75)');
-      g.addColorStop(0.6, 'rgba(250,252,255,0.35)');
-      g.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, W, H);
-    }
-  });
-});
 
 // Organische Laubmasse: Icosaeder mit verschobenen Ecken
 function leafClump(r, rnd, mat) {
@@ -454,27 +440,6 @@ function buildParkBench(x, z, rotY, len = 2.4) {
   return g;
 }
 
-// Schlanke LED-Mastleuchte in Anthrazit mit Ausleger
-function buildParkLamp(x, z, h = 4.5, dir = 1) {
-  const g = new THREE.Group();
-  const metal = new THREE.MeshStandardMaterial({ color: 0x2c2e31, roughness: 0.45, metalness: 0.6 });
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.065, h, 14), metal);
-  pole.position.y = h / 2;
-  g.add(pole);
-  const arm = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.05, 0.08), metal);
-  arm.position.set(dir * 0.33, h - 0.03, 0);
-  g.add(arm);
-  const head = softBox(0.5, 0.06, 0.2, 0.025, metal);
-  head.position.set(dir * 0.6, h - 0.05, 0);
-  g.add(head);
-  const led = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.14), new THREE.MeshBasicMaterial({ color: 0xfff3dc }));
-  led.rotation.x = Math.PI / 2;
-  led.position.set(dir * 0.6, h - 0.082, 0);
-  g.add(led);
-  g.position.set(x, 0, z);
-  return g;
-}
-
 // Abfallbehälter aus Edelstahl
 function buildParkBin(x, z) {
   const g = new THREE.Group();
@@ -494,11 +459,17 @@ function buildCortenPlanter(x, z, w = 1.6, d = 0.8, seed = 1) {
   const g = new THREE.Group();
   const rnd = seeded(seed);
   const corten = new THREE.MeshStandardMaterial({ color: 0x8a4a28, roughness: 0.85, metalness: 0.2 });
-  const box = new THREE.Mesh(new THREE.BoxGeometry(w, 0.55, d), corten);
-  box.position.y = 0.275;
-  g.add(box);
-  const soil = new THREE.Mesh(new THREE.BoxGeometry(w - 0.06, 0.02, d - 0.06), new THREE.MeshStandardMaterial({ color: 0x3a2a1c, roughness: 1 }));
-  soil.position.y = 0.54;
+  // Kasten aus vier Wänden (3 cm Blech), Erde 3 cm unter der Kante: keine überlappenden Flächen, kein Flackern
+  const t = 0.03, hBox = 0.55;
+  [[w, d / 2 - t / 2, 0], [w, -(d / 2 - t / 2), 0], [d - 2 * t, w / 2 - t / 2, Math.PI / 2], [d - 2 * t, -(w / 2 - t / 2), Math.PI / 2]].forEach(([len, off, rot]) => {
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(len, hBox, t), corten);
+    wall.rotation.y = rot;
+    if (rot) wall.position.set(off, hBox / 2, 0); else wall.position.set(0, hBox / 2, off);
+    g.add(wall);
+  });
+  const soil = new THREE.Mesh(new THREE.PlaneGeometry(w - 2 * t, d - 2 * t), new THREE.MeshStandardMaterial({ color: 0x3a2a1c, roughness: 1 }));
+  soil.rotation.x = -Math.PI / 2;
+  soil.position.y = hBox - 0.03;
   g.add(soil);
   const grassMats = [0x7d9a4a, 0x99ab5a, 0x6b8a3c].map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8 }));
   const blade = new THREE.ConeGeometry(0.012, 1, 3);
@@ -508,7 +479,7 @@ function buildCortenPlanter(x, z, w = 1.6, d = 0.8, seed = 1) {
     const tx = (rnd() - 0.5) * (w - 0.15), tz = (rnd() - 0.5) * (d - 0.15);
     for (let k = 0; k < 9; k++) {
       const b = new THREE.Mesh(blade, grassMats[k % 3]);
-      b.position.set(tx, 0.55, tz);
+      b.position.set(tx, hBox - 0.03, tz);
       b.scale.y = 0.35 + rnd() * 0.35;
       b.rotation.set((rnd() - 0.5) * 0.9, rnd() * Math.PI, (rnd() - 0.5) * 0.9);
       g.add(b);
@@ -524,112 +495,7 @@ function buildCortenPlanter(x, z, w = 1.6, d = 0.8, seed = 1) {
   return g;
 }
 
-// Highlight 1: Coffee-Truck mit pink-weißer Markise, Theke und Tafel
-const makeAwningTexture = memoTexture(function makeAwningTexture() {
-  return canvasTexture(256, 64, (ctx, W, H) => {
-    for (let i = 0; i < 8; i++) { ctx.fillStyle = i % 2 ? '#ffffff' : '#e7007f'; ctx.fillRect(i * W / 8, 0, W / 8, H); }
-  });
-});
-const makeTruckSignTexture = memoTexture(function makeTruckSignTexture() {
-  return canvasTexture(512, 128, (ctx, W, H) => {
-    ctx.fillStyle = '#1d1d1f'; ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = '#ffffff'; ctx.font = '700 64px Inter, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('COFFEE', W / 2 - 40, H / 2 + 4);
-    ctx.fillStyle = '#e7007f'; ctx.beginPath(); ctx.arc(W / 2 + 150, H / 2, 22, 0, Math.PI * 2); ctx.fill();
-  });
-});
-const makeMenuTexture = memoTexture(function makeMenuTexture() {
-  return canvasTexture(128, 192, (ctx, W, H) => {
-    ctx.fillStyle = '#26282a'; ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = '#f2f2f2'; ctx.font = '700 20px Inter, Arial, sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('MENU', W / 2, 32);
-    ctx.font = '13px Inter, Arial, sans-serif'; ctx.textAlign = 'left';
-    [['Espresso', '2,5'], ['Cappuccino', '3,5'], ['Flat White', '3,8'], ['Iced Latte', '4,2']].forEach(([n, p], i) => {
-      ctx.fillText(n, 12, 66 + i * 28); ctx.textAlign = 'right'; ctx.fillText(p, W - 12, 66 + i * 28); ctx.textAlign = 'left';
-    });
-  });
-});
-function buildCoffeeTruck(x, z, rotY) {
-  const g = new THREE.Group();
-  const paint = new THREE.MeshStandardMaterial({ color: 0xf1efea, roughness: 0.35, metalness: 0.1 });
-  const dark = new THREE.MeshStandardMaterial({ color: 0x1d1d1f, roughness: 0.5 });
-  const glass = new THREE.MeshStandardMaterial({ color: 0x24313b, roughness: 0.1, metalness: 0.4 });
-  const L = 4.2, W = 2.0, H = 2.2;
-  const body = softBox(L, H, W, 0.28, paint);
-  body.position.y = 0.45 + H / 2;
-  g.add(body);
-  // Zierstreifen in Pink
-  const stripe = new THREE.Mesh(new THREE.BoxGeometry(L - 0.2, 0.12, W + 0.01), new THREE.MeshStandardMaterial({ color: 0xe7007f, roughness: 0.5 }));
-  stripe.position.y = 0.75;
-  g.add(stripe);
-  // Fahrerkabine vorne (Windschutzscheibe)
-  const wind = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.4, 0.8), glass);
-  wind.rotation.y = Math.PI / 2;
-  wind.position.set(L / 2 + 0.005, 1.95, 0);
-  g.add(wind);
-  // Verkaufsklappe auf der Seite (+z)
-  const hatch = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.9), new THREE.MeshStandardMaterial({ color: 0x3a2c22, roughness: 0.8 }));
-  hatch.position.set(-0.3, 1.75, W / 2 + 0.005);
-  g.add(hatch);
-  // Innen: Kaffeemaschine und warmes Licht
-  const machine = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 0.3), new THREE.MeshStandardMaterial({ color: 0xb8bcc2, roughness: 0.25, metalness: 0.9 }));
-  machine.position.set(-0.6, 1.5, W / 2 - 0.2);
-  g.add(machine);
-  const lamp = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.08), new THREE.MeshBasicMaterial({ color: 0xffe2b0 }));
-  lamp.position.set(-0.3, 2.17, W / 2 + 0.006);
-  g.add(lamp);
-  // Theke
-  const counter = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.06, 0.38), new THREE.MeshStandardMaterial({ color: 0x9a6a3f, roughness: 0.6 }));
-  counter.position.set(-0.3, 1.3, W / 2 + 0.16);
-  g.add(counter);
-  // Becher auf der Theke
-  [-0.9, -0.75, 0.2].forEach((cx) => {
-    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.032, 0.11, 14), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 }));
-    cup.position.set(cx, 1.39, W / 2 + 0.2);
-    g.add(cup);
-  });
-  // Markise
-  const awning = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.9), new THREE.MeshStandardMaterial({ map: makeAwningTexture(), roughness: 0.8, side: THREE.DoubleSide }));
-  awning.position.set(-0.3, 2.42, W / 2 + 0.4);
-  awning.rotation.x = -1.1;
-  g.add(awning);
-  // Schild oben
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.45), new THREE.MeshBasicMaterial({ map: makeTruckSignTexture() }));
-  sign.position.set(-0.3, 2.95, W / 2 + 0.005);
-  g.add(sign);
-  // Räder
-  [[-L / 2 + 0.8, 1], [L / 2 - 0.8, 1], [-L / 2 + 0.8, -1], [L / 2 - 0.8, -1]].forEach(([wx, s]) => {
-    const tyre = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.26, 24), dark);
-    tyre.rotation.x = Math.PI / 2;
-    tyre.position.set(wx, 0.36, s * (W / 2 - 0.1));
-    g.add(tyre);
-    const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.27, 20), new THREE.MeshStandardMaterial({ color: 0xc9ccd0, roughness: 0.3, metalness: 0.8 }));
-    rim.rotation.x = Math.PI / 2;
-    rim.position.copy(tyre.position);
-    g.add(rim);
-  });
-  // Aufsteller mit Menü
-  const board = new THREE.Group();
-  const face = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.75), new THREE.MeshBasicMaterial({ map: makeMenuTexture() }));
-  face.position.set(0, 0.45, 0.14);
-  face.rotation.x = -0.25;
-  board.add(face);
-  const frame = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.82, 0.03), dark);
-  frame.position.set(0, 0.45, 0.115);
-  frame.rotation.x = -0.25;
-  board.add(frame);
-  const back = frame.clone();
-  back.position.z = -0.115; back.rotation.x = 0.25;
-  board.add(back);
-  board.position.set(1.0, 0, W / 2 + 1.0);
-  board.rotation.y = 0.4;
-  g.add(board);
-  g.position.set(x, 0, z);
-  g.rotation.y = rotY;
-  return g;
-}
-
-// Highlight 2: Bodenfontäne mit tanzenden Wasserstrahlen auf dunklem Granitfeld
+// Highlight: Bodenfontäne mit tanzenden Wasserstrahlen auf dunklem Granitfeld
 function buildFountain(x, z) {
   const g = new THREE.Group();
   const granite = new THREE.MeshStandardMaterial({ color: 0x3b3d40, roughness: 0.25, metalness: 0.2 });
@@ -703,6 +569,24 @@ function buildFountain(x, z) {
   return g;
 }
 
+const PARK_GREEN = new THREE.Color(0x5b8a3c).convertSRGBToLinear();
+function buildParkSkyDome() {
+  const geo = new THREE.SphereGeometry(330, 48, 24);
+  const top = new THREE.Color(0x2f86d6).convertSRGBToLinear();
+  const horizon = new THREE.Color(0xbfe0f6).convertSRGBToLinear();
+  const pos = geo.attributes.position, cols = [];
+  const c = new THREE.Color();
+  for (let i = 0; i < pos.count; i++) {
+    const y = pos.getY(i) / 330;
+    if (y <= 0) c.copy(PARK_GREEN); else c.copy(horizon).lerp(top, Math.pow(y, 0.6));
+    cols.push(c.r, c.g, c.b);
+  }
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+  const dome = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false }));
+  dome.renderOrder = -1;
+  return dome;
+}
+
 function buildPark(wallW, wallH) {
   const side = wallW / 2;
   const k = Math.max(1, (side + 5) / 11);
@@ -754,23 +638,15 @@ function buildPark(wallW, wallH) {
     c.position.set(hx + 0.55, 0.55, z0 - 1.2);
     envGroup.add(c);
   }
-  // Wolken
-  [[-40, 26, -80, 1], [10, 30, -90, 2], [55, 24, -75, 3], [-75, 22, -60, 4]].forEach(([cx, cy, cz, s]) => {
-    const cloud = new THREE.Mesh(new THREE.PlaneGeometry(42, 21), new THREE.MeshBasicMaterial({ map: makeCloudTexture(s), transparent: true, depthWrite: false, fog: false }));
-    cloud.position.set(cx, cy, cz);
-    cloud.lookAt(0, cy * 0.4, 10);
-    envGroup.add(cloud);
-  });
+  // Himmelskuppel: oben Blau, zum Horizont heller, unterhalb des Horizonts Rasengrün (kein weißer Streifen)
+  envGroup.add(buildParkSkyDome());
   // Möblierung vor der Wandebene (z > 0), Mitte bleibt frei für Figur und Abstandslinie
-  envGroup.add(buildParkLamp(-side - 1.2, 0.8, 4.5, 1));
-  envGroup.add(buildParkLamp(side + 1.2, 0.8, 4.5, -1));
   envGroup.add(buildParkBench(-side - 3.2, 2.6, Math.PI / 2 + 0.25));
   envGroup.add(buildParkBench(side + 3.0, 6.8, -Math.PI / 2 - 0.25));
   envGroup.add(buildParkBin(side + 1.9, 4.6));
   envGroup.add(buildCortenPlanter(-side - 1.6, -0.6, 1.8, 0.8, 21));
   envGroup.add(buildCortenPlanter(side + 1.6, -0.6, 1.8, 0.8, 22));
-  // Highlights
-  envGroup.add(buildCoffeeTruck(side + 5.6, 1.4, -0.25));
+  // Highlight
   envGroup.add(buildFountain(-side - 4.8, 6.2));
 }
 
