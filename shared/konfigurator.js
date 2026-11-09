@@ -232,32 +232,58 @@ function applyEnvironment() {
       .forEach(([x, z, h]) => envGroup.add(buildTree(x * k, z * k, h)));
     buildPlazaDecor(wallW);
   } else {
-    // Heller Showroom: warme helle Wände, Betonboden, Pflanzen und Lounge
-    scene.background = new THREE.Color(0xbfb9b1);
-    scene.fog = new THREE.Fog(0xbfb9b1, 24, 60);
-    Object.assign(fogBase, { near: 24, far: 60 });
-    floorMat.color.set(0x4a4642);   // geschliffener Beton
-    floorMat.roughness = 0.85;
-    rimBase = 0.5;
-    ambientLight.intensity = 0.2;
-    hemiLight.color.set(0xfff6ea);
-    hemiLight.groundColor.set(0x6a625a);
-    hemiLight.intensity = 0.45;
-    keyLight.intensity = 0.6;
-    fillLight.intensity = 0.25;
+    // Moderner, heller Showroom: weiße Wände mit Lichtfugen, grauer Designboden (Spachtelboden)
+    scene.background = new THREE.Color(0xe2dfda);
+    scene.fog = new THREE.Fog(0xe2dfda, 26, 64);
+    Object.assign(fogBase, { near: 26, far: 64 });
+    floorMat.color.set(0x9a9c9f);   // schickes Hellgrau
+    floorMat.roughness = 0.5;
+    rimBase = 0.12;                  // nur ein Hauch Pink, Wände bleiben weiß
+    ambientLight.intensity = 0.15;
+    hemiLight.color.set(0xfffaf3);
+    hemiLight.groundColor.set(0x77736e);
+    hemiLight.intensity = 0.5;
+    keyLight.intensity = 0.55;
+    fillLight.intensity = 0.2;
     keyLight.position.set(6, 12, 8);
-    const hallMat = new THREE.MeshStandardMaterial({ color: 0x8a847c, roughness: 0.95 });
     const hallW = Math.max(36, wallW + 16), hallH = Math.max(9, wallH + 6);
+    // Spachtelboden als eigene Fläche (der gemeinsame Boden bleibt ohne Textur)
+    const screed = new THREE.Mesh(new THREE.PlaneGeometry(hallW, 34),
+      new THREE.MeshStandardMaterial({ map: makeScreedTexture(), color: 0xffffff, roughness: 0.55, metalness: 0.02 }));
+    screed.material.map.repeat.set(hallW / 6, 34 / 6);
+    screed.rotation.x = -Math.PI / 2;
+    screed.position.set(0, 0.002, 3);
+    envGroup.add(screed);
+    const hallMat = new THREE.MeshStandardMaterial({ color: 0xdedad4, roughness: 0.92 });
     [[0, -14, 0, hallW], [-hallW / 2, 3, Math.PI / 2, 34], [hallW / 2, 3, -Math.PI / 2, 34]].forEach(([x, z, ry, w]) => {
       const wall = new THREE.Mesh(new THREE.PlaneGeometry(w, hallH), hallMat);
       wall.position.set(x, hallH / 2, z);
       wall.rotation.y = ry;
       envGroup.add(wall);
     });
-    // Sockelleiste an den Hallenwänden
-    const skirtMat = new THREE.MeshStandardMaterial({ color: 0x6f6961, roughness: 0.8 });
-    const skirt = new THREE.Mesh(new THREE.BoxGeometry(hallW, 0.12, 0.03), skirtMat);
-    skirt.position.set(0, 0.06, -13.98);
+    // Rückwand: Feld mit senkrechten Akustik-Lamellen in Eiche, eingerahmt von Lichtfugen
+    const slatW = Math.min(hallW - 6, Math.max(14, wallW + 8)), slatH = Math.min(hallH - 1.2, 4.2);
+    const slats = new THREE.Mesh(new THREE.PlaneGeometry(slatW, slatH),
+      new THREE.MeshStandardMaterial({ map: makeSlatTexture(), roughness: 0.7 }));
+    slats.material.map.repeat.set(slatW / 2, 1);
+    slats.position.set(0, slatH / 2, -13.97);
+    envGroup.add(slats);
+    const glow = new THREE.MeshBasicMaterial({ color: 0xfff4e2 });
+    const ledTop = new THREE.Mesh(new THREE.BoxGeometry(slatW, 0.035, 0.02), glow);
+    ledTop.position.set(0, slatH + 0.04, -13.96);
+    envGroup.add(ledTop);
+    // umlaufende Lichtfuge unter der Decke und schlanke Schattenfuge am Boden
+    const cove = new THREE.Mesh(new THREE.BoxGeometry(hallW, 0.05, 0.02), glow);
+    cove.position.set(0, hallH - 0.6, -13.97);
+    envGroup.add(cove);
+    [-1, 1].forEach((s) => {
+      const c = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.05, 34), glow);
+      c.position.set(s * (hallW / 2 - 0.02), hallH - 0.6, 3);
+      envGroup.add(c);
+    });
+    const skirt = new THREE.Mesh(new THREE.BoxGeometry(hallW, 0.06, 0.02),
+      new THREE.MeshStandardMaterial({ color: 0x2b2b2d, roughness: 0.6 }));
+    skirt.position.set(0, 0.03, -13.98);
     envGroup.add(skirt);
     buildShowroomDecor(wallW);
   }
@@ -379,119 +405,264 @@ function buildPlazaDecor(wallW) {
 
 /* --------------------------- SHOWROOM-DEKO (INDOOR) ------------------------ */
 
-function buildPlant(x, z, h = 1.4) {
+// Kleiner Zufallsgenerator mit festem Startwert: Pflanzen sehen bei jedem Neuaufbau gleich aus
+function seeded(seed) {
+  let s = seed >>> 0;
+  return () => { s = (s + 0x6d2b79f5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+
+// Spachtelboden: hellgrau mit weicher Wolkung und feinen Poren
+const makeScreedTexture = memoTexture(function makeScreedTexture() {
+  const t = canvasTexture(512, 512, (ctx, W, H) => {
+    ctx.fillStyle = '#86888c';
+    ctx.fillRect(0, 0, W, H);
+    const rnd = seeded(7);
+    for (let i = 0; i < 70; i++) {
+      const x = rnd() * W, y = rnd() * H, r = 40 + rnd() * 120;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      const light = rnd() > 0.5;
+      g.addColorStop(0, light ? 'rgba(255,255,255,0.035)' : 'rgba(60,62,66,0.04)');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      // wiederholend zeichnen, damit die Kachel nahtlos ist
+      [-W, 0, W].forEach((dx) => [-H, 0, H].forEach((dy) => { ctx.save(); ctx.translate(dx, dy); ctx.fillRect(x - r, y - r, 2 * r, 2 * r); ctx.restore(); }));
+    }
+    for (let i = 0; i < 2600; i++) {
+      ctx.fillStyle = rnd() > 0.5 ? 'rgba(255,255,255,0.08)' : 'rgba(40,40,44,0.1)';
+      ctx.fillRect(rnd() * W, rnd() * H, 1, 1);
+    }
+  });
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+});
+
+// Eichenlamellen auf schwarzem Filz (eine Kachel = 2 m breit)
+const makeSlatTexture = memoTexture(function makeSlatTexture() {
+  const t = canvasTexture(512, 256, (ctx, W, H) => {
+    ctx.fillStyle = '#1d1c1b';
+    ctx.fillRect(0, 0, W, H);
+    const n = 20, sw = W / n;
+    const rnd = seeded(3);
+    for (let i = 0; i < n; i++) {
+      const tone = 168 + Math.round(rnd() * 22);
+      ctx.fillStyle = `rgb(${tone},${Math.round(tone * 0.78)},${Math.round(tone * 0.55)})`;
+      ctx.fillRect(i * sw + sw * 0.18, 0, sw * 0.64, H);
+      ctx.fillStyle = 'rgba(80,50,25,0.12)';
+      for (let k = 0; k < 6; k++) ctx.fillRect(i * sw + sw * (0.2 + rnd() * 0.55), 0, 1, H);
+    }
+  });
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+});
+
+// Weich gerundeter Quader (Polster): Rechteck mit Rundung, extrudiert mit Fase
+function softBox(w, h, d, r, mat) {
+  r = Math.min(r, w / 2 - 0.001, h / 2 - 0.001);
+  const s = new THREE.Shape();
+  s.moveTo(-w / 2 + r, -h / 2);
+  s.lineTo(w / 2 - r, -h / 2); s.quadraticCurveTo(w / 2, -h / 2, w / 2, -h / 2 + r);
+  s.lineTo(w / 2, h / 2 - r); s.quadraticCurveTo(w / 2, h / 2, w / 2 - r, h / 2);
+  s.lineTo(-w / 2 + r, h / 2); s.quadraticCurveTo(-w / 2, h / 2, -w / 2, h / 2 - r);
+  s.lineTo(-w / 2, -h / 2 + r); s.quadraticCurveTo(-w / 2, -h / 2, -w / 2 + r, -h / 2);
+  const bev = Math.min(r * 0.6, d / 2 - 0.001);
+  const geo = new THREE.ExtrudeGeometry(s, { depth: d - 2 * bev, bevelEnabled: true, bevelThickness: bev, bevelSize: bev * 0.8, bevelSegments: 4, curveSegments: 6 });
+  geo.translate(0, 0, -(d - 2 * bev) / 2);
+  return new THREE.Mesh(geo, mat);
+}
+
+// Zimmerpflanze im hohen, matten Keramiktopf: viele einzelne Blätter an Zweigen
+function buildPlant(x, z, h = 1.4, seed = 1) {
   const g = new THREE.Group();
-  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.2, 0.5, 20),
-    new THREE.MeshStandardMaterial({ color: 0xf4f1ec, roughness: 0.4 }));
-  pot.position.y = 0.25;
+  const rnd = seeded(seed);
+  const potH = 0.55, potR = 0.24;
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(potR, potR * 0.86, potH, 32),
+    new THREE.MeshStandardMaterial({ color: 0x3a3a3c, roughness: 0.75 }));
+  pot.position.y = potH / 2;
   g.add(pot);
-  const soil = new THREE.Mesh(new THREE.CircleGeometry(0.24, 20), new THREE.MeshStandardMaterial({ color: 0x3a2a1e }));
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(potR - 0.008, 0.012, 8, 32), pot.material);
+  rim.rotation.x = Math.PI / 2;
+  rim.position.y = potH;
+  g.add(rim);
+  const soil = new THREE.Mesh(new THREE.CircleGeometry(potR - 0.01, 24), new THREE.MeshStandardMaterial({ color: 0x2b2119, roughness: 1 }));
   soil.rotation.x = -Math.PI / 2;
-  soil.position.y = 0.49;
+  soil.position.y = potH - 0.03;
   g.add(soil);
-  const leafMat = new THREE.MeshStandardMaterial({ color: 0x3f7f45, roughness: 0.8 });
-  const leafMat2 = new THREE.MeshStandardMaterial({ color: 0x2f6a38, roughness: 0.8 });
-  // buschige Krone aus mehreren Kugeln
-  [[0, h * 0.75, 0, 0.42], [0.2, h * 0.6, 0.1, 0.3], [-0.2, h * 0.62, -0.08, 0.32], [0.05, h * 0.95, -0.05, 0.3], [-0.1, h * 0.5, 0.18, 0.26]]
-    .forEach(([lx, ly, lz, r], i) => {
-      const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), i % 2 ? leafMat2 : leafMat);
-      leaf.position.set(lx, ly, lz);
+  const bark = new THREE.MeshStandardMaterial({ color: 0x5b4636, roughness: 0.9 });
+  const leafMats = [0x2f6b3a, 0x3d7d45, 0x285c32, 0x4a8a4e].map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.6, side: THREE.DoubleSide }));
+  const leafGeo = new THREE.SphereGeometry(1, 10, 6);
+  leafGeo.scale(0.055, 0.012, 0.13);
+  leafGeo.translate(0, 0, 0.12);
+  const trunkH = h * 0.55;
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.026, trunkH, 8), bark);
+  trunk.position.y = potH + trunkH / 2;
+  g.add(trunk);
+  const top = potH + trunkH;
+  const branches = 7;
+  for (let b = 0; b < branches; b++) {
+    const a = (b / branches) * Math.PI * 2 + rnd() * 0.6;
+    const by = top - 0.15 + rnd() * 0.35;
+    const len = 0.22 + rnd() * 0.22;
+    const tilt = 0.5 + rnd() * 0.5;
+    const dir = new THREE.Vector3(Math.cos(a) * Math.sin(tilt), Math.cos(tilt), Math.sin(a) * Math.sin(tilt));
+    const br = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.01, len, 6), bark);
+    br.position.set(dir.x * len / 2, by + dir.y * len / 2, dir.z * len / 2);
+    br.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+    g.add(br);
+    // Blätter entlang des Zweigs
+    const leaves = 9;
+    for (let k = 0; k < leaves; k++) {
+      const t = 0.25 + (k / leaves) * 0.85;
+      const leaf = new THREE.Mesh(leafGeo, leafMats[Math.floor(rnd() * leafMats.length)]);
+      leaf.position.set(dir.x * len * t, by + dir.y * len * t + 0.02, dir.z * len * t);
+      leaf.rotation.set(-0.3 - rnd() * 0.9, a + (rnd() - 0.5) * 2.4, (rnd() - 0.5) * 0.6, 'YXZ');
+      const sc = 0.8 + rnd() * 0.5;
+      leaf.scale.setScalar(sc);
       g.add(leaf);
-    });
-  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, h * 0.5, 8), new THREE.MeshStandardMaterial({ color: 0x5a4632 }));
-  stem.position.y = 0.5 + h * 0.2;
-  g.add(stem);
+    }
+  }
+  // Krone oben etwas dichter
+  for (let k = 0; k < 26; k++) {
+    const leaf = new THREE.Mesh(leafGeo, leafMats[Math.floor(rnd() * leafMats.length)]);
+    const a = rnd() * Math.PI * 2, r = rnd() * 0.18;
+    leaf.position.set(Math.cos(a) * r, top + 0.1 + rnd() * 0.3, Math.sin(a) * r);
+    leaf.rotation.set(-0.2 - rnd() * 1.1, rnd() * Math.PI * 2, (rnd() - 0.5) * 0.5, 'YXZ');
+    leaf.scale.setScalar(0.8 + rnd() * 0.5);
+    g.add(leaf);
+  }
   g.position.set(x, 0, z);
   return g;
 }
 
+// Lounge: Polstersofa in hellem Bouclé, Sessel, Marmor-Couchtisch, runder Teppich
 function buildSofa(x, z, rotY) {
   const g = new THREE.Group();
-  const fabric = new THREE.MeshStandardMaterial({ color: 0x55585e, roughness: 0.9 });
-  const cushion = new THREE.MeshStandardMaterial({ color: 0xe7007f, roughness: 0.8 });
-  const leg = new THREE.MeshStandardMaterial({ color: 0x2a2a2c, roughness: 0.4, metalness: 0.6 });
-  const seat = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.22, 0.85), fabric);
-  seat.position.y = 0.32;
-  g.add(seat);
-  const back = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.5, 0.2), fabric);
-  back.position.set(0, 0.62, -0.33);
-  g.add(back);
+  const fabric = new THREE.MeshStandardMaterial({ color: 0xcdc6bb, roughness: 0.95 });
+  const fabric2 = new THREE.MeshStandardMaterial({ color: 0xc2baae, roughness: 0.95 });
+  const accent = new THREE.MeshStandardMaterial({ color: 0xc8166f, roughness: 0.85 });
+  const metal = new THREE.MeshStandardMaterial({ color: 0x1b1b1d, roughness: 0.35, metalness: 0.7 });
+  const base = softBox(2.2, 0.26, 0.92, 0.08, fabric);
+  base.position.set(0, 0.3, 0);
+  g.add(base);
+  [-0.52, 0.52].forEach((sx) => {
+    const seat = softBox(1.0, 0.14, 0.78, 0.06, fabric2);
+    seat.position.set(sx, 0.49, 0.04);
+    g.add(seat);
+    const back = softBox(1.0, 0.42, 0.2, 0.08, fabric2);
+    back.position.set(sx, 0.72, -0.34);
+    back.rotation.x = -0.12;
+    g.add(back);
+  });
   [-1, 1].forEach((sx) => {
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.4, 0.85), fabric);
-    arm.position.set(sx * 0.91, 0.45, 0);
+    const arm = softBox(0.2, 0.36, 0.92, 0.09, fabric);
+    arm.position.set(sx * 1.1, 0.55, 0);
     g.add(arm);
-    const pillow = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.38, 0.12), cushion);
-    pillow.position.set(sx * 0.55, 0.6, -0.17);
-    pillow.rotation.x = -0.2;
-    g.add(pillow);
     [-1, 1].forEach((sz) => {
-      const l = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.2, 8), leg);
-      l.position.set(sx * 0.9, 0.1, sz * 0.35);
+      const l = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.012, 0.17, 10), metal);
+      l.position.set(sx * 1.0, 0.085, sz * 0.36);
       g.add(l);
     });
   });
-  // Couchtisch davor
-  const top = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.04, 28),
-    new THREE.MeshStandardMaterial({ color: 0xb08a62, roughness: 0.6 }));
-  top.position.set(0, 0.42, 0.95);
+  const pillow = softBox(0.42, 0.4, 0.12, 0.1, accent);
+  pillow.position.set(-0.7, 0.72, -0.18);
+  pillow.rotation.set(-0.25, 0.25, 0.06);
+  g.add(pillow);
+  const pillow2 = softBox(0.38, 0.36, 0.11, 0.1, new THREE.MeshStandardMaterial({ color: 0x8f877c, roughness: 0.9 }));
+  pillow2.position.set(0.72, 0.7, -0.18);
+  pillow2.rotation.set(-0.25, -0.2, -0.05);
+  g.add(pillow2);
+  // Couchtisch: weißer Marmor, schwarzer Sockel, Deko
+  const marble = new THREE.MeshStandardMaterial({ color: 0xe6e3df, roughness: 0.18, metalness: 0.05 });
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.035, 40), marble);
+  top.position.set(0, 0.4, 1.05);
   g.add(top);
-  const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.12, 0.4, 12), leg);
-  foot.position.set(0, 0.2, 0.95);
+  const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.38, 24), metal);
+  foot.position.set(0, 0.19, 1.05);
   g.add(foot);
-  // Teppich unter der Lounge
-  const rug = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 2.4), new THREE.MeshStandardMaterial({ color: 0x8c8277, roughness: 1 }));
+  const books = [[0x2b2b2d, 0.035], [0xc9c3b8, 0.03]];
+  let by = 0.418;
+  books.forEach(([c, hgt], i) => {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(0.28 - i * 0.03, hgt, 0.2 - i * 0.02), new THREE.MeshStandardMaterial({ color: c, roughness: 0.7 }));
+    b.position.set(-0.12, by + hgt / 2, 1.0);
+    b.rotation.y = 0.2 + i * 0.15;
+    g.add(b);
+    by += hgt;
+  });
+  const vase = new THREE.Mesh(new THREE.LatheGeometry([[0, 0], [0.06, 0], [0.075, 0.06], [0.05, 0.16], [0.03, 0.2], [0.035, 0.22]].map(([a, b]) => new THREE.Vector2(a, b)), 24),
+    new THREE.MeshStandardMaterial({ color: 0x1e1e20, roughness: 0.5 }));
+  vase.position.set(0.17, 0.418, 1.12);
+  g.add(vase);
+  // Sessel schräg gegenüber
+  const chair = new THREE.Group();
+  const cs = softBox(0.78, 0.36, 0.78, 0.12, fabric);
+  cs.position.y = 0.3; chair.add(cs);
+  const cb = softBox(0.78, 0.4, 0.18, 0.09, fabric2);
+  cb.position.set(0, 0.62, -0.3); cb.rotation.x = -0.15; chair.add(cb);
+  chair.position.set(1.15, 0, 1.75);
+  chair.rotation.y = -2.2;
+  g.add(chair);
+  // runder Teppich
+  const rug = new THREE.Mesh(new THREE.CircleGeometry(1.75, 64), new THREE.MeshStandardMaterial({ color: 0xa79f94, roughness: 1 }));
   rug.rotation.x = -Math.PI / 2;
-  rug.position.set(0, 0.006, 0.45);
+  rug.position.set(0.2, 0.006, 0.85);
   g.add(rug);
   g.position.set(x, 0, z);
   g.rotation.y = rotY;
   return g;
 }
 
+// Stehtisch mit weißer Stretch-Husse, wie auf Events üblich
 function buildBarTable(x, z) {
   const g = new THREE.Group();
-  const metal = new THREE.MeshStandardMaterial({ color: 0x2a2a2c, roughness: 0.35, metalness: 0.7 });
-  const top = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.04, 28),
-    new THREE.MeshStandardMaterial({ color: 0xf4f1ec, roughness: 0.35 }));
-  top.position.y = 1.1;
-  g.add(top);
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.08, 10), metal);
-  pole.position.y = 0.55;
-  g.add(pole);
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.28, 0.03, 24), metal);
-  base.position.y = 0.015;
-  g.add(base);
-  // kleine Vase mit pinker Blume
-  const vase = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.16, 12), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 }));
-  vase.position.y = 1.2;
+  const cover = new THREE.MeshStandardMaterial({ color: 0xe9e8e6, roughness: 0.6 });
+  const prof = [[0, 0.01], [0.3, 0.01], [0.3, 0.03], [0.2, 0.12], [0.09, 0.45], [0.07, 0.7], [0.12, 0.95], [0.36, 1.08], [0.38, 1.1], [0, 1.1]];
+  const body = new THREE.Mesh(new THREE.LatheGeometry(prof.map(([a, b]) => new THREE.Vector2(a, b)), 40), cover);
+  g.add(body);
+  const topRing = new THREE.Mesh(new THREE.TorusGeometry(0.37, 0.012, 8, 40), cover);
+  topRing.rotation.x = Math.PI / 2;
+  topRing.position.y = 1.098;
+  g.add(topRing);
+  // Windlicht mit Kerze
+  const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.12, 20, 1, true),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.05, transparent: true, opacity: 0.35 }));
+  glass.position.set(0.08, 1.16, 0.04);
+  g.add(glass);
+  const flame = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffd28a }));
+  flame.position.set(0.08, 1.16, 0.04);
+  g.add(flame);
+  // schmale Vase mit pinker Blüte
+  const vase = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.03, 0.2, 16), new THREE.MeshStandardMaterial({ color: 0x1f1f21, roughness: 0.4 }));
+  vase.position.set(-0.1, 1.2, -0.02);
   g.add(vase);
-  const bloom = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), new THREE.MeshStandardMaterial({ color: 0xe7007f, roughness: 0.6 }));
-  bloom.position.y = 1.32;
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.18, 6), new THREE.MeshStandardMaterial({ color: 0x3d6b3a }));
+  stem.position.set(-0.1, 1.38, -0.02);
+  g.add(stem);
+  const bloom = new THREE.Mesh(new THREE.IcosahedronGeometry(0.04, 1), new THREE.MeshStandardMaterial({ color: 0xd8137a, roughness: 0.7 }));
+  bloom.position.set(-0.1, 1.48, -0.02);
   g.add(bloom);
   g.position.set(x, 0, z);
   return g;
 }
 
+// Design-Stehleuchte: schlanker Bogen aus Messing mit Kuppelschirm
 function buildFloorSpot(x, z, aimX) {
   const g = new THREE.Group();
-  const metal = new THREE.MeshStandardMaterial({ color: 0x1e1e20, roughness: 0.4, metalness: 0.6 });
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.6, 8), metal);
-  pole.position.y = 0.8;
-  g.add(pole);
-  [0, 2.1, 4.2].forEach((a) => {
-    const legM = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.5, 6), metal);
-    legM.position.set(Math.cos(a) * 0.18, 0.2, Math.sin(a) * 0.18);
-    legM.rotation.set(Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5);
-    g.add(legM);
-  });
-  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 0.26, 16), metal);
-  head.position.y = 1.65;
-  head.rotation.z = Math.sign(aimX - x) * 0.9;
-  g.add(head);
-  const lens = new THREE.Mesh(new THREE.CircleGeometry(0.11, 16), new THREE.MeshBasicMaterial({ color: 0xfff3d6 }));
-  lens.position.set(Math.sign(aimX - x) * 0.11, 1.58, 0);
-  lens.rotation.y = Math.sign(aimX - x) * Math.PI / 2;
-  g.add(lens);
+  const brass = new THREE.MeshStandardMaterial({ color: 0xb8925a, roughness: 0.3, metalness: 0.85 });
+  const black = new THREE.MeshStandardMaterial({ color: 0x1a1a1c, roughness: 0.45, metalness: 0.4 });
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.18, 0.04, 32), black);
+  base.position.y = 0.02;
+  g.add(base);
+  const dir = Math.sign(aimX - x) || 1;
+  const curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(0, 0.04, 0), new THREE.Vector3(0, 2.3, 0), new THREE.Vector3(dir * 0.9, 1.95, 0));
+  const arc = new THREE.Mesh(new THREE.TubeGeometry(curve, 40, 0.014, 8, false), brass);
+  g.add(arc);
+  const shade = new THREE.Mesh(new THREE.SphereGeometry(0.17, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), black);
+  shade.material.side = THREE.DoubleSide;
+  shade.position.set(dir * 0.9, 1.93, 0);
+  g.add(shade);
+  const bulb = new THREE.Mesh(new THREE.CircleGeometry(0.15, 24), new THREE.MeshBasicMaterial({ color: 0xfff1d6 }));
+  bulb.rotation.x = Math.PI / 2;
+  bulb.position.set(dir * 0.9, 1.935, 0);
+  g.add(bulb);
   g.position.set(x, 0, z);
   return g;
 }
@@ -499,14 +670,14 @@ function buildFloorSpot(x, z, aimX) {
 function buildShowroomDecor(wallW) {
   const side = wallW / 2;
   // vor der Wandebene (z > 0), damit bei Wandmontage nichts durch die Fassade ragt
-  envGroup.add(buildPlant(-side - 1.0, 0.6, 1.5));
-  envGroup.add(buildPlant(side + 1.0, 0.6, 1.3));
-  envGroup.add(buildPlant(-side - 3.6, 5.2, 1.1));
-  envGroup.add(buildSofa(-side - 2.6, 2.6, Math.PI / 3));
+  envGroup.add(buildPlant(-side - 0.9, 0.6, 1.6, 11));
+  envGroup.add(buildPlant(side + 0.9, 0.6, 1.4, 23));
+  envGroup.add(buildPlant(-side - 4.4, 5.0, 1.2, 37));
+  envGroup.add(buildSofa(-side - 2.8, 2.6, Math.PI / 3));
   envGroup.add(buildBarTable(side + 2.2, 2.4));
   envGroup.add(buildBarTable(side + 3.4, 3.6));
-  envGroup.add(buildFloorSpot(-side - 0.9, 1.4, 0));
-  envGroup.add(buildFloorSpot(side + 0.9, 1.4, 0));
+  envGroup.add(buildFloorSpot(-side - 1.6, 1.5, -side - 3));
+  envGroup.add(buildFloorSpot(side + 1.7, 1.2, side + 3));
 }
 
 
