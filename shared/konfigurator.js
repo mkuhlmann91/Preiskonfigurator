@@ -2352,7 +2352,7 @@ function buildSupport(dims) {
     supportGroup.add(trussGroup);
     const trussBottom = trussY - h;
 
-    // Hanging Bars (schwarzes U-Profil, direkt auf den Panels, je 1 m bzw. 0,5 m am Rand)
+    // Hanging Bars (schwarzes U-Profil, direkt auf den Panels, je 0,5 m = eine pro Panel)
     // mit Ringschraube + Schäkel, daran eine schwarze Rundschlinge um die Traverse.
     const wallTop = wallBottomY + totalHeight;
     const barH = 0.08, barD = 0.09;
@@ -2360,7 +2360,7 @@ function buildSupport(dims) {
     const steelMat = new THREE.MeshStandardMaterial({ color: 0xb8bcc2, roughness: 0.3, metalness: 0.9 });
     const slingMat = new THREE.MeshStandardMaterial({ color: 0x0b0b0c, roughness: 0.95 });
     const bars = [];
-    for (let x = -totalWidth / 2; x < totalWidth / 2 - 0.01; x += 1) bars.push([x, Math.min(1, totalWidth / 2 - x)]);
+    for (let x = -totalWidth / 2; x < totalWidth / 2 - 0.01; x += 0.5) bars.push([x, Math.min(0.5, totalWidth / 2 - x)]);
     bars.forEach(([x0, len]) => {
       const cx = x0 + len / 2;
       const g = new THREE.Group();
