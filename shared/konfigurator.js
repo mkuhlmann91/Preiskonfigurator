@@ -232,7 +232,7 @@ function applyEnvironment() {
       .forEach(([x, z, h]) => envGroup.add(buildTree(x * k, z * k, h)));
     buildPlazaDecor(wallW);
   } else {
-    // Moderner, heller Showroom: weiße Wände mit Lichtfugen, grauer Designboden (Spachtelboden)
+    // Moderner, heller Showroom: schlichte helle Wände, grauer Designboden (Spachtelboden)
     scene.background = new THREE.Color(0xe2dfda);
     scene.fog = new THREE.Fog(0xe2dfda, 26, 64);
     Object.assign(fogBase, { near: 26, far: 64 });
@@ -260,26 +260,6 @@ function applyEnvironment() {
       wall.position.set(x, hallH / 2, z);
       wall.rotation.y = ry;
       envGroup.add(wall);
-    });
-    // Rückwand: Feld mit senkrechten Akustik-Lamellen in Eiche, eingerahmt von Lichtfugen
-    const slatW = Math.min(hallW - 6, Math.max(14, wallW + 8)), slatH = Math.min(hallH - 1.2, 4.2);
-    const slats = new THREE.Mesh(new THREE.PlaneGeometry(slatW, slatH),
-      new THREE.MeshStandardMaterial({ map: makeSlatTexture(), roughness: 0.7 }));
-    slats.material.map.repeat.set(slatW / 2, 1);
-    slats.position.set(0, slatH / 2, -13.97);
-    envGroup.add(slats);
-    const glow = new THREE.MeshBasicMaterial({ color: 0xfff4e2 });
-    const ledTop = new THREE.Mesh(new THREE.BoxGeometry(slatW, 0.035, 0.02), glow);
-    ledTop.position.set(0, slatH + 0.04, -13.96);
-    envGroup.add(ledTop);
-    // umlaufende Lichtfuge unter der Decke und schlanke Schattenfuge am Boden
-    const cove = new THREE.Mesh(new THREE.BoxGeometry(hallW, 0.05, 0.02), glow);
-    cove.position.set(0, hallH - 0.6, -13.97);
-    envGroup.add(cove);
-    [-1, 1].forEach((s) => {
-      const c = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.05, 34), glow);
-      c.position.set(s * (hallW / 2 - 0.02), hallH - 0.6, 3);
-      envGroup.add(c);
     });
     const skirt = new THREE.Mesh(new THREE.BoxGeometry(hallW, 0.06, 0.02),
       new THREE.MeshStandardMaterial({ color: 0x2b2b2d, roughness: 0.6 }));
@@ -430,25 +410,6 @@ const makeScreedTexture = memoTexture(function makeScreedTexture() {
     for (let i = 0; i < 2600; i++) {
       ctx.fillStyle = rnd() > 0.5 ? 'rgba(255,255,255,0.08)' : 'rgba(40,40,44,0.1)';
       ctx.fillRect(rnd() * W, rnd() * H, 1, 1);
-    }
-  });
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  return t;
-});
-
-// Eichenlamellen auf schwarzem Filz (eine Kachel = 2 m breit)
-const makeSlatTexture = memoTexture(function makeSlatTexture() {
-  const t = canvasTexture(512, 256, (ctx, W, H) => {
-    ctx.fillStyle = '#1d1c1b';
-    ctx.fillRect(0, 0, W, H);
-    const n = 20, sw = W / n;
-    const rnd = seeded(3);
-    for (let i = 0; i < n; i++) {
-      const tone = 168 + Math.round(rnd() * 22);
-      ctx.fillStyle = `rgb(${tone},${Math.round(tone * 0.78)},${Math.round(tone * 0.55)})`;
-      ctx.fillRect(i * sw + sw * 0.18, 0, sw * 0.64, H);
-      ctx.fillStyle = 'rgba(80,50,25,0.12)';
-      for (let k = 0; k < 6; k++) ctx.fillRect(i * sw + sw * (0.2 + rnd() * 0.55), 0, 1, H);
     }
   });
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
