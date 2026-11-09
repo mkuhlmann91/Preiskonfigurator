@@ -202,35 +202,29 @@ function applyEnvironment() {
   envGroup.clear();
   envGroup.position.x = 0;
   envAnimators.length = 0;
+  if (floorMat.map) { floorMat.map = null; floorMat.needsUpdate = true; }
   const { panelW, panelH } = getPanelDims();
   const wallW = state.cols * panelW, wallH = state.rows * panelH;
   if (IS_FEST) {
     if (state.location === 'outdoor') buildStreet(wallW, wallH);
     else buildGym(wallW, wallH);
   } else if (state.location === 'outdoor') {
+    // Moderner Stadtpark an einem sonnigen Tag: Platz aus großen Betonplatten, Rasen,
+    // Wege, unterschiedliche Bäume, Wolken. Highlights: Coffee-Truck und Bodenfontäne.
     scene.background = skyTexture;
-    scene.fog = new THREE.Fog(0xdbe8f2, 30, 75);
-    hemiLight.color.set(0xcfe6ff);
-    hemiLight.groundColor.set(0x5a6b45);
-    Object.assign(fogBase, { near: 30, far: 75 });
-    const k = Math.max(1, (wallW / 2 + 5) / 11);
-    floorMat.color.set(0x2f5a26);   // Rasen
+    scene.fog = new THREE.Fog(0xdde9f3, 34, 90);
+    Object.assign(fogBase, { near: 34, far: 90 });
+    hemiLight.color.set(0xdcecff);
+    hemiLight.groundColor.set(0x6d7a52);
+    floorMat.color.set(0x4d7a35);   // Rasen (Fläche weit draußen)
     floorMat.roughness = 1;
     rimBase = 0;
-    ambientLight.intensity = 0.1;
-    hemiLight.intensity = 0.45;
-    keyLight.intensity = 0.8;
-    fillLight.intensity = 0.3;
+    ambientLight.intensity = 0.12;
+    hemiLight.intensity = 0.55;
+    keyLight.intensity = 0.85;
+    fillLight.intensity = 0.25;
     keyLight.position.set(8, 14, 10);
-    // gepflasterter Platz vor der Wand
-    const plaza = new THREE.Mesh(new THREE.CircleGeometry(10 * k, 48),
-      new THREE.MeshStandardMaterial({ color: 0x4a4c50, roughness: 0.95 }));
-    plaza.rotation.x = -Math.PI / 2;
-    plaza.position.set(0, 0.004, 3);
-    envGroup.add(plaza);
-    [[-11, -6, 5], [-7, -10, 6], [-2, -13, 5.5], [4, -12, 6.5], [9, -9, 5], [12, -4, 6], [-13, 2, 5.5], [14, 4, 5]]
-      .forEach(([x, z, h]) => envGroup.add(buildTree(x * k, z * k, h)));
-    buildPlazaDecor(wallW);
+    buildPark(wallW, wallH);
   } else {
     // Moderner, heller Showroom: schlichte helle Wände, grauer Designboden (Spachtelboden)
     scene.background = new THREE.Color(0xe2dfda);
@@ -267,6 +261,517 @@ function applyEnvironment() {
     envGroup.add(skirt);
     buildShowroomDecor(wallW);
   }
+}
+
+/* ------------------------------ STADTPARK (MOBIL OUTDOOR) ----------------- */
+
+// Rasen: Grüntöne mit feinen Halmen, nahtlos kachelbar
+const makeGrassTexture = memoTexture(function makeGrassTexture() {
+  const t = canvasTexture(512, 512, (ctx, W, H) => {
+    ctx.fillStyle = '#4f7d36';
+    ctx.fillRect(0, 0, W, H);
+    const rnd = seeded(5);
+    for (let i = 0; i < 60; i++) {
+      const x = rnd() * W, y = rnd() * H, r = 30 + rnd() * 90;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, rnd() > 0.5 ? 'rgba(120,160,60,0.18)' : 'rgba(30,70,25,0.18)');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      [-W, 0, W].forEach((dx) => [-H, 0, H].forEach((dy) => ctx.fillRect(x - r + dx, y - r + dy, 2 * r, 2 * r)));
+    }
+    for (let i = 0; i < 14000; i++) {
+      const x = rnd() * W, y = rnd() * H, l = 2 + rnd() * 5;
+      const c = rnd();
+      ctx.strokeStyle = c > 0.66 ? 'rgba(140,180,80,0.5)' : c > 0.33 ? 'rgba(40,85,30,0.5)' : 'rgba(95,135,55,0.5)';
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (rnd() - 0.5) * 2, y - l); ctx.stroke();
+    }
+  });
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+});
+
+// Großformatige Betonplatten 1,2 × 0,6 m im Halbverband (eine Kachel = 2,4 × 2,4 m)
+const makePaverTexture = memoTexture(function makePaverTexture() {
+  const t = canvasTexture(512, 512, (ctx, W, H) => {
+    const rnd = seeded(9);
+    const pw = W / 2, ph = H / 4;
+    for (let r = 0; r < 4; r++) {
+      for (let c = -1; c < 3; c++) {
+        const x = c * pw + (r % 2 ? pw / 2 : 0), y = r * ph;
+        const tone = 172 + Math.round(rnd() * 14);
+        ctx.fillStyle = `rgb(${tone},${tone - 3},${tone - 8})`;
+        ctx.fillRect(x, y, pw, ph);
+        for (let k = 0; k < 500; k++) {
+          ctx.fillStyle = rnd() > 0.5 ? 'rgba(255,255,255,0.12)' : 'rgba(80,78,72,0.12)';
+          ctx.fillRect(x + rnd() * pw, y + rnd() * ph, 1.5, 1.5);
+        }
+      }
+    }
+    ctx.strokeStyle = 'rgba(105,102,96,0.7)';
+    ctx.lineWidth = 2;
+    for (let r = 0; r <= 4; r++) { ctx.beginPath(); ctx.moveTo(0, r * ph); ctx.lineTo(W, r * ph); ctx.stroke(); }
+    for (let r = 0; r < 4; r++) {
+      for (let c = 0; c <= 2; c++) {
+        const x = c * pw + (r % 2 ? pw / 2 : 0);
+        ctx.beginPath(); ctx.moveTo(x % W, r * ph); ctx.lineTo(x % W, (r + 1) * ph); ctx.stroke();
+      }
+    }
+  });
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+});
+
+// Wassergebundener Weg: beiger Splitt
+const makeGravelTexture = memoTexture(function makeGravelTexture() {
+  const t = canvasTexture(256, 256, (ctx, W, H) => {
+    ctx.fillStyle = '#c9b996';
+    ctx.fillRect(0, 0, W, H);
+    const rnd = seeded(13);
+    for (let i = 0; i < 5000; i++) {
+      const c = rnd();
+      ctx.fillStyle = c > 0.6 ? 'rgba(255,248,230,0.5)' : c > 0.3 ? 'rgba(130,112,80,0.45)' : 'rgba(170,150,115,0.6)';
+      ctx.fillRect(rnd() * W, rnd() * H, 1 + rnd() * 2, 1 + rnd() * 2);
+    }
+  });
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+});
+
+// Weiche Wolke für den Himmel
+const makeCloudTexture = memoTexture(function makeCloudTexture(seed) {
+  return canvasTexture(512, 256, (ctx, W, H) => {
+    const rnd = seeded(seed);
+    for (let i = 0; i < 22; i++) {
+      const x = W * (0.15 + rnd() * 0.7), y = H * (0.45 + rnd() * 0.3), r = 40 + rnd() * 70;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, 'rgba(255,255,255,0.75)');
+      g.addColorStop(0.6, 'rgba(250,252,255,0.35)');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+    }
+  });
+});
+
+// Organische Laubmasse: Icosaeder mit verschobenen Ecken
+function leafClump(r, rnd, mat) {
+  const geo = new THREE.IcosahedronGeometry(r, 3);
+  const pos = geo.attributes.position, v = new THREE.Vector3();
+  const seen = new Map();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    const key = `${v.x.toFixed(3)},${v.y.toFixed(3)},${v.z.toFixed(3)}`;
+    if (!seen.has(key)) seen.set(key, 0.86 + rnd() * 0.26);
+    v.multiplyScalar(seen.get(key));
+    pos.setXYZ(i, v.x, v.y, v.z);
+  }
+  // weiche Schattierung: Normalen zeigen vom Mittelpunkt weg (Geometrie ist nicht indiziert)
+  const nrm = geo.attributes.normal;
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i).normalize();
+    nrm.setXYZ(i, v.x, v.y, v.z);
+  }
+  return new THREE.Mesh(geo, mat);
+}
+
+// Parkbäume: 'laub' (Ahorn/Linde), 'birke' (weißer Stamm), 'kiefer' (Nadelbaum)
+function buildParkTree(x, z, h, type, seed) {
+  const g = new THREE.Group();
+  const rnd = seeded(seed);
+  const greens = type === 'birke' ? [0x6f9a3e, 0x628c36, 0x7fa84a] : type === 'kiefer' ? [0x2a4a2c, 0x335535, 0x223f26] : [0x4a7a2e, 0x3f6c27, 0x568a36, 0x365e22];
+  // Farben als sRGB gemeint (sonst wirken die Grüntöne blass)
+  const mats = greens.map((c) => new THREE.MeshStandardMaterial({ color: new THREE.Color(c).convertSRGBToLinear(), roughness: 0.9 }));
+  const barkColor = type === 'birke' ? 0xe8e4dc : 0x5a4535;
+  const bark = new THREE.MeshStandardMaterial({ color: barkColor, roughness: 0.95 });
+  if (type === 'kiefer') {
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.16, h * 0.4, 8), bark);
+    trunk.position.y = h * 0.2;
+    g.add(trunk);
+    const tiers = 5;
+    for (let i = 0; i < tiers; i++) {
+      const rr = (1 - i / tiers) * h * 0.22 + 0.25, hh = h * 0.28;
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(rr, hh, 9, 1), mats[i % mats.length]);
+      cone.position.y = h * 0.3 + i * h * 0.13 + hh / 2;
+      cone.rotation.y = rnd() * Math.PI;
+      g.add(cone);
+    }
+  } else {
+    const trunkH = h * (type === 'birke' ? 0.55 : 0.42);
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(type === 'birke' ? 0.06 : 0.1, type === 'birke' ? 0.1 : 0.18, trunkH, 9), bark);
+    trunk.position.y = trunkH / 2;
+    g.add(trunk);
+    if (type === 'birke') {
+      const markMat = new THREE.MeshStandardMaterial({ color: 0x2a2826, roughness: 1 });
+      for (let i = 0; i < 9; i++) {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.02, 0.02), markMat);
+        const a = rnd() * Math.PI * 2, y = 0.3 + rnd() * (trunkH - 0.4);
+        m.position.set(Math.cos(a) * 0.085, y, Math.sin(a) * 0.085);
+        m.rotation.y = -a;
+        g.add(m);
+      }
+    }
+    // Äste
+    for (let b = 0; b < 4; b++) {
+      const a = (b / 4) * Math.PI * 2 + rnd();
+      const len = h * 0.22;
+      const dir = new THREE.Vector3(Math.cos(a) * 0.6, 0.8, Math.sin(a) * 0.6).normalize();
+      const br = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.06, len, 6), bark);
+      br.position.set(dir.x * len / 2, trunkH * 0.85 + dir.y * len / 2, dir.z * len / 2);
+      br.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+      g.add(br);
+    }
+    // Krone aus mehreren Laubmassen
+    const crownY = trunkH + h * 0.2, crownR = h * (type === 'birke' ? 0.2 : 0.27);
+    const clumps = type === 'birke' ? 16 : 22;
+    for (let i = 0; i < clumps; i++) {
+      const a = rnd() * Math.PI * 2, rr = Math.sqrt(rnd()) * crownR * 0.85;
+      const cy = crownY + (rnd() - 0.4) * crownR * (type === 'birke' ? 1.8 : 1.2);
+      const c = leafClump(crownR * (0.32 + rnd() * 0.22), rnd, mats[Math.floor(rnd() * mats.length)]);
+      c.position.set(Math.cos(a) * rr, cy, Math.sin(a) * rr);
+      g.add(c);
+    }
+  }
+  g.position.set(x, 0, z);
+  g.rotation.y = rnd() * Math.PI * 2;
+  return g;
+}
+
+// Moderne Sitzbank: heller Betonblock mit Holzauflage
+function buildParkBench(x, z, rotY, len = 2.4) {
+  const g = new THREE.Group();
+  const concrete = new THREE.MeshStandardMaterial({ color: 0xc4c1bb, roughness: 0.9 });
+  const wood = new THREE.MeshStandardMaterial({ color: 0x9a6a3f, roughness: 0.7 });
+  const block = softBox(len, 0.4, 0.55, 0.03, concrete);
+  block.position.y = 0.2;
+  g.add(block);
+  for (let i = 0; i < 6; i++) {
+    const slat = new THREE.Mesh(new THREE.BoxGeometry(len - 0.1, 0.04, 0.075), wood);
+    slat.position.set(0, 0.42, -0.22 + i * 0.088);
+    g.add(slat);
+  }
+  g.position.set(x, 0, z);
+  g.rotation.y = rotY;
+  return g;
+}
+
+// Schlanke LED-Mastleuchte in Anthrazit mit Ausleger
+function buildParkLamp(x, z, h = 4.5, dir = 1) {
+  const g = new THREE.Group();
+  const metal = new THREE.MeshStandardMaterial({ color: 0x2c2e31, roughness: 0.45, metalness: 0.6 });
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.065, h, 14), metal);
+  pole.position.y = h / 2;
+  g.add(pole);
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.05, 0.08), metal);
+  arm.position.set(dir * 0.33, h - 0.03, 0);
+  g.add(arm);
+  const head = softBox(0.5, 0.06, 0.2, 0.025, metal);
+  head.position.set(dir * 0.6, h - 0.05, 0);
+  g.add(head);
+  const led = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.14), new THREE.MeshBasicMaterial({ color: 0xfff3dc }));
+  led.rotation.x = Math.PI / 2;
+  led.position.set(dir * 0.6, h - 0.082, 0);
+  g.add(led);
+  g.position.set(x, 0, z);
+  return g;
+}
+
+// Abfallbehälter aus Edelstahl
+function buildParkBin(x, z) {
+  const g = new THREE.Group();
+  const steel = new THREE.MeshStandardMaterial({ color: 0x8e9196, roughness: 0.35, metalness: 0.8 });
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.85, 28), steel);
+  body.position.y = 0.425;
+  g.add(body);
+  const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.23, 0.23, 0.05, 28), new THREE.MeshStandardMaterial({ color: 0x2c2e31, roughness: 0.5 }));
+  lid.position.y = 0.87;
+  g.add(lid);
+  g.position.set(x, 0, z);
+  return g;
+}
+
+// Pflanzkübel aus Cortenstahl mit Ziergräsern und pinken Blüten
+function buildCortenPlanter(x, z, w = 1.6, d = 0.8, seed = 1) {
+  const g = new THREE.Group();
+  const rnd = seeded(seed);
+  const corten = new THREE.MeshStandardMaterial({ color: 0x8a4a28, roughness: 0.85, metalness: 0.2 });
+  const box = new THREE.Mesh(new THREE.BoxGeometry(w, 0.55, d), corten);
+  box.position.y = 0.275;
+  g.add(box);
+  const soil = new THREE.Mesh(new THREE.BoxGeometry(w - 0.06, 0.02, d - 0.06), new THREE.MeshStandardMaterial({ color: 0x3a2a1c, roughness: 1 }));
+  soil.position.y = 0.54;
+  g.add(soil);
+  const grassMats = [0x7d9a4a, 0x99ab5a, 0x6b8a3c].map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8 }));
+  const blade = new THREE.ConeGeometry(0.012, 1, 3);
+  blade.translate(0, 0.5, 0);
+  const tufts = Math.round(w * d * 14);
+  for (let i = 0; i < tufts; i++) {
+    const tx = (rnd() - 0.5) * (w - 0.15), tz = (rnd() - 0.5) * (d - 0.15);
+    for (let k = 0; k < 9; k++) {
+      const b = new THREE.Mesh(blade, grassMats[k % 3]);
+      b.position.set(tx, 0.55, tz);
+      b.scale.y = 0.35 + rnd() * 0.35;
+      b.rotation.set((rnd() - 0.5) * 0.9, rnd() * Math.PI, (rnd() - 0.5) * 0.9);
+      g.add(b);
+    }
+  }
+  const pink = new THREE.MeshStandardMaterial({ color: 0xd8137a, roughness: 0.7 });
+  for (let i = 0; i < Math.round(w * 6); i++) {
+    const f = new THREE.Mesh(new THREE.IcosahedronGeometry(0.035, 0), pink);
+    f.position.set((rnd() - 0.5) * (w - 0.2), 0.75 + rnd() * 0.2, (rnd() - 0.5) * (d - 0.2));
+    g.add(f);
+  }
+  g.position.set(x, 0, z);
+  return g;
+}
+
+// Highlight 1: Coffee-Truck mit pink-weißer Markise, Theke und Tafel
+const makeAwningTexture = memoTexture(function makeAwningTexture() {
+  return canvasTexture(256, 64, (ctx, W, H) => {
+    for (let i = 0; i < 8; i++) { ctx.fillStyle = i % 2 ? '#ffffff' : '#e7007f'; ctx.fillRect(i * W / 8, 0, W / 8, H); }
+  });
+});
+const makeTruckSignTexture = memoTexture(function makeTruckSignTexture() {
+  return canvasTexture(512, 128, (ctx, W, H) => {
+    ctx.fillStyle = '#1d1d1f'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#ffffff'; ctx.font = '700 64px Inter, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('COFFEE', W / 2 - 40, H / 2 + 4);
+    ctx.fillStyle = '#e7007f'; ctx.beginPath(); ctx.arc(W / 2 + 150, H / 2, 22, 0, Math.PI * 2); ctx.fill();
+  });
+});
+const makeMenuTexture = memoTexture(function makeMenuTexture() {
+  return canvasTexture(128, 192, (ctx, W, H) => {
+    ctx.fillStyle = '#26282a'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#f2f2f2'; ctx.font = '700 20px Inter, Arial, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('MENU', W / 2, 32);
+    ctx.font = '13px Inter, Arial, sans-serif'; ctx.textAlign = 'left';
+    [['Espresso', '2,5'], ['Cappuccino', '3,5'], ['Flat White', '3,8'], ['Iced Latte', '4,2']].forEach(([n, p], i) => {
+      ctx.fillText(n, 12, 66 + i * 28); ctx.textAlign = 'right'; ctx.fillText(p, W - 12, 66 + i * 28); ctx.textAlign = 'left';
+    });
+  });
+});
+function buildCoffeeTruck(x, z, rotY) {
+  const g = new THREE.Group();
+  const paint = new THREE.MeshStandardMaterial({ color: 0xf1efea, roughness: 0.35, metalness: 0.1 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x1d1d1f, roughness: 0.5 });
+  const glass = new THREE.MeshStandardMaterial({ color: 0x24313b, roughness: 0.1, metalness: 0.4 });
+  const L = 4.2, W = 2.0, H = 2.2;
+  const body = softBox(L, H, W, 0.28, paint);
+  body.position.y = 0.45 + H / 2;
+  g.add(body);
+  // Zierstreifen in Pink
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(L - 0.2, 0.12, W + 0.01), new THREE.MeshStandardMaterial({ color: 0xe7007f, roughness: 0.5 }));
+  stripe.position.y = 0.75;
+  g.add(stripe);
+  // Fahrerkabine vorne (Windschutzscheibe)
+  const wind = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.4, 0.8), glass);
+  wind.rotation.y = Math.PI / 2;
+  wind.position.set(L / 2 + 0.005, 1.95, 0);
+  g.add(wind);
+  // Verkaufsklappe auf der Seite (+z)
+  const hatch = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.9), new THREE.MeshStandardMaterial({ color: 0x3a2c22, roughness: 0.8 }));
+  hatch.position.set(-0.3, 1.75, W / 2 + 0.005);
+  g.add(hatch);
+  // Innen: Kaffeemaschine und warmes Licht
+  const machine = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 0.3), new THREE.MeshStandardMaterial({ color: 0xb8bcc2, roughness: 0.25, metalness: 0.9 }));
+  machine.position.set(-0.6, 1.5, W / 2 - 0.2);
+  g.add(machine);
+  const lamp = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.08), new THREE.MeshBasicMaterial({ color: 0xffe2b0 }));
+  lamp.position.set(-0.3, 2.17, W / 2 + 0.006);
+  g.add(lamp);
+  // Theke
+  const counter = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.06, 0.38), new THREE.MeshStandardMaterial({ color: 0x9a6a3f, roughness: 0.6 }));
+  counter.position.set(-0.3, 1.3, W / 2 + 0.16);
+  g.add(counter);
+  // Becher auf der Theke
+  [-0.9, -0.75, 0.2].forEach((cx) => {
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.032, 0.11, 14), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 }));
+    cup.position.set(cx, 1.39, W / 2 + 0.2);
+    g.add(cup);
+  });
+  // Markise
+  const awning = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.9), new THREE.MeshStandardMaterial({ map: makeAwningTexture(), roughness: 0.8, side: THREE.DoubleSide }));
+  awning.position.set(-0.3, 2.42, W / 2 + 0.4);
+  awning.rotation.x = -1.1;
+  g.add(awning);
+  // Schild oben
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.45), new THREE.MeshBasicMaterial({ map: makeTruckSignTexture() }));
+  sign.position.set(-0.3, 2.95, W / 2 + 0.005);
+  g.add(sign);
+  // Räder
+  [[-L / 2 + 0.8, 1], [L / 2 - 0.8, 1], [-L / 2 + 0.8, -1], [L / 2 - 0.8, -1]].forEach(([wx, s]) => {
+    const tyre = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.26, 24), dark);
+    tyre.rotation.x = Math.PI / 2;
+    tyre.position.set(wx, 0.36, s * (W / 2 - 0.1));
+    g.add(tyre);
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.27, 20), new THREE.MeshStandardMaterial({ color: 0xc9ccd0, roughness: 0.3, metalness: 0.8 }));
+    rim.rotation.x = Math.PI / 2;
+    rim.position.copy(tyre.position);
+    g.add(rim);
+  });
+  // Aufsteller mit Menü
+  const board = new THREE.Group();
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.75), new THREE.MeshBasicMaterial({ map: makeMenuTexture() }));
+  face.position.set(0, 0.45, 0.14);
+  face.rotation.x = -0.25;
+  board.add(face);
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.82, 0.03), dark);
+  frame.position.set(0, 0.45, 0.115);
+  frame.rotation.x = -0.25;
+  board.add(frame);
+  const back = frame.clone();
+  back.position.z = -0.115; back.rotation.x = 0.25;
+  board.add(back);
+  board.position.set(1.0, 0, W / 2 + 1.0);
+  board.rotation.y = 0.4;
+  g.add(board);
+  g.position.set(x, 0, z);
+  g.rotation.y = rotY;
+  return g;
+}
+
+// Highlight 2: Bodenfontäne mit tanzenden Wasserstrahlen auf dunklem Granitfeld
+function buildFountain(x, z) {
+  const g = new THREE.Group();
+  const granite = new THREE.MeshStandardMaterial({ color: 0x3b3d40, roughness: 0.25, metalness: 0.2 });
+  const field = new THREE.Mesh(new THREE.CircleGeometry(2.2, 48), granite);
+  field.rotation.x = -Math.PI / 2;
+  field.position.y = 0.02;
+  g.add(field);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(2.2, 2.32, 48), new THREE.MeshStandardMaterial({ color: 0x6b6d70, roughness: 0.5 }));
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.021;
+  g.add(ring);
+  // Wasser als Tropfen-Partikel: steigen auf, fallen im Bogen zurück
+  const nozzles = [[0, 0, 2.4, 0.1]];
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    nozzles.push([Math.cos(a) * 1.3, Math.sin(a) * 1.3, 1.6, 0.16]);
+  }
+  nozzles.forEach(([jx, jz]) => {
+    const nozzle = new THREE.Mesh(new THREE.CircleGeometry(0.05, 12), new THREE.MeshStandardMaterial({ color: 0x9a9da2, metalness: 0.9, roughness: 0.2 }));
+    nozzle.rotation.x = -Math.PI / 2;
+    nozzle.position.set(jx, 0.022, jz);
+    g.add(nozzle);
+  });
+  const per = 170, n = nozzles.length * per;
+  const posArr = new Float32Array(n * 3);
+  const life = new Float32Array(n), vel = new Float32Array(n * 3);
+  const rnd = seeded(31);
+  const respawn = (i, age) => {
+    const [jx, jz, h, spread] = nozzles[Math.floor(i / per)];
+    const v0 = Math.sqrt(2 * 9.81 * h) * (0.9 + rnd() * 0.15);
+    vel[i * 3] = (rnd() - 0.5) * spread; vel[i * 3 + 1] = v0; vel[i * 3 + 2] = (rnd() - 0.5) * spread;
+    life[i] = age;
+    posArr[i * 3] = jx; posArr[i * 3 + 1] = 0.03; posArr[i * 3 + 2] = jz;
+  };
+  for (let i = 0; i < n; i++) {
+    respawn(i, 0);
+    // Startzustand über die Flugzeit verteilen, damit die Strahlen sofort stehen
+    const tt = rnd() * 1.4;
+    posArr[i * 3] += vel[i * 3] * tt; posArr[i * 3 + 2] += vel[i * 3 + 2] * tt;
+    posArr[i * 3 + 1] = Math.max(0.03, 0.03 + vel[i * 3 + 1] * tt - 4.905 * tt * tt);
+    vel[i * 3 + 1] -= 9.81 * tt;
+  }
+  // feiner Wasserkern pro Düse, damit die Strahlen geschlossen wirken
+  const coreMat = new THREE.MeshBasicMaterial({ color: 0xeaf6ff, transparent: true, opacity: 0.22, depthWrite: false });
+  nozzles.forEach(([jx, jz, h]) => {
+    const core = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.03, h * 0.9, 8, 1, true), coreMat);
+    core.position.set(jx, h * 0.45, jz);
+    g.add(core);
+  });
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+  const drop = canvasTexture(32, 32, (ctx, W) => {
+    const gr = ctx.createRadialGradient(W / 2, W / 2, 0, W / 2, W / 2, W / 2);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.5, 'rgba(225,240,255,0.6)'); gr.addColorStop(1, 'rgba(225,240,255,0)');
+    ctx.fillStyle = gr; ctx.fillRect(0, 0, W, W);
+  });
+  const water = new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.075, map: drop, transparent: true, depthWrite: false, color: 0xeaf6ff }));
+  water.frustumCulled = false;
+  g.add(water);
+  envAnimators.push((dt) => {
+    for (let i = 0; i < n; i++) {
+      vel[i * 3 + 1] -= 9.81 * dt;
+      posArr[i * 3] += vel[i * 3] * dt;
+      posArr[i * 3 + 1] += vel[i * 3 + 1] * dt;
+      posArr[i * 3 + 2] += vel[i * 3 + 2] * dt;
+      if (posArr[i * 3 + 1] < 0.03) respawn(i, 0);
+    }
+    geo.attributes.position.needsUpdate = true;
+  });
+  g.position.set(x, 0, z);
+  return g;
+}
+
+function buildPark(wallW, wallH) {
+  const side = wallW / 2;
+  const k = Math.max(1, (side + 5) / 11);
+  // Rasen direkt auf dem gemeinsamen Boden (wird in applyEnvironment wieder entfernt)
+  const grassTex = makeGrassTexture();
+  grassTex.repeat.set(400 / 4, 400 / 4);
+  floorMat.map = grassTex;
+  floorMat.color.set(0xffffff);
+  floorMat.needsUpdate = true;
+  // Platz aus Betonplatten mit dunkler Granit-Einfassung
+  const plazaW = wallW + 18, z0 = -3, z1 = 11;
+  const paverTex = makePaverTexture();
+  paverTex.repeat.set(plazaW / 2.4, (z1 - z0) / 2.4);
+  const plaza = new THREE.Mesh(new THREE.PlaneGeometry(plazaW, z1 - z0), new THREE.MeshStandardMaterial({ map: paverTex, roughness: 0.85 }));
+  plaza.rotation.x = -Math.PI / 2;
+  plaza.position.set(0, 0.012, (z0 + z1) / 2);
+  envGroup.add(plaza);
+  const edgeMat = new THREE.MeshStandardMaterial({ color: 0x55575b, roughness: 0.6 });
+  [[0, z0, plazaW + 0.3, 0.15], [0, z1, plazaW + 0.3, 0.15], [-plazaW / 2, (z0 + z1) / 2, 0.15, z1 - z0], [plazaW / 2, (z0 + z1) / 2, 0.15, z1 - z0]].forEach(([ex, ez, ew, ed]) => {
+    const e = new THREE.Mesh(new THREE.BoxGeometry(ew, 0.02, ed), edgeMat);
+    e.position.set(ex, 0.016, ez);
+    envGroup.add(e);
+  });
+  // Wege: nach links und rechts in den Park, einer nach vorne
+  const gravelTex = makeGravelTexture();
+  const path = (px, pz, w, d, ry) => {
+    const t = gravelTex.clone();
+    t.needsUpdate = true;
+    t.repeat.set(w / 2, d / 2);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: t, roughness: 1 }));
+    m.rotation.x = -Math.PI / 2;
+    m.rotation.z = ry;
+    m.position.set(px, 0.008, pz);
+    envGroup.add(m);
+  };
+  path(-plazaW / 2 - 20, 4, 40, 2.6, 0);
+  path(plazaW / 2 + 20, 4, 40, 2.6, 0);
+  path(0, z1 + 20, 3.2, 40, 0);
+  // Bäume in unterschiedlichen Arten, locker verteilt hinter und neben dem Platz
+  const types = ['laub', 'birke', 'laub', 'kiefer', 'laub', 'birke', 'laub', 'kiefer', 'laub', 'birke', 'laub', 'laub'];
+  [[-14, -7, 7], [-9, -10, 8.5], [-3, -13, 7.5], [3, -12, 9], [9, -10, 7], [14, -6, 8], [-17, 2, 7.5], [18, 3, 7], [-21, -12, 9], [22, -11, 8.5], [-6, -19, 10], [7, -18, 9.5]]
+    .forEach(([tx, tz, h], i) => envGroup.add(buildParkTree(tx * k, tz * k, h, types[i], 100 + i)));
+  // Hecke hinter der Wand
+  const hedgeMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(0x3a6328).convertSRGBToLinear(), roughness: 0.95 });
+  const hedgeRnd = seeded(77);
+  for (let hx = -plazaW / 2; hx < plazaW / 2; hx += 1.1) {
+    const c = leafClump(0.75, hedgeRnd, hedgeMat);
+    c.scale.set(1, 0.85, 0.7);
+    c.position.set(hx + 0.55, 0.55, z0 - 1.2);
+    envGroup.add(c);
+  }
+  // Wolken
+  [[-40, 26, -80, 1], [10, 30, -90, 2], [55, 24, -75, 3], [-75, 22, -60, 4]].forEach(([cx, cy, cz, s]) => {
+    const cloud = new THREE.Mesh(new THREE.PlaneGeometry(42, 21), new THREE.MeshBasicMaterial({ map: makeCloudTexture(s), transparent: true, depthWrite: false, fog: false }));
+    cloud.position.set(cx, cy, cz);
+    cloud.lookAt(0, cy * 0.4, 10);
+    envGroup.add(cloud);
+  });
+  // Möblierung vor der Wandebene (z > 0), Mitte bleibt frei für Figur und Abstandslinie
+  envGroup.add(buildParkLamp(-side - 1.2, 0.8, 4.5, 1));
+  envGroup.add(buildParkLamp(side + 1.2, 0.8, 4.5, -1));
+  envGroup.add(buildParkBench(-side - 3.2, 2.6, Math.PI / 2 + 0.25));
+  envGroup.add(buildParkBench(side + 3.0, 6.8, -Math.PI / 2 - 0.25));
+  envGroup.add(buildParkBin(side + 1.9, 4.6));
+  envGroup.add(buildCortenPlanter(-side - 1.6, -0.6, 1.8, 0.8, 21));
+  envGroup.add(buildCortenPlanter(side + 1.6, -0.6, 1.8, 0.8, 22));
+  // Highlights
+  envGroup.add(buildCoffeeTruck(side + 5.6, 1.4, -0.25));
+  envGroup.add(buildFountain(-side - 4.8, 6.2));
 }
 
 /* ------------------------------ PLATZ-DEKO (OUTDOOR) ----------------------- */
@@ -371,17 +876,6 @@ function buildPlanter(x, z, rotY = 0) {
   return g;
 }
 
-function buildPlazaDecor(wallW) {
-  const side = wallW / 2;
-  // alles vor der Wandebene (z > 0) und seitlich, damit Figur und Abstandslinie frei bleiben
-  envGroup.add(buildStreetLamp(-side - 1.0, 0.9));
-  envGroup.add(buildStreetLamp(side + 1.0, 0.9));
-  envGroup.add(buildBench(side + 2.9, 3.3, -Math.PI / 2 - 0.35));
-  envGroup.add(buildBench(-side - 2.6, 3.2, Math.PI / 2 + 0.35));
-  envGroup.add(buildBin(side + 1.5, 5.6));
-  envGroup.add(buildPlanter(-side - 1.9, 0.9, Math.PI / 2));
-  envGroup.add(buildPlanter(side + 4.4, 0.7, 0));
-}
 
 /* --------------------------- SHOWROOM-DEKO (INDOOR) ------------------------ */
 
