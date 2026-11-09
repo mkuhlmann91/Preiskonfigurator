@@ -2463,7 +2463,8 @@ function buildSupport(dims) {
     const backZ = -0.09; // Rückseite der Panels
 
     const beam = new THREE.Group();
-    const beamBody = new THREE.Mesh(new THREE.BoxGeometry(totalWidth, beamH - 0.04, 0.12), steelMat);
+    // bündig mit den Panels: gleiche Breite und Tiefe (Vorderkante bis Rückseite)
+    const beamBody = new THREE.Mesh(new THREE.BoxGeometry(totalWidth, beamH - 0.04, -backZ), steelMat);
     beamBody.position.set(0, 0.04 + (beamH - 0.04) / 2, backZ / 2);
     beam.add(beamBody);
     // Füße mit Gummipuffern alle 50 cm
@@ -2488,15 +2489,21 @@ function buildSupport(dims) {
       y0 += h;
     }
     const tube = 0.04, depth = 0.5;
+    // Rahmen sitzen bündig auf den Panel-Fugen (Raster 0,5 m), etwa einer pro Meter, symmetrisch
     const frameCount = Math.max(2, Math.round(totalWidth));
+    const seamCount = Math.round(totalWidth / 0.5) - 1;
+    const seams = new Set();
     for (let i = 0; i < frameCount; i++) {
-      const x = -totalWidth / 2 + (i + 0.5) * (totalWidth / frameCount);
+      const target = (i + 0.5) * (totalWidth / frameCount);
+      seams.add(Math.min(seamCount, Math.max(1, Math.round(target / 0.5))));
+    }
+    (seamCount < 1 ? [0] : [...seams].map((j) => -totalWidth / 2 + j * 0.5)).forEach((x) => {
       segments.forEach(([sy, h]) => {
         const f = buildStackingFrame(h, depth, tube, steelMat);
         f.position.set(x, sy, backZ);
         supportGroup.add(f);
       });
-    }
+    });
   }
 }
 
