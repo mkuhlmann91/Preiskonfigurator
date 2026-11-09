@@ -3,6 +3,9 @@
 // Der Brevo-Schlüssel steht NICHT hier, sondern als Secret "BREVO_API_KEY" in Cloudflare.
 
 const RECIPIENT = 'hallo@ledwall-360.de';            // Antwortadresse für Kunden
+// Backup: jede Konfigurator-Anfrage geht zusätzlich als Blindkopie an eine Adresse bei einem anderen Anbieter,
+// damit nichts verloren geht, falls der Mailserver von ledwall-360.de (hostingplus) wieder nicht erreichbar ist.
+const BACKUP_RECIPIENT = 'marvink.golds@web.de';
 const SENDER = { name: 'LEDWALL 360', email: 'hallo@ledwall-360.de' }; // muss in Brevo bestätigt sein
 const ALLOWED_ORIGINS = ['https://konfigurator.ledwall-360.de'];
 // Kontaktformular auf ledwall-360.de/kontakt: Bestätigung an den Kunden über Brevo-Vorlage 13
@@ -68,6 +71,7 @@ export default {
     const internal = {
       sender: SENDER,
       to: [{ email: RECIPIENT }],
+      bcc: [{ email: BACKUP_RECIPIENT }],
       replyTo: { email: f.email, name: f.name },
       subject: `Anfrage - Konfigurator - ${f.size || 'ohne Größe'}${en ? ' (EN)' : ''}`,
       htmlContent: internalHtml(f, rows),
