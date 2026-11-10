@@ -589,7 +589,6 @@ function buildParkSkyDome() {
 
 function buildPark(wallW, wallH) {
   const side = wallW / 2;
-  const k = Math.max(1, (side + 5) / 11);
   // Rasen direkt auf dem gemeinsamen Boden (wird in applyEnvironment wieder entfernt)
   const grassTex = makeGrassTexture();
   grassTex.repeat.set(400 / 4, 400 / 4);
@@ -625,10 +624,15 @@ function buildPark(wallW, wallH) {
   path(-plazaW / 2 - 20, 4, 40, 2.6, 0);
   path(plazaW / 2 + 20, 4, 40, 2.6, 0);
   path(0, z1 + 20, 3.2, 40, 0);
-  // Bäume in unterschiedlichen Arten, locker verteilt hinter und neben dem Platz
-  const types = ['laub', 'birke', 'laub', 'kiefer', 'laub', 'birke', 'laub', 'kiefer', 'laub', 'birke', 'laub', 'laub'];
-  [[-14, -7, 7], [-9, -10, 8.5], [-3, -13, 7.5], [3, -12, 9], [9, -10, 7], [14, -6, 8], [-17, 2, 7.5], [18, 3, 7], [-21, -12, 9], [22, -11, 8.5], [-6, -19, 10], [7, -18, 9.5]]
-    .forEach(([tx, tz, h], i) => envGroup.add(buildParkTree(tx * k, tz * k, h, types[i], 100 + i)));
+  // Bäume nur links und rechts der Wand: direkt dahinter bleibt der Blick frei.
+  // Abstand zur Wandkante wächst mit der Tiefe, damit die Kronen auch aus schrägen Blickwinkeln nicht hinter die Wand rutschen.
+  // [Seite, Abstand zur Wandkante, z, Höhe, Art]
+  [[-1, 2.5, -6, 7, 'laub'], [-1, 5.5, -11, 8.5, 'birke'], [-1, 3, -16, 9.5, 'kiefer'], [-1, 9, -8, 7.5, 'laub'], [-1, 12, 2, 7.5, 'laub'], [-1, 13, -13, 9, 'birke'],
+   [1, 2.5, -7, 8, 'laub'], [1, 6, -12, 9, 'kiefer'], [1, 3, -17, 9.5, 'laub'], [1, 9.5, -7, 7, 'birke'], [1, 12.5, 3, 7, 'laub'], [1, 14, -12, 8.5, 'laub']]
+    .forEach(([s, dx, tz, h, type], i) => {
+      const tx = s * (side + 1.5 + dx + Math.max(0, -tz) * 0.35);
+      envGroup.add(buildParkTree(tx, tz, h, type, 100 + i));
+    });
   // Hecke hinter der Wand
   const hedgeMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(0x3a6328).convertSRGBToLinear(), roughness: 0.95 });
   const hedgeRnd = seeded(77);
