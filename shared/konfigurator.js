@@ -168,35 +168,6 @@ const ENVIRONMENTS = {
 const envGroup = new THREE.Group();
 scene.add(envGroup);
 
-const skyTexture = (() => {
-  const c = document.createElement('canvas');
-  c.width = 4; c.height = 256;
-  const x = c.getContext('2d');
-  const g = x.createLinearGradient(0, 0, 0, 256);
-  g.addColorStop(0, '#3d86d8');
-  g.addColorStop(0.55, '#9cc8ef');
-  g.addColorStop(1, '#e4eef5');
-  x.fillStyle = g; x.fillRect(0, 0, 4, 256);
-  const t = new THREE.CanvasTexture(c);
-  t.encoding = THREE.sRGBEncoding;
-  return t;
-})();
-
-function buildTree(x, z, h) {
-  const t = new THREE.Group();
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, h * 0.35, 8),
-    new THREE.MeshStandardMaterial({ color: 0x3b2819, roughness: 0.9 }));
-  trunk.position.y = h * 0.175;
-  t.add(trunk);
-  const crown = new THREE.Mesh(new THREE.SphereGeometry(h * 0.32, 12, 10),
-    new THREE.MeshStandardMaterial({ color: 0x24501f, roughness: 0.9 }));
-  crown.position.y = h * 0.62;
-  crown.scale.y = 1.15;
-  t.add(crown);
-  t.position.set(x, 0, z);
-  return t;
-}
-
 const fogBase = { near: 16, far: 36 };
 function applyEnvironment() {
   envGroup.clear();
@@ -589,7 +560,6 @@ function buildParkSkyDome() {
 
 function buildPark(wallW, wallH) {
   const side = wallW / 2;
-  const k = Math.max(1, (side + 5) / 11);
   // Rasen direkt auf dem gemeinsamen Boden (wird in applyEnvironment wieder entfernt)
   const grassTex = makeGrassTexture();
   grassTex.repeat.set(400 / 4, 400 / 4);
@@ -625,10 +595,15 @@ function buildPark(wallW, wallH) {
   path(-plazaW / 2 - 20, 4, 40, 2.6, 0);
   path(plazaW / 2 + 20, 4, 40, 2.6, 0);
   path(0, z1 + 20, 3.2, 40, 0);
-  // Bäume in unterschiedlichen Arten, locker verteilt hinter und neben dem Platz
-  const types = ['laub', 'birke', 'laub', 'kiefer', 'laub', 'birke', 'laub', 'kiefer', 'laub', 'birke', 'laub', 'laub'];
-  [[-14, -7, 7], [-9, -10, 8.5], [-3, -13, 7.5], [3, -12, 9], [9, -10, 7], [14, -6, 8], [-17, 2, 7.5], [18, 3, 7], [-21, -12, 9], [22, -11, 8.5], [-6, -19, 10], [7, -18, 9.5]]
-    .forEach(([tx, tz, h], i) => envGroup.add(buildParkTree(tx * k, tz * k, h, types[i], 100 + i)));
+  // Bäume nur links und rechts der Wand: direkt dahinter bleibt der Blick frei.
+  // Abstand zur Wandkante wächst mit der Tiefe, damit die Kronen auch aus schrägen Blickwinkeln nicht hinter die Wand rutschen.
+  // [Seite, Abstand zur Wandkante, z, Höhe, Art]
+  [[-1, 2.5, -6, 7, 'laub'], [-1, 5.5, -11, 8.5, 'birke'], [-1, 3, -16, 9.5, 'kiefer'], [-1, 9, -8, 7.5, 'laub'], [-1, 12, 2, 7.5, 'laub'], [-1, 13, -13, 9, 'birke'],
+   [1, 2.5, -7, 8, 'laub'], [1, 6, -12, 9, 'kiefer'], [1, 3, -17, 9.5, 'laub'], [1, 9.5, -7, 7, 'birke'], [1, 12.5, 3, 7, 'laub'], [1, 14, -12, 8.5, 'laub']]
+    .forEach(([s, dx, tz, h, type], i) => {
+      const tx = s * (side + 1.5 + dx + Math.max(0, -tz) * 0.35);
+      envGroup.add(buildParkTree(tx, tz, h, type, 100 + i));
+    });
   // Hecke hinter der Wand
   const hedgeMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(0x3a6328).convertSRGBToLinear(), roughness: 0.95 });
   const hedgeRnd = seeded(77);
@@ -652,105 +627,7 @@ function buildPark(wallW, wallH) {
 
 /* ------------------------------ PLATZ-DEKO (OUTDOOR) ----------------------- */
 
-const woodMat = () => new THREE.MeshStandardMaterial({ color: 0x8a5a33, roughness: 0.8 });
 const darkMetalMat = () => new THREE.MeshStandardMaterial({ color: 0x2b2d30, roughness: 0.5, metalness: 0.6 });
-
-// Parkbank: Holzlatten auf zwei schwarzen Metallgestellen, Sitzfläche zeigt nach +z
-function buildBench(x, z, rotY) {
-  const g = new THREE.Group();
-  const wood = woodMat(), metal = darkMetalMat();
-  const len = 1.8;
-  for (let i = 0; i < 3; i++) {           // Sitzlatten
-    const slat = new THREE.Mesh(new THREE.BoxGeometry(len, 0.035, 0.11), wood);
-    slat.position.set(0, 0.45, -0.15 + i * 0.13);
-    g.add(slat);
-  }
-  for (let i = 0; i < 2; i++) {           // Rückenlehne
-    const slat = new THREE.Mesh(new THREE.BoxGeometry(len, 0.11, 0.035), wood);
-    slat.position.set(0, 0.62 + i * 0.15, -0.24 - i * 0.03);
-    slat.rotation.x = -0.18;
-    g.add(slat);
-  }
-  [-len / 2 + 0.15, len / 2 - 0.15].forEach(lx => {
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.45, 0.42), metal);
-    leg.position.set(lx, 0.225, -0.02);
-    g.add(leg);
-    const back = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.42, 0.04), metal);
-    back.position.set(lx, 0.66, -0.26);
-    back.rotation.x = -0.18;
-    g.add(back);
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 0.45), metal);
-    arm.position.set(lx, 0.66, -0.02);
-    g.add(arm);
-  });
-  g.position.set(x, 0, z);
-  g.rotation.y = rotY;
-  return g;
-}
-
-// Straßenlaterne mit warm leuchtendem Kopf
-function buildStreetLamp(x, z, h = 4) {
-  const g = new THREE.Group();
-  const metal = darkMetalMat();
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, h, 10), metal);
-  pole.position.y = h / 2;
-  g.add(pole);
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.35, 12), metal);
-  base.position.y = 0.175;
-  g.add(base);
-  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.26, 0.28, 12), metal);
-  head.position.y = h + 0.1;
-  g.add(head);
-  const glow = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.04, 12),
-    new THREE.MeshBasicMaterial({ color: 0xffe2a8 }));
-  glow.position.y = h - 0.05;
-  g.add(glow);
-  g.position.set(x, 0, z);
-  return g;
-}
-
-// Mülleimer: dunkler Zylinder mit Holzverkleidung
-function buildBin(x, z) {
-  const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.22, 0.85, 16), darkMetalMat());
-  body.position.y = 0.425;
-  g.add(body);
-  const wood = woodMat();
-  for (let i = 0; i < 10; i++) {
-    const a = (i / 10) * Math.PI * 2;
-    const slat = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.7, 0.025), wood);
-    slat.position.set(Math.sin(a) * 0.245, 0.42, Math.cos(a) * 0.245);
-    slat.rotation.y = a;
-    g.add(slat);
-  }
-  g.position.set(x, 0, z);
-  return g;
-}
-
-// Holz-Pflanzkübel mit Gras und pinken Blüten
-function buildPlanter(x, z, rotY = 0) {
-  const g = new THREE.Group();
-  const box = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.5, 0.55), woodMat());
-  box.position.y = 0.25;
-  g.add(box);
-  const soil = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.04, 0.45),
-    new THREE.MeshStandardMaterial({ color: 0x3a2a1c, roughness: 1 }));
-  soil.position.y = 0.5;
-  g.add(soil);
-  const green = new THREE.MeshStandardMaterial({ color: 0x3f7a2e, roughness: 0.9 });
-  const pink = new THREE.MeshStandardMaterial({ color: 0xe7007f, roughness: 0.6 });
-  for (let i = 0; i < 7; i++) {
-    const bush = new THREE.Mesh(new THREE.SphereGeometry(0.16 + (i % 3) * 0.03, 10, 8), green);
-    bush.position.set(-0.54 + i * 0.18, 0.6, (i % 2 ? 0.08 : -0.08));
-    g.add(bush);
-    const bloom = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), pink);
-    bloom.position.set(-0.54 + i * 0.18 + 0.05, 0.76 + (i % 2) * 0.04, (i % 2 ? 0.02 : -0.04));
-    g.add(bloom);
-  }
-  g.position.set(x, 0, z);
-  g.rotation.y = rotY;
-  return g;
-}
 
 
 /* --------------------------- SHOWROOM-DEKO (INDOOR) ------------------------ */
@@ -1623,29 +1500,41 @@ function buildHouse(w, h, d, frontMat, sideColor, roofColor = 0x4a4d52, roofMat 
   return g;
 }
 
-// Auto: Karosserie, Kabine mit dunklen Scheiben, Räder, Lichter. Fährt entlang +z.
+// Auto: gerundete Karosserie, schräge Glaskabine, Felgen, Lichter. Fährt entlang +z.
 function buildCar(color) {
   const g = new THREE.Group();
-  const paint = new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.5 });
-  const glass = new THREE.MeshStandardMaterial({ color: 0x1d2630, roughness: 0.1, metalness: 0.6 });
-  const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.7, 4.3), paint);
+  const paint = new THREE.MeshStandardMaterial({ color, roughness: 0.25, metalness: 0.6 });
+  const glass = new THREE.MeshStandardMaterial({ color: 0x1a222b, roughness: 0.08, metalness: 0.7 });
+  const trim = new THREE.MeshStandardMaterial({ color: 0x18191b, roughness: 0.6 });
+  const body = softBox(4.35, 0.62, 1.82, 0.18, paint);
+  body.rotation.y = Math.PI / 2;
   body.position.y = 0.6;
   g.add(body);
-  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.6, 2.3), glass);
-  cabin.position.set(0, 1.22, -0.25);
+  // Kabine: Seitenprofil mit schräger Front- und Heckscheibe, in der Breite extrudiert
+  const prof = new THREE.Shape([new THREE.Vector2(-1.45, 0), new THREE.Vector2(1.05, 0), new THREE.Vector2(0.35, 0.58), new THREE.Vector2(-1.1, 0.58)]);
+  const cabGeo = new THREE.ExtrudeGeometry(prof, { depth: 1.56, bevelEnabled: true, bevelSize: 0.04, bevelThickness: 0.04, bevelSegments: 2 });
+  const cabin = new THREE.Mesh(cabGeo, glass);
+  cabin.rotation.y = -Math.PI / 2;
+  cabin.position.set(0.78, 0.9, -0.1);
   g.add(cabin);
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.06, 1.9), paint);
-  roof.position.set(0, 1.54, -0.3);
+  const roof = softBox(1.35, 0.05, 1.5, 0.02, paint);
+  roof.rotation.y = Math.PI / 2;
+  roof.position.set(0, 1.5, -0.47);
   g.add(roof);
   const tire = new THREE.MeshStandardMaterial({ color: 0x151517, roughness: 0.9 });
-  [[-0.86, 1.35], [0.86, 1.35], [-0.86, -1.4], [0.86, -1.4]].forEach(([x, z]) => {
-    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.24, 16), tire);
+  const rim = new THREE.MeshStandardMaterial({ color: 0xb8bcc2, roughness: 0.3, metalness: 0.9 });
+  [[-0.84, 1.35], [0.84, 1.35], [-0.84, -1.4], [0.84, -1.4]].forEach(([x, z]) => {
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.24, 24), tire);
     w.rotation.z = Math.PI / 2; w.position.set(x, 0.34, z); g.add(w);
+    const r = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.25, 16), rim);
+    r.rotation.z = Math.PI / 2; r.position.set(x, 0.34, z); g.add(r);
   });
+  const bumper = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.14, 0.08), trim);
+  [2.16, -2.16].forEach((z) => { const b = bumper.clone(); b.position.set(0, 0.36, z); g.add(b); });
   const head = new THREE.MeshBasicMaterial({ color: 0xfff6dc }), tail = new THREE.MeshBasicMaterial({ color: 0xd2141c });
-  [-0.6, 0.6].forEach((x) => {
-    const h = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.12, 0.04), head); h.position.set(x, 0.72, 2.16); g.add(h);
-    const t = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.12, 0.04), tail); t.position.set(x, 0.75, -2.16); g.add(t);
+  [-0.62, 0.62].forEach((x) => {
+    const h = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.08, 0.04), head); h.position.set(x, 0.74, 2.17); g.add(h);
+    const t = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.08, 0.04), tail); t.position.set(x, 0.76, -2.17); g.add(t);
   });
   return g;
 }
@@ -1731,6 +1620,138 @@ function buildHangingFlag(src, w, h) {
   return new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, side: THREE.DoubleSide }));
 }
 
+// Asphalt mit feiner Körnung, Flickstellen, gestrichelter Mittellinie und Randlinien
+const makeAsphaltTexture = memoTexture(function makeAsphaltTexture() {
+  const t = canvasTexture(256, 2048, (ctx, W, H) => {
+    const rnd = seeded(5);
+    ctx.fillStyle = '#45474a'; ctx.fillRect(0, 0, W, H);
+    for (let i = 0; i < 60000; i++) {
+      const v = Math.floor(40 + rnd() * 60);
+      ctx.fillStyle = `rgba(${v},${v},${v + 2},${0.25 + rnd() * 0.35})`;
+      ctx.fillRect(rnd() * W, rnd() * H, 1 + rnd() * 1.5, 1 + rnd() * 1.5);
+    }
+    for (let i = 0; i < 10; i++) {   // Flickstellen und Reifenspuren
+      ctx.fillStyle = `rgba(20,20,22,${0.08 + rnd() * 0.08})`;
+      ctx.fillRect(rnd() * W * 0.8, rnd() * H, 20 + rnd() * 70, 40 + rnd() * 160);
+    }
+    ctx.fillStyle = 'rgba(25,25,27,0.12)';
+    [0.3, 0.7].forEach((f) => ctx.fillRect(W * f - 10, 0, 20, H));
+    ctx.fillStyle = '#ecebe6';
+    for (let y = 0; y < H; y += 256) ctx.fillRect(W / 2 - 3, y, 6, 128);   // Mittellinie gestrichelt
+    ctx.fillRect(8, 0, 6, H); ctx.fillRect(W - 14, 0, 6, H);               // Randlinien
+  });
+  t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(1, 4);
+  t.anisotropy = 8;
+  return t;
+});
+
+// Moderne Straßenleuchte: schlanker Mast, flacher LED-Kopf zur Straße (-x)
+function buildCityLamp(x, z, h = 6.5) {
+  const g = new THREE.Group();
+  const metal = new THREE.MeshStandardMaterial({ color: 0x3a3d42, roughness: 0.45, metalness: 0.6 });
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.075, h, 16), metal);
+  pole.position.y = h / 2;
+  g.add(pole);
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.06, 0.08), metal);
+  arm.position.set(-0.5, h - 0.05, 0);
+  g.add(arm);
+  const head = softBox(0.7, 0.08, 0.28, 0.03, metal);
+  head.position.set(-1.05, h - 0.06, 0);
+  g.add(head);
+  const led = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.2), new THREE.MeshBasicMaterial({ color: 0xfff4dc }));
+  led.rotation.x = Math.PI / 2;
+  led.position.set(-1.05, h - 0.105, 0);
+  g.add(led);
+  g.position.set(x, 0, z);
+  return g;
+}
+
+// Bistrotisch mit zwei Stühlen und pink-weißem Sonnenschirm
+function buildCafeTable(x, z, seed) {
+  const g = new THREE.Group();
+  const rnd = seeded(40 + seed);
+  const black = new THREE.MeshStandardMaterial({ color: 0x232427, roughness: 0.5, metalness: 0.5 });
+  const marble = new THREE.MeshStandardMaterial({ color: 0xf1efea, roughness: 0.35 });
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.03, 32), marble);
+  top.position.y = 0.74; g.add(top);
+  const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.72, 10), black);
+  leg.position.y = 0.37; g.add(leg);
+  const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.24, 0.03, 24), black);
+  foot.position.y = 0.015; g.add(foot);
+  // Tassen
+  const cup = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+  [[-0.14, 0.08], [0.15, -0.06]].forEach(([cx, cz]) => {
+    const c = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.032, 0.07, 16), cup);
+    c.position.set(cx, 0.79, cz); g.add(c);
+  });
+  // Stühle: Rattan-Optik in Cognac, Gestell schwarz
+  const seatMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(0xa0683a).convertSRGBToLinear(), roughness: 0.8 });
+  [-1, 1].forEach((sx) => {
+    const ch = new THREE.Group();
+    const seat = softBox(0.44, 0.05, 0.42, 0.02, seatMat);
+    seat.position.y = 0.46; ch.add(seat);
+    const back = softBox(0.44, 0.38, 0.04, 0.02, seatMat);
+    back.position.set(0, 0.68, -0.2); back.rotation.x = -0.12; ch.add(back);
+    [[-0.19, -0.18], [0.19, -0.18], [-0.19, 0.18], [0.19, 0.18]].forEach(([lx, lz]) => {
+      const l = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.46, 8), black);
+      l.position.set(lx, 0.23, lz); ch.add(l);
+    });
+    ch.position.set(sx * 0.62, 0, (rnd() - 0.5) * 0.15);
+    ch.rotation.y = -sx * Math.PI / 2 + (rnd() - 0.5) * 0.4;
+    g.add(ch);
+  });
+  // Sonnenschirm: acht Bahnen abwechselnd pink und weiß
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 2.4, 10), black);
+  pole.position.y = 1.2; g.add(pole);
+  const pink = new THREE.MeshStandardMaterial({ color: 0xd8137a, roughness: 0.8, side: THREE.DoubleSide });
+  const white = new THREE.MeshStandardMaterial({ color: 0xf6f4ef, roughness: 0.8, side: THREE.DoubleSide });
+  for (let i = 0; i < 8; i++) {
+    const seg = new THREE.Mesh(new THREE.ConeGeometry(1.25, 0.45, 1, 1, true, (i * Math.PI) / 4, Math.PI / 4), i % 2 ? white : pink);
+    seg.position.y = 2.3; g.add(seg);
+  }
+  g.position.set(x, 0, z);
+  g.rotation.y = (rnd() - 0.5) * 0.5;
+  return g;
+}
+
+// Heißluftballon: Hülle mit pinken und dunklen Bahnen, weißer Schriftzug, Korb an Seilen
+const makeBalloonTexture = memoTexture(function makeBalloonTexture() {
+  return canvasTexture(1024, 512, (ctx, W, H) => {
+    for (let i = 0; i < 16; i++) { ctx.fillStyle = i % 2 ? '#e7007f' : '#b0005f'; ctx.fillRect((i * W) / 16, 0, W / 16 + 1, H); }
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, H * 0.4, W, H * 0.2);
+    ctx.fillStyle = '#e7007f'; ctx.font = '800 64px Inter, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('LEDWALL 360', W * 0.25, H * 0.5);
+    ctx.fillText('LEDWALL 360', W * 0.75, H * 0.5);
+  });
+});
+function buildBalloon() {
+  const g = new THREE.Group();
+  // Profil: unten schmaler Hals, oben runde Kuppel (Kugel mit R 3,6 m)
+  const pts = [], R = 3.6, c = 5.4;
+  for (let i = 0; i <= 8; i++) { const y = (i / 8) * 3; pts.push(new THREE.Vector2(0.8 + (2.68 - 0.8) * Math.pow(i / 8, 0.8), y)); }
+  for (let i = 1; i <= 24; i++) { const y = 3 + (i / 24) * 6; pts.push(new THREE.Vector2(Math.sqrt(Math.max(0, R * R - (y - c) * (y - c))), y)); }
+  const tex = makeBalloonTexture();
+  const env = new THREE.Mesh(new THREE.LatheGeometry(pts, 48), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.7, fog: false }));
+  env.position.y = 2.2;
+  g.add(env);
+  const basket = softBox(1.2, 0.9, 1.2, 0.08, new THREE.MeshStandardMaterial({ color: 0x8a5f36, roughness: 0.9, fog: false }));
+  basket.position.y = 0.45;
+  g.add(basket);
+  const rope = new THREE.MeshBasicMaterial({ color: 0x3a3a3a, fog: false });
+  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => {
+    const a = new THREE.Vector3(sx * 0.55, 0.9, sz * 0.55), b = new THREE.Vector3(sx * 0.65, 2.25, sz * 0.65);
+    const r = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, a.distanceTo(b), 4), rope);
+    r.position.copy(a).add(b).multiplyScalar(0.5);
+    r.lookAt(b); r.rotateX(Math.PI / 2);
+    g.add(r);
+  });
+  const burner = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.3, 12), new THREE.MeshStandardMaterial({ color: 0x6d7076, metalness: 0.7, roughness: 0.4, fog: false }));
+  burner.position.y = 1.9;
+  g.add(burner);
+  return g;
+}
+
 function buildStreet(wallW, wallH) {
   const bottom = FEST_WALL_BOTTOM();
   // Haus bleibt gleich groß (wächst nur, wenn die Wand sonst nicht passt); die LED-Wand
@@ -1741,10 +1762,16 @@ function buildStreet(wallW, wallH) {
   const ledLeft = -houseW / 2 + 1.5;                       // linke Kante der LED-Wand im Haus
   envGroup.position.x = -wallW / 2 - ledLeft;
 
-  scene.background = skyTexture;
-  scene.fog = new THREE.Fog(0xdbe8f2, 60, 160);
-  Object.assign(fogBase, { near: 60, far: 160 });
-  floorMat.color.set(0x4f7d3a);   // Rasen
+  // Himmelskuppel und Nebel in Rasenfarbe wie im Park: kein weißer Streifen am Horizont
+  scene.background = new THREE.Color(PARK_GREEN);
+  scene.fog = new THREE.Fog(PARK_GREEN, 70, 200);
+  Object.assign(fogBase, { near: 70, far: 200 });
+  envGroup.add(buildParkSkyDome());
+  const grassTex = makeGrassTexture();
+  grassTex.repeat.set(400 / 4, 400 / 4);
+  floorMat.map = grassTex;
+  floorMat.color.set(0xffffff);
+  floorMat.needsUpdate = true;
   floorMat.roughness = 1;
   rimBase = 0;
   ambientLight.intensity = 0.15;
@@ -1780,31 +1807,37 @@ function buildStreet(wallW, wallH) {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ color, roughness: 0.95 }));
     m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); envGroup.add(m); return m;
   };
-  const roadTex = canvasTexture(64, 1024, (ctx, W, H) => {
-    ctx.fillStyle = '#3c3e42'; ctx.fillRect(0, 0, W, H);
-    for (let i = 0; i < 3000; i++) { ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.05})`; ctx.fillRect(Math.random() * W, Math.random() * H, 1, 1); }
-    ctx.fillStyle = '#f2f2ee';
-    for (let y = 0; y < H; y += 64) ctx.fillRect(W / 2 - 1, y, 2, 32);     // Mittellinie gestrichelt
-    ctx.fillRect(2, 0, 2, H); ctx.fillRect(W - 4, 0, 2, H);                   // Randlinien
-  });
-  roadTex.wrapT = THREE.RepeatWrapping; roadTex.repeat.set(1, 8);
+  // Plattenbelag (eigene Kopie der Textur, damit jede Fläche ihr eigenes Raster bekommt)
+  const paved = (w, d, x, z, y, scale = 1) => {
+    const t = makePaverTexture().clone();
+    t.needsUpdate = true;
+    t.repeat.set(w / (2.4 * scale), d / (2.4 * scale));
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: t, roughness: 0.85 }));
+    m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); envGroup.add(m); return m;
+  };
+  const roadTex = makeAsphaltTexture();
   const road = new THREE.Mesh(new THREE.PlaneGeometry(roadW, 200), new THREE.MeshStandardMaterial({ map: roadTex, roughness: 0.9 }));
   road.rotation.x = -Math.PI / 2; road.position.set(roadX, 0.012, -20); envGroup.add(road);
-  flat(3.5, 200, roadX + roadW / 2 + 1.75, -20, 0x7f7b75, 0.03);    // Gehweg Hausseite
-  flat(2.4, 200, roadX - roadW / 2 - 1.2, -20, 0x45474b, 0.02);     // Parkstreifen gegenüber
-  flat(4.5, 200, roadX - roadW / 2 - 2.4 - 2.25, -20, 0x7f7b75, 0.03);  // Gehweg gegenüber
-  flat(houseW, 6, 0, front + 3, 0x88847c, 0.02);                     // Vorplatz
+  paved(3.5, 200, roadX + roadW / 2 + 1.75, -20, 0.03, 0.5);       // Gehweg Hausseite
+  flat(2.4, 200, roadX - roadW / 2 - 1.2, -20, 0x4a4c50, 0.02);     // Parkstreifen gegenüber
+  paved(4.5, 200, roadX - roadW / 2 - 2.4 - 2.25, -20, 0.03, 0.5);  // Gehweg gegenüber
+  paved(houseW, 6, 0, front + 3, 0.02);                              // Vorplatz
   [roadX + roadW / 2 + 0.1, roadX - roadW / 2 - 2.5].forEach((x) => {   // Bordsteine
     const curb = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.12, 200), new THREE.MeshStandardMaterial({ color: 0x9a978f }));
     curb.position.set(x, 0.06, -20); envGroup.add(curb);
   });
 
   // Zaun mit Hecke vor dem Haus (lässt die Mitte frei)
-  const fenceMat = darkMetalMat(), hedgeMat = new THREE.MeshStandardMaterial({ color: 0x35612b, roughness: 1 });
+  const fenceMat = darkMetalMat(), hedgeMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(0x3a6328).convertSRGBToLinear(), roughness: 0.95 });
+  const hedgeRnd = seeded(91);
   [-1, 1].forEach((s) => {
     const len = houseW / 2 - 2.2, cx = s * (2.2 + len / 2);
-    const hedge = new THREE.Mesh(new THREE.BoxGeometry(len, 0.9, 0.7), hedgeMat);
-    hedge.position.set(cx, 0.45, front + 5.4); envGroup.add(hedge);
+    for (let hx = cx - len / 2 + 0.4; hx < cx + len / 2 - 0.3; hx += 0.8) {
+      const c = leafClump(0.5, hedgeRnd, hedgeMat);
+      c.scale.set(1, 0.95, 0.75);
+      c.position.set(hx, 0.48, front + 5.4);
+      envGroup.add(c);
+    }
     const rail = new THREE.Mesh(new THREE.BoxGeometry(len, 0.05, 0.05), fenceMat);
     rail.position.set(cx, 1.1, front + 5.9); envGroup.add(rail);
     for (let x = cx - len / 2; x <= cx + len / 2 + 0.01; x += 0.25) {
@@ -1815,14 +1848,30 @@ function buildStreet(wallW, wallH) {
 
   // Gehweg: Bank, Mülleimer, Laternen, Bäume
   const walkX = roadX + roadW / 2 + 2.0;
-  envGroup.add(buildBench(walkX + 0.9, front + 8, -Math.PI / 2));
-  envGroup.add(buildBin(walkX + 0.9, front + 10));
-  [-30, -10, 12, 32, 52].forEach((z) => envGroup.add(buildStreetLamp(roadX + roadW / 2 + 0.6, z, 6)));
-  [[walkX + 0.8, 40, 7], [walkX + 0.8, 54, 6.5], [walkX + 0.8, -18, 7], [roadX - roadW / 2 - 5, 4, 7.5], [roadX - roadW / 2 - 5, 22, 6.5],
-   [roadX - roadW / 2 - 5, -14, 7], [houseW / 2 + 3, front + 1, 7.5], [houseW / 2 + 5.5, front + 9, 6]]
-    .forEach(([x, z, h]) => envGroup.add(buildTree(x, z, h)));
-  envGroup.add(buildPlanter(-houseW / 2 + 1.2, front + 3.5));
-  envGroup.add(buildPlanter(houseW / 2 - 1.2, front + 3.5));
+  envGroup.add(buildParkBench(walkX + 0.9, front + 8, -Math.PI / 2, 2));
+  envGroup.add(buildParkBin(walkX + 0.9, front + 10));
+  [-30, -10, 12, 32, 52].forEach((z) => envGroup.add(buildCityLamp(roadX + roadW / 2 + 0.5, z)));
+  [[walkX + 0.8, 40, 7, 'laub'], [walkX + 0.8, 54, 6.5, 'birke'], [walkX + 0.8, -18, 7, 'laub'], [roadX - roadW / 2 - 5, 4, 7.5, 'laub'], [roadX - roadW / 2 - 5, 22, 6.5, 'birke'],
+   [roadX - roadW / 2 - 5, -14, 7, 'laub'], [houseW / 2 + 3, front + 1, 7.5, 'laub'], [houseW / 2 + 5.5, front + 9, 6, 'birke'], [houseW / 2 + 9, front - 4, 9, 'kiefer']]
+    .forEach(([x, z, h, type], i) => envGroup.add(buildParkTree(x, z, h, type, 300 + i)));
+  envGroup.add(buildCortenPlanter(-houseW / 2 + 1.4, front + 4.4, 1.6, 0.7, 31));
+  envGroup.add(buildCortenPlanter(houseW / 2 - 1.4, front + 4.4, 1.6, 0.7, 32));
+  // Highlight 1: kleine Café-Terrasse rechts neben der LED-Wand (nur wenn Platz ist)
+  const cafeX0 = ledLeft + wallW + 2.2, cafeX1 = houseW / 2 - 3;
+  const cafeCount = Math.min(3, Math.floor((cafeX1 - cafeX0) / 2.8));
+  for (let i = 0; i < cafeCount; i++) envGroup.add(buildCafeTable(cafeX0 + 1.3 + i * 2.8, front + 2.3, i));
+  // Highlight 2: Heißluftballon in LEDWALL-Pink, schwebt langsam über der Stadt
+  const balloon = buildBalloon();
+  balloon.position.set(houseW / 2 + 25, 30, front - 70);
+  envGroup.add(balloon);
+  const bx = balloon.position.x;
+  let bt = 0;
+  envAnimators.push((dt) => {
+    bt += dt;
+    balloon.position.y = 30 + Math.sin(bt * 0.35) * 1.2;
+    balloon.position.x = bx + Math.sin(bt * 0.05) * 8;
+    balloon.rotation.y = bt * 0.06;
+  });
 
   // Nachbarhäuser: weiter hinten auf dieser Seite und gegenüber
   const neighbour = (x, z, w, h, d, color, rot) => {
